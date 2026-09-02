@@ -19,6 +19,10 @@ export function PaymentsManagementPage() {
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const handleConfirmCash = async (paymentId: string, orderId?: string) => {
+    const p = state.payments.find(x => x.id === paymentId);
+    // Defensive guard / Idempotency: cannot confirm an already paid payment
+    if (!p || p.status === 'paid') return;
+
     const confirmedBy = state.currentUser?.name || 'Staff';
     const paidAt = new Date().toISOString();
     try {
@@ -26,22 +30,13 @@ export function PaymentsManagementPage() {
       if (orderId) {
         await updateRecord('orders', orderId, {
           paymentStatus: 'paid',
-          status: 'processing',
+          status: 'completed',
           confirmedBy,
           updatedAt: paidAt
         });
       }
+      // Single authoritative audit created by reducer deriveAudit
       dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId, confirmedBy });
-      const p = state.payments.find(x => x.id === paymentId);
-      await logAudit({
-        category: 'payment',
-        action: 'payment.confirm_cash',
-        summary: `Confirmed cash receipt of ${formatPHP(p?.amount ?? 0)} (${p?.paymentNo ?? ''})`,
-        targetType: 'payment',
-        targetId: paymentId,
-        targetLabel: p?.paymentNo,
-        amount: p?.amount,
-      });
       showToast('success', 'Cash payment confirmed.');
     } catch (err: any) {
       showToast('error', 'Failed to confirm cash: ' + err.message);

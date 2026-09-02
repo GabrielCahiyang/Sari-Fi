@@ -155,7 +155,9 @@ export interface Payment {
   type: 'purchase' | 'installment' | 'full_settlement';
   method: 'cash' | 'gcash';
   amount: number;
-  status: 'pending' | 'paid';
+  status: 'pending' | 'paid' | 'failed';
+  mockTransactionId?: string;
+  referenceId?: string;
   confirmedBy?: string;
   createdAt: string;
   paidAt?: string;

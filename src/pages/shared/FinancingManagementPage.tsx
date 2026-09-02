@@ -23,7 +23,8 @@ export function FinancingManagementPage() {
 
   const approveFinancing = async (finId: string) => {
     const fin = state.financing.find(f => f.id === finId);
-    if (!fin) return;
+    // Defensive guard / Idempotency: only pending financing can be approved
+    if (!fin || fin.status !== 'pending') return;
     const approvedBy = state.currentUser?.name || 'Admin';
     const approvedAt = new Date().toISOString();
 
@@ -45,7 +46,7 @@ export function FinancingManagementPage() {
     try {
       await saveRecord('financing', updatedFinancing);
 
-      // Update order status if order exists
+      // Update order status to completed and paymentStatus to paid
       const relatedOrder = state.orders.find(o => o.financingId === finId || o.id === fin.orderId);
       if (relatedOrder) {
         await updateRecord('orders', relatedOrder.id, {
@@ -55,7 +56,7 @@ export function FinancingManagementPage() {
         });
       }
 
-      // Update customer used credit
+      // INVARIANT: Consume customer credit limit exactly once on approval
       const customer = state.customers.find(c => c.id === fin.customerId);
       if (customer) {
         await updateRecord('customers', customer.id, {
@@ -63,16 +64,8 @@ export function FinancingManagementPage() {
         });
       }
 
+      // Reducer deriveAudit will automatically create the single authoritative audit event
       dispatch({ type: 'APPROVE_FINANCING', financingId: finId, approvedBy });
-      await logAudit({
-        category: 'financing',
-        action: 'financing.approve',
-        summary: `Approved credit financing ${fin.financingNo} (${formatPHP(fin.principal)})`,
-        targetType: 'financing',
-        targetId: fin.id,
-        targetLabel: fin.financingNo,
-        amount: fin.principal,
-      });
       showToast('success', `Financing ${fin.financingNo} approved!`);
     } catch (err: any) {
       showToast('error', 'Failed to approve financing: ' + err.message);
@@ -81,7 +74,8 @@ export function FinancingManagementPage() {
 
   const rejectFinancing = async (finId: string) => {
     const fin = state.financing.find(f => f.id === finId);
-    if (!fin) return;
+    // Defensive guard / Idempotency: only pending financing can be rejected
+    if (!fin || fin.status !== 'pending') return;
     const rejectedBy = state.currentUser?.name || 'Admin';
 
     try {
@@ -92,17 +86,19 @@ export function FinancingManagementPage() {
           status: 'cancelled' as OrderStatus,
           updatedAt: new Date().toISOString(),
         });
+
+        // INVARIANT: Restore reserved inventory upon rejection
+        const orderItems = Array.isArray(relatedOrder.items) ? relatedOrder.items : [];
+        for (const item of orderItems) {
+          const prod = state.products.find(p => p.id === item.productId);
+          if (prod) {
+            await updateRecord('products', prod.id, { stock: prod.stock + item.quantity });
+          }
+        }
       }
 
+      // Reducer deriveAudit will automatically create the single authoritative audit event
       dispatch({ type: 'REJECT_FINANCING', financingId: finId, rejectedBy });
-      await logAudit({
-        category: 'financing',
-        action: 'financing.reject',
-        summary: `Rejected credit financing file ${fin.financingNo}`,
-        targetType: 'financing',
-        targetId: fin.id,
-        targetLabel: fin.financingNo,
-      });
       showToast('info', 'Financing request rejected.');
     } catch (err: any) {
       showToast('error', 'Failed to reject financing: ' + err.message);

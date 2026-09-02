@@ -160,15 +160,9 @@ function coreReducer(state: AppState, action: Action): AppState {
         if (item) return { ...p, stock: Math.max(0, p.stock - item.quantity) };
         return p;
       });
-      let updatedCustomers = state.customers;
-      if (action.financing) {
-        updatedCustomers = state.customers.map(c =>
-          c.id === action.financing!.customerId
-            ? { ...c, usedCredit: c.usedCredit + action.financing!.principal }
-            : c
-        );
-      }
-      return { ...state, orders: newOrders, payments: newPayments, financing: newFinancing, products: updatedProducts, customers: updatedCustomers, cart: [], checkoutData: null };
+      // INVARIANT: Submitting financing must NOT consume customer credit!
+      // Customer credit is only consumed once approved by a supervisor/admin.
+      return { ...state, orders: newOrders, payments: newPayments, financing: newFinancing, products: updatedProducts, cart: [], checkoutData: null };
     }
     case 'UPDATE_ORDER_STATUS':
       return {
@@ -181,7 +175,9 @@ function coreReducer(state: AppState, action: Action): AppState {
       };
     case 'APPROVE_FINANCING': {
       const fin = state.financing.find(f => f.id === action.financingId);
-      if (!fin) return state;
+      // Defensive Guard / Idempotency: only pending financing can be approved
+      if (!fin || fin.status !== 'pending') return state;
+
       const today = new Date();
       const schedule: InstallmentSchedule[] = fin.schedule.map((s, i) => {
         const d = new Date(today);
@@ -198,6 +194,7 @@ function coreReducer(state: AppState, action: Action): AppState {
           ? { ...o, status: 'completed' as OrderStatus, paymentStatus: 'paid' as const, updatedAt: new Date().toISOString() }
           : o
       );
+      // INVARIANT: Approving financing consumes the principal EXACTLY ONCE
       const updatedCustomers = state.customers.map(c =>
         c.id === fin.customerId ? { ...c, usedCredit: c.usedCredit + fin.principal } : c
       );
@@ -205,7 +202,9 @@ function coreReducer(state: AppState, action: Action): AppState {
     }
     case 'REJECT_FINANCING': {
       const fin = state.financing.find(f => f.id === action.financingId);
-      if (!fin) return state;
+      // Defensive Guard / Idempotency: only pending financing can be rejected
+      if (!fin || fin.status !== 'pending') return state;
+
       const updatedFinancing = state.financing.map(f =>
         f.id === action.financingId ? { ...f, status: 'rejected' as const, rejectedBy: action.rejectedBy } : f
       );
@@ -214,16 +213,19 @@ function coreReducer(state: AppState, action: Action): AppState {
           ? { ...o, status: 'cancelled' as OrderStatus, updatedAt: new Date().toISOString() }
           : o
       );
+      // INVARIANT: Rejecting financing consumes ZERO credit
       return { ...state, financing: updatedFinancing, orders: updatedOrders };
     }
     case 'PAY_INSTALLMENT': {
       const fin = state.financing.find(f => f.id === action.financingId);
       if (!fin) return state;
       const installment = fin.schedule.find(s => s.weekNo === action.weekNo);
-      if (!installment) return state;
+      // Defensive Guard / Idempotency: cannot pay an already-paid installment
+      if (!installment || installment.status === 'paid') return state;
+
       const amount = installment.baseAmount + installment.penalty;
       const principalPerInstallment = fin.principal / fin.installmentCount;
-      const newPaidPrincipal = fin.paidPrincipal + principalPerInstallment;
+      const newPaidPrincipal = Math.min(fin.principal, fin.paidPrincipal + principalPerInstallment);
       const allPaid = fin.schedule.every(s => s.weekNo === action.weekNo || s.status === 'paid');
 
       const updatedSchedule = fin.schedule.map(s => {
@@ -239,12 +241,14 @@ function coreReducer(state: AppState, action: Action): AppState {
           : f
       );
 
+      // INVARIANT: Paying an installment decreases usedCredit by the principal portion EXACTLY ONCE
       const updatedCustomers = state.customers.map(c =>
         c.id === fin.customerId
           ? { ...c, usedCredit: Math.max(0, c.usedCredit - principalPerInstallment) }
           : c
       );
 
+      const payMap = new Map<string, Payment>();
       const newPayment: Payment = {
         id: `pay${Date.now()}`,
         paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
@@ -258,12 +262,19 @@ function coreReducer(state: AppState, action: Action): AppState {
         createdAt: new Date().toISOString(),
         paidAt: new Date().toISOString(),
       };
+      payMap.set(newPayment.id, newPayment);
+      state.payments.forEach(p => { if (!payMap.has(p.id)) payMap.set(p.id, p); });
 
-      return { ...state, financing: updatedFinancing, customers: updatedCustomers, payments: [newPayment, ...state.payments] };
+      return { ...state, financing: updatedFinancing, customers: updatedCustomers, payments: Array.from(payMap.values()) };
     }
     case 'PAY_FULL_BALANCE': {
       const fin = state.financing.find(f => f.id === action.financingId);
-      if (!fin) return state;
+      // Defensive Guard / Idempotency: cannot settle already completed financing
+      if (!fin || fin.status === 'completed') return state;
+
+      const remainingPrincipal = Math.max(0, fin.principal - fin.paidPrincipal);
+      if (remainingPrincipal <= 0) return state;
+
       const remaining = fin.totalRepayable - (fin.paidPrincipal / fin.principal * fin.totalRepayable);
       const updatedSchedule = fin.schedule.map(s =>
         s.status !== 'paid' ? { ...s, status: 'paid' as const, paidAt: new Date().toISOString(), paidMethod: action.method } : s
@@ -273,12 +284,15 @@ function coreReducer(state: AppState, action: Action): AppState {
           ? { ...f, paidPrincipal: f.principal, schedule: updatedSchedule, status: 'completed' as const }
           : f
       );
-      const remainingPrincipal = fin.principal - fin.paidPrincipal;
+
+      // INVARIANT: Full settlement releases remaining principal from usedCredit EXACTLY ONCE
       const updatedCustomers = state.customers.map(c =>
         c.id === fin.customerId
           ? { ...c, usedCredit: Math.max(0, c.usedCredit - remainingPrincipal) }
           : c
       );
+
+      const payMap = new Map<string, Payment>();
       const newPayment: Payment = {
         id: `pay${Date.now()}`,
         paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
@@ -292,15 +306,21 @@ function coreReducer(state: AppState, action: Action): AppState {
         createdAt: new Date().toISOString(),
         paidAt: new Date().toISOString(),
       };
-      return { ...state, financing: updatedFinancing, customers: updatedCustomers, payments: [newPayment, ...state.payments] };
+      payMap.set(newPayment.id, newPayment);
+      state.payments.forEach(p => { if (!payMap.has(p.id)) payMap.set(p.id, p); });
+
+      return { ...state, financing: updatedFinancing, customers: updatedCustomers, payments: Array.from(payMap.values()) };
     }
     case 'CONFIRM_CASH_PAYMENT': {
+      const payment = state.payments.find(p => p.id === action.paymentId);
+      // Defensive Guard / Idempotency: if payment already marked paid, return state
+      if (!payment || payment.status === 'paid') return state;
+
       const updatedPayments = state.payments.map(p =>
         p.id === action.paymentId ? { ...p, status: 'paid' as const, confirmedBy: action.confirmedBy, paidAt: new Date().toISOString() } : p
       );
-      const payment = state.payments.find(p => p.id === action.paymentId);
       let updatedOrders = state.orders;
-      if (payment?.orderId) {
+      if (payment.orderId) {
         updatedOrders = state.orders.map(o =>
           o.id === payment.orderId
             ? { ...o, paymentStatus: 'paid' as const, status: 'completed' as OrderStatus, confirmedBy: action.confirmedBy, updatedAt: new Date().toISOString() }
@@ -486,6 +506,24 @@ function coreReducer(state: AppState, action: Action): AppState {
   }
 }
 
+// Tracks recent audit event signatures to guarantee exactly one audit log per business action
+const recentAuditSignatures = new Map<string, number>();
+
+function shouldLogAudit(actionName: string, targetKey: string): boolean {
+  const sig = `${actionName}_${targetKey}`;
+  const now = Date.now();
+  const lastTime = recentAuditSignatures.get(sig) || 0;
+  if (now - lastTime < 3000) {
+    return false; // Suppress duplicate audit within 3 seconds
+  }
+  recentAuditSignatures.set(sig, now);
+  if (recentAuditSignatures.size > 250) {
+    const oldest = recentAuditSignatures.keys().next().value;
+    if (oldest) recentAuditSignatures.delete(oldest);
+  }
+  return true;
+}
+
 // Wraps the core reducer and derives audit trail entries
 function reducer(state: AppState, action: Action): AppState {
   const next = coreReducer(state, action);
@@ -498,6 +536,11 @@ function reducer(state: AppState, action: Action): AppState {
 
   const entry = deriveAudit(action, state, next);
   if (!entry) return next;
+
+  const targetKey = entry.targetId || entry.targetLabel || entry.summary;
+  if (!shouldLogAudit(entry.action, targetKey)) {
+    return next;
+  }
 
   // Persist audit log entry to Firebase RTDB asynchronously
   logAuditEntry(entry).catch(err => console.error('Failed to log audit entry to RTDB:', err));
@@ -649,6 +692,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     targetLabel?: string;
     amount?: number;
   }) => {
+    const targetKey = data.targetId || data.targetLabel || data.summary;
+    if (!shouldLogAudit(data.action, targetKey)) {
+      return; // Duplicate manual audit suppressed!
+    }
+
     const actor = state.currentUser
       ? {
           actorId: state.currentUser.id,

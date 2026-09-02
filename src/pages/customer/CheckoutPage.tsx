@@ -3,6 +3,11 @@ import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
 import type { Order, Financing, Payment, InstallmentSchedule } from '../../types';
 import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
+import {
+  generateMockGcashReference,
+  processMockGcashWebhook,
+  type MockGcashWebhookPayload,
+} from '../../services/payment/mockGcashService';
 
 type Mode = 'cash' | 'gcash' | 'financing' | 'split';
 
@@ -12,8 +17,9 @@ export function CheckoutPage() {
   const [mode, setMode] = useState<Mode>('cash');
   const [plan, setPlan] = useState<1 | 2>(1);
   const [splitMethod, setSplitMethod] = useState<'cash' | 'gcash'>('cash');
-  const [gcashProcessing, setGcashProcessing] = useState(false);
   const [placing, setPlacing] = useState(false);
+  const [pendingWebhookData, setPendingWebhookData] = useState<{ order: Order; payment: Payment } | null>(null);
+  const [simulatingWebhook, setSimulatingWebhook] = useState(false);
   const isPlacingRef = useRef(false);
 
   const items = state.cart.map(item => {
@@ -94,8 +100,7 @@ export function CheckoutPage() {
       await new Promise(r => setTimeout(r, 400));
       showToast('success', 'Order placed! Waiting for cash payment confirmation.');
     } else if (mode === 'gcash') {
-      setGcashProcessing(true);
-      await new Promise(r => setTimeout(r, 1000));
+      const mockRef = generateMockGcashReference();
       finalPayment = {
         id: `pay${Date.now()}`,
         paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
@@ -104,12 +109,12 @@ export function CheckoutPage() {
         type: 'purchase',
         method: 'gcash',
         amount: total,
-        status: 'paid',
+        status: 'pending',
+        mockTransactionId: mockRef.transactionId,
+        referenceId: mockRef.referenceId,
         createdAt: new Date().toISOString(),
-        paidAt: new Date().toISOString(),
       };
-      finalOrder = { ...orderBase, status: 'completed' as const, paymentStatus: 'paid' as const };
-      showToast('success', 'GCash payment successful! Order is completed.');
+      finalOrder = { ...orderBase, status: 'pending_payment' as const, paymentStatus: 'pending' as const };
     } else if (mode === 'financing') {
       const schedule = generateSchedule(installmentCount, weeklyInstallment);
       finalFinancing = {
@@ -130,13 +135,10 @@ export function CheckoutPage() {
         createdAt: new Date().toISOString(),
       };
       finalOrder = { ...orderBase, financingId: finId, status: 'pending_financing' as const };
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 300));
       showToast('info', 'Financing request submitted! Awaiting supervisor approval.');
     } else if (mode === 'split') {
-      if (splitMethod === 'gcash') {
-        setGcashProcessing(true);
-        await new Promise(r => setTimeout(r, 1000));
-      }
+      const mockRef = splitMethod === 'gcash' ? generateMockGcashReference() : undefined;
       const schedule = generateSchedule(installmentCount, splitWeekly);
       finalFinancing = {
         id: finId,
@@ -164,11 +166,13 @@ export function CheckoutPage() {
         method: splitMethod,
         amount: splitRemainder,
         status: splitMethod === 'gcash' ? 'paid' : 'pending',
+        mockTransactionId: mockRef?.transactionId,
+        referenceId: mockRef?.referenceId,
         createdAt: new Date().toISOString(),
         paidAt: splitMethod === 'gcash' ? new Date().toISOString() : undefined,
       };
       finalOrder = { ...orderBase, financingId: finId, status: 'pending_financing' as const, splitCashAmount: splitRemainder, splitFinancingAmount: financingAmount, splitMethod };
-      showToast('info', `Split payment processed. ₱${splitRemainder.toLocaleString()} ${splitMethod.toUpperCase()} paid. Financing awaiting approval.`);
+      showToast('info', `Split payment processed. ${formatPHP(splitRemainder)} ${splitMethod.toUpperCase()} paid. Financing awaiting approval.`);
     } else {
       finalOrder = { ...orderBase };
     }
@@ -187,35 +191,116 @@ export function CheckoutPage() {
         }
       }
 
-      // Update customer used credit if financing was used
-      if (finalFinancing) {
-        const cust = state.customers.find(c => c.id === customer.id);
-        if (cust) {
-          await updateRecord('customers', cust.id, { usedCredit: cust.usedCredit + finalFinancing.principal });
-        }
-      }
+      // INVARIANT: Submitting financing does NOT consume customer credit.
+      // Customer credit is only consumed once supervisor approves the financing.
     } catch (err: any) {
       console.error('Failed to save order to RTDB:', err);
     }
 
+    if (mode === 'gcash' && finalPayment) {
+      setPlacing(false);
+      isPlacingRef.current = false;
+      setPendingWebhookData({ order: finalOrder, payment: finalPayment });
+      return;
+    }
+
     dispatch({ type: 'PLACE_ORDER', order: finalOrder, payment: finalPayment, financing: finalFinancing });
-    setGcashProcessing(false);
     setPlacing(false);
     isPlacingRef.current = false;
     navigate('customer/orders');
   };
 
-  if (gcashProcessing) {
+  const handleSimulateWebhook = async (status: 'SUCCESS' | 'FAILED') => {
+    if (!pendingWebhookData) return;
+    setSimulatingWebhook(true);
+
+    const { order, payment } = pendingWebhookData;
+    const payload: MockGcashWebhookPayload = {
+      event: status === 'SUCCESS' ? 'payment.success' : 'payment.failed',
+      transactionId: payment.mockTransactionId || `GCASH-TXN-${Date.now()}`,
+      referenceId: payment.referenceId || `REF-${Date.now()}`,
+      paymentId: payment.id,
+      orderId: order.id,
+      amount: payment.amount,
+      status,
+      timestamp: new Date().toISOString(),
+    };
+
+    const result = processMockGcashWebhook(payload, payment, order);
+
+    if (result.success && result.updatedPayment && result.updatedOrder) {
+      await saveRecord('payments', result.updatedPayment);
+      await saveRecord('orders', result.updatedOrder);
+      dispatch({ type: 'PLACE_ORDER', order: result.updatedOrder, payment: result.updatedPayment });
+      showToast('success', 'Mock GCash Webhook verified! Payment confirmed and order completed.');
+      setPendingWebhookData(null);
+      setSimulatingWebhook(false);
+      navigate('customer/orders');
+    } else {
+      if (result.updatedPayment) {
+        await saveRecord('payments', result.updatedPayment);
+      }
+      // If payment failed, restore inventory
+      for (const item of items) {
+        const prod = state.products.find(p => p.id === item.productId);
+        if (prod) {
+          await updateRecord('products', prod.id, { stock: prod.stock + item.quantity });
+        }
+      }
+      await updateRecord('orders', order.id, { status: 'cancelled' as const });
+      showToast('error', result.error || 'GCash payment simulation failed.');
+      setPendingWebhookData(null);
+      setSimulatingWebhook(false);
+    }
+  };
+
+  if (pendingWebhookData) {
+    const { order, payment } = pendingWebhookData;
     return (
       <CustomerLayout>
-        <div className="flex flex-col items-center justify-center h-full min-h-[500px] p-6">
-          <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 animate-pulse">
-            <span className="text-blue-600 font-800 text-xl">G</span>
+        <div className="max-w-md mx-auto my-12 p-6 bg-white rounded-3xl border border-[#E4E8E6] shadow-sm text-center">
+          <div className="w-14 h-14 bg-sky-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-sky-600 font-900 text-2xl">G</span>
           </div>
-          <div className="font-700 text-[#10212B] text-lg mb-2">Processing GCash Payment</div>
-          <div className="text-sm text-[#65727A] mb-6">Please wait while we confirm your payment…</div>
-          <div className="text-xs text-[#65727A] bg-blue-50 border border-blue-200 px-4 py-2 rounded-xl max-w-sm text-center">
-            For prototype purposes, the GCash gateway is simulated using a mocked webhook.
+          <h2 className="text-lg font-800 text-[#0D2B45] mb-1">Awaiting GCash Confirmation</h2>
+          <p className="text-xs text-[#65727A] mb-5">
+            Simulated asynchronous webhook payment gateway for thesis evaluation.
+          </p>
+
+          <div className="bg-[#F7F8F6] rounded-2xl p-4 text-left space-y-2 mb-6 text-xs">
+            <div className="flex justify-between">
+              <span className="text-[#65727A]">Order Number:</span>
+              <span className="font-700 text-[#10212B]">{order.orderNo}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#65727A]">Reference ID:</span>
+              <span className="font-700 text-[#10212B] font-mono">{payment.referenceId}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#65727A]">Transaction ID:</span>
+              <span className="font-700 text-[#10212B] font-mono truncate max-w-[200px]">{payment.mockTransactionId}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#65727A]">Amount Due:</span>
+              <span className="font-700 text-[#1E7D3B] text-sm">{formatPHP(payment.amount)}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            <button
+              onClick={() => handleSimulateWebhook('SUCCESS')}
+              disabled={simulatingWebhook}
+              className="w-full py-3 bg-[#1E7D3B] text-white font-700 text-xs rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20 disabled:opacity-60"
+            >
+              {simulatingWebhook ? 'Verifying Webhook…' : 'Simulate Webhook Callback: SUCCESS'}
+            </button>
+            <button
+              onClick={() => handleSimulateWebhook('FAILED')}
+              disabled={simulatingWebhook}
+              className="w-full py-2.5 bg-red-50 text-red-600 border border-red-200 font-700 text-xs rounded-xl hover:bg-red-100 transition-all cursor-pointer disabled:opacity-60"
+            >
+              Simulate Webhook Callback: FAILED
+            </button>
           </div>
         </div>
       </CustomerLayout>

@@ -36,15 +36,8 @@ export function OrdersManagementPage() {
       } else {
         await updateRecord('orders', orderId, { status, confirmedBy, updatedAt });
       }
+      // Single authoritative audit created by reducer deriveAudit
       dispatch({ type: 'UPDATE_ORDER_STATUS', orderId, status, confirmedBy });
-      await logAudit({
-        category: 'order',
-        action: 'order.status',
-        summary: `Order ${o?.orderNo ?? orderId} updated to ${status.replace(/_/g, ' ')}`,
-        targetType: 'order',
-        targetId: orderId,
-        targetLabel: o?.orderNo,
-      });
       showToast('success', `Order status updated to ${status.replace(/_/g, ' ')}.`);
     } catch (err: any) {
       showToast('error', 'Failed to update order: ' + err.message);
@@ -52,6 +45,10 @@ export function OrdersManagementPage() {
   };
 
   const handleConfirmCash = async (paymentId: string, orderId?: string) => {
+    const p = state.payments.find(x => x.id === paymentId);
+    // Defensive guard / Idempotency: cannot confirm an already paid payment
+    if (!p || p.status === 'paid') return;
+
     const confirmedBy = state.currentUser?.name || 'Staff';
     const paidAt = new Date().toISOString();
     try {
@@ -75,17 +72,8 @@ export function OrdersManagementPage() {
           });
         }
       }
+      // Single authoritative audit created by reducer deriveAudit
       dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId, confirmedBy });
-      const p = state.payments.find(x => x.id === paymentId);
-      await logAudit({
-        category: 'payment',
-        action: 'payment.confirm_cash',
-        summary: `Confirmed cash payment ${p?.paymentNo ?? ''} (${formatPHP(p?.amount ?? 0)}) for order`,
-        targetType: 'payment',
-        targetId: paymentId,
-        targetLabel: p?.paymentNo,
-        amount: p?.amount,
-      });
       showToast('success', 'Cash payment confirmed!');
     } catch (err: any) {
       showToast('error', 'Failed to confirm cash: ' + err.message);

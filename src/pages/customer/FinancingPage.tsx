@@ -3,6 +3,8 @@ import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
 import { FinancingStatusBadge, InstallmentStatusBadge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
+import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
+import type { Financing, Payment } from '../../types';
 
 export function FinancingPage() {
   const { state, dispatch, getCurrentCustomer, getCustomerFinancing, showToast, formatPHP } = useApp();
@@ -22,26 +24,125 @@ export function FinancingPage() {
 
   const doPayInstallment = async () => {
     if (!selectedFin || payWeekNo === null) return;
+    const targetFin = state.financing.find(f => f.id === selectedFin);
+    if (!targetFin) return;
+
+    const inst = targetFin.schedule.find(s => s.weekNo === payWeekNo);
+    // Defensive Guard / Idempotency: cannot pay an already-paid installment
+    if (!inst || inst.status === 'paid') {
+      showToast('info', `Installment #${payWeekNo} is already paid.`);
+      setPayWeekNo(null);
+      setSelectedFin(null);
+      return;
+    }
+
     if (payMethod === 'gcash') {
       setGcashProcessing(true);
-      await new Promise(r => setTimeout(r, 1200));
+      await new Promise(r => setTimeout(r, 800));
       setGcashProcessing(false);
     }
+
+    const principalPerInstallment = targetFin.principal / targetFin.installmentCount;
+    const newPaidPrincipal = Math.min(targetFin.principal, targetFin.paidPrincipal + principalPerInstallment);
+    const allPaid = targetFin.schedule.every(s => s.weekNo === payWeekNo || s.status === 'paid');
+
+    const updatedSchedule = targetFin.schedule.map(s => {
+      if (s.weekNo === payWeekNo) return { ...s, status: 'paid' as const, paidAt: new Date().toISOString(), paidMethod: payMethod };
+      if (s.weekNo === payWeekNo + 1 && s.status === 'upcoming') return { ...s, status: 'due' as const };
+      return s;
+    });
+
+    const updatedFinancing: Financing = {
+      ...targetFin,
+      paidPrincipal: newPaidPrincipal,
+      schedule: updatedSchedule,
+      status: allPaid ? 'completed' : targetFin.status,
+    };
+
+    const newPayment: Payment = {
+      id: `pay${Date.now()}`,
+      paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
+      customerId: targetFin.customerId,
+      financingId: targetFin.id,
+      type: 'installment',
+      method: payMethod,
+      amount: inst.baseAmount + inst.penalty,
+      status: 'paid',
+      createdAt: new Date().toISOString(),
+      paidAt: new Date().toISOString(),
+    };
+
+    try {
+      await saveRecord('financing', updatedFinancing);
+      await saveRecord('payments', newPayment);
+      const newUsed = Math.max(0, customer.usedCredit - principalPerInstallment);
+      await updateRecord('customers', customer.id, { usedCredit: newUsed });
+    } catch (err: any) {
+      console.error('Failed to save installment payment to RTDB:', err);
+    }
+
     dispatch({ type: 'PAY_INSTALLMENT', financingId: selectedFin, weekNo: payWeekNo, method: payMethod });
-    showToast('success', `Installment #${payWeekNo} paid successfully via ${payMethod === 'gcash' ? 'GCash' : 'Cash'}${payMethod === 'cash' ? ' — awaiting staff confirmation' : ''}.`);
+    showToast('success', `Installment #${payWeekNo} paid successfully via ${payMethod === 'gcash' ? 'GCash' : 'Cash'}. Credit restored.`);
     setPayWeekNo(null);
     setSelectedFin(null);
   };
 
   const doPayFull = async () => {
     if (!selectedFin) return;
+    const targetFin = state.financing.find(f => f.id === selectedFin);
+    // Defensive Guard / Idempotency: cannot settle already completed financing
+    if (!targetFin || targetFin.status === 'completed') {
+      showToast('info', 'This financing plan is already settled.');
+      setPayFull(false);
+      setSelectedFin(null);
+      return;
+    }
+
+    const remainingPrincipal = Math.max(0, targetFin.principal - targetFin.paidPrincipal);
+    if (remainingPrincipal <= 0) return;
+
     if (payMethod === 'gcash') {
       setGcashProcessing(true);
-      await new Promise(r => setTimeout(r, 1200));
+      await new Promise(r => setTimeout(r, 800));
       setGcashProcessing(false);
     }
+
+    const remaining = targetFin.totalRepayable - (targetFin.paidPrincipal / targetFin.principal * targetFin.totalRepayable);
+    const updatedSchedule = targetFin.schedule.map(s =>
+      s.status !== 'paid' ? { ...s, status: 'paid' as const, paidAt: new Date().toISOString(), paidMethod: payMethod } : s
+    );
+
+    const updatedFinancing: Financing = {
+      ...targetFin,
+      paidPrincipal: targetFin.principal,
+      schedule: updatedSchedule,
+      status: 'completed',
+    };
+
+    const newPayment: Payment = {
+      id: `pay${Date.now()}`,
+      paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
+      customerId: targetFin.customerId,
+      financingId: targetFin.id,
+      type: 'full_settlement',
+      method: payMethod,
+      amount: Math.round(remaining * 100) / 100,
+      status: 'paid',
+      createdAt: new Date().toISOString(),
+      paidAt: new Date().toISOString(),
+    };
+
+    try {
+      await saveRecord('financing', updatedFinancing);
+      await saveRecord('payments', newPayment);
+      const newUsed = Math.max(0, customer.usedCredit - remainingPrincipal);
+      await updateRecord('customers', customer.id, { usedCredit: newUsed });
+    } catch (err: any) {
+      console.error('Failed to save full settlement to RTDB:', err);
+    }
+
     dispatch({ type: 'PAY_FULL_BALANCE', financingId: selectedFin, method: payMethod });
-    showToast('success', 'Full balance settled! Credit restored and financing completed.');
+    showToast('success', 'Full balance settled! Credit fully restored and financing completed.');
     setPayFull(false);
     setSelectedFin(null);
   };

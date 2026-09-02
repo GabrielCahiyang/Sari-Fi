@@ -194,13 +194,8 @@ export function POSPage() {
         }
       }
 
-      // Update customer credit limit usage in RTDB if financing was used
-      if (finalFinancing) {
-        const cust = state.customers.find(c => c.id === customer.id);
-        if (cust) {
-          await updateRecord('customers', cust.id, { usedCredit: cust.usedCredit + finalFinancing.principal });
-        }
-      }
+      // INVARIANT: Submitting financing does NOT consume customer credit.
+      // Credit is only consumed once supervisor approves the financing.
     } catch (err: any) {
       console.error('Failed to save POS order to RTDB:', err);
     }
