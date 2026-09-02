@@ -21,6 +21,7 @@ export interface Customer {
   yearsOperating: number;
   notes: string;
   loginEmail: string;
+  password?: string;
   status: 'active' | 'suspended';
   creditLimit: number;
   usedCredit: number;
@@ -31,6 +32,7 @@ export interface Employee {
   id: string;
   name: string;
   email: string;
+  password?: string;
   role: 'employee' | 'supervisor' | 'admin';
   phone: string;
   status: 'active' | 'inactive';
@@ -48,6 +50,12 @@ export interface Supplier {
   status: 'active' | 'inactive';
 }
 
+export interface ProductCategory {
+  id: string;
+  name: string;
+  createdAt?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -59,6 +67,7 @@ export interface Product {
   stock: number;
   reorderLevel: number;
   status: 'active' | 'inactive';
+  imageUrl?: string;
 }
 
 export interface CartItem {
@@ -230,6 +239,7 @@ export interface AppState {
   employees: Employee[];
   suppliers: Supplier[];
   products: Product[];
+  categories: ProductCategory[];
   orders: Order[];
   financing: Financing[];
   payments: Payment[];

@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { FinancingStatusBadge } from '../../components/ui/Badge';
+import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
+import type { InstallmentSchedule, OrderStatus } from '../../types';
 
 export function FinancingManagementPage() {
-  const { state, dispatch, getCustomer, showToast, formatPHP } = useApp();
+  const { state, dispatch, getCustomer, showToast, formatPHP, logAudit } = useApp();
   const [filter, setFilter] = useState('all');
   const role = state.currentUser?.role || 'employee';
 
@@ -19,14 +21,92 @@ export function FinancingManagementPage() {
 
   const financing = state.financing.filter(f => filter === 'all' || f.status === filter).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  const approveFinancing = (finId: string) => {
-    dispatch({ type: 'APPROVE_FINANCING', financingId: finId, approvedBy: state.currentUser!.name });
-    showToast('success', 'Financing approved!');
+  const approveFinancing = async (finId: string) => {
+    const fin = state.financing.find(f => f.id === finId);
+    if (!fin) return;
+    const approvedBy = state.currentUser?.name || 'Admin';
+    const approvedAt = new Date().toISOString();
+
+    const today = new Date();
+    const schedule: InstallmentSchedule[] = fin.schedule.map((s, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() + (i + 1) * 7);
+      return { ...s, dueDate: d.toISOString().split('T')[0], status: i === 0 ? 'due' : 'upcoming' };
+    });
+
+    const updatedFinancing = {
+      ...fin,
+      status: 'active' as const,
+      approvedBy,
+      approvedAt,
+      schedule,
+    };
+
+    try {
+      await saveRecord('financing', updatedFinancing);
+
+      // Update order status if order exists
+      const relatedOrder = state.orders.find(o => o.financingId === finId || o.id === fin.orderId);
+      if (relatedOrder) {
+        await updateRecord('orders', relatedOrder.id, {
+          status: 'completed' as OrderStatus,
+          paymentStatus: 'paid' as const,
+          updatedAt: approvedAt,
+        });
+      }
+
+      // Update customer used credit
+      const customer = state.customers.find(c => c.id === fin.customerId);
+      if (customer) {
+        await updateRecord('customers', customer.id, {
+          usedCredit: customer.usedCredit + fin.principal,
+        });
+      }
+
+      dispatch({ type: 'APPROVE_FINANCING', financingId: finId, approvedBy });
+      await logAudit({
+        category: 'financing',
+        action: 'financing.approve',
+        summary: `Approved credit financing ${fin.financingNo} (${formatPHP(fin.principal)})`,
+        targetType: 'financing',
+        targetId: fin.id,
+        targetLabel: fin.financingNo,
+        amount: fin.principal,
+      });
+      showToast('success', `Financing ${fin.financingNo} approved!`);
+    } catch (err: any) {
+      showToast('error', 'Failed to approve financing: ' + err.message);
+    }
   };
 
-  const rejectFinancing = (finId: string) => {
-    dispatch({ type: 'REJECT_FINANCING', financingId: finId, rejectedBy: state.currentUser!.name });
-    showToast('info', 'Financing rejected.');
+  const rejectFinancing = async (finId: string) => {
+    const fin = state.financing.find(f => f.id === finId);
+    if (!fin) return;
+    const rejectedBy = state.currentUser?.name || 'Admin';
+
+    try {
+      await updateRecord('financing', finId, { status: 'rejected', rejectedBy });
+      const relatedOrder = state.orders.find(o => o.financingId === finId || o.id === fin.orderId);
+      if (relatedOrder) {
+        await updateRecord('orders', relatedOrder.id, {
+          status: 'cancelled' as OrderStatus,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      dispatch({ type: 'REJECT_FINANCING', financingId: finId, rejectedBy });
+      await logAudit({
+        category: 'financing',
+        action: 'financing.reject',
+        summary: `Rejected credit financing file ${fin.financingNo}`,
+        targetType: 'financing',
+        targetId: fin.id,
+        targetLabel: fin.financingNo,
+      });
+      showToast('info', 'Financing request rejected.');
+    } catch (err: any) {
+      showToast('error', 'Failed to reject financing: ' + err.message);
+    }
   };
 
   const pendingCount = state.financing.filter(f => f.status === 'pending').length;
@@ -86,7 +166,7 @@ export function FinancingManagementPage() {
               <tbody className="divide-y divide-[#F7F8F6]">
                 {financing.map(fin => {
                   const customer = getCustomer(fin.customerId);
-                  const paidInstallments = fin.schedule.filter(s => s.status === 'paid').length;
+                  const paidInstallments = fin.schedule ? fin.schedule.filter(s => s.status === 'paid').length : 0;
                   return (
                     <tr key={fin.id} className="hover:bg-[#F7F8F6]/50 transition-colors">
                       <td className="px-5 py-3">
@@ -107,8 +187,8 @@ export function FinancingManagementPage() {
                         <td className="px-5 py-3">
                           {fin.status === 'pending' && (
                             <div className="flex gap-1.5">
-                              <button onClick={() => rejectFinancing(fin.id)} className="px-2.5 py-1.5 border border-red-200 text-red-600 text-xs font-600 rounded-lg hover:bg-red-50 transition-all">Reject</button>
-                              <button onClick={() => approveFinancing(fin.id)} className="px-2.5 py-1.5 bg-[#1E7D3B] text-white text-xs font-600 rounded-lg hover:bg-[#22913f] transition-all">Approve</button>
+                              <button onClick={() => rejectFinancing(fin.id)} className="px-2.5 py-1.5 border border-red-200 text-red-600 text-xs font-600 rounded-lg hover:bg-red-50 transition-all cursor-pointer">Reject</button>
+                              <button onClick={() => approveFinancing(fin.id)} className="px-2.5 py-1.5 bg-[#1E7D3B] text-white text-xs font-600 rounded-lg hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20">Approve</button>
                             </div>
                           )}
                         </td>

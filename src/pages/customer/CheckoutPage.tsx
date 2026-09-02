@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
 import type { Order, Financing, Payment, InstallmentSchedule } from '../../types';
+import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
 
 type Mode = 'cash' | 'gcash' | 'financing' | 'split';
 
@@ -10,9 +11,10 @@ export function CheckoutPage() {
   const customer = getCurrentCustomer();
   const [mode, setMode] = useState<Mode>('cash');
   const [plan, setPlan] = useState<1 | 2>(1);
-  const [splitMethod, setSplitMethod] = useState<'cash' | 'gcash'>('gcash');
+  const [splitMethod, setSplitMethod] = useState<'cash' | 'gcash'>('cash');
   const [gcashProcessing, setGcashProcessing] = useState(false);
   const [placing, setPlacing] = useState(false);
+  const isPlacingRef = useRef(false);
 
   const items = state.cart.map(item => {
     const p = getProduct(item.productId);
@@ -55,7 +57,8 @@ export function CheckoutPage() {
   };
 
   const placeOrder = async () => {
-    if (!customer || items.length === 0) return;
+    if (!customer || items.length === 0 || isPlacingRef.current) return;
+    isPlacingRef.current = true;
     setPlacing(true);
 
     const orderBase: Order = {
@@ -66,13 +69,17 @@ export function CheckoutPage() {
       total,
       paymentType: mode,
       paymentStatus: 'pending',
-      status: mode === 'cash' ? 'pending_payment' : mode === 'gcash' ? 'processing' : 'pending_financing',
+      status: mode === 'cash' ? 'pending_payment' : mode === 'gcash' ? 'completed' : 'pending_financing',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
+    let finalOrder: Order;
+    let finalPayment: Payment | undefined;
+    let finalFinancing: Financing | undefined;
+
     if (mode === 'cash') {
-      const payment: Payment = {
+      finalPayment = {
         id: `pay${Date.now()}`,
         paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
         customerId: customer.id,
@@ -83,15 +90,13 @@ export function CheckoutPage() {
         status: 'pending',
         createdAt: new Date().toISOString(),
       };
-      await new Promise(r => setTimeout(r, 600));
-      dispatch({ type: 'PLACE_ORDER', order: orderBase, payment });
+      finalOrder = { ...orderBase };
+      await new Promise(r => setTimeout(r, 400));
       showToast('success', 'Order placed! Waiting for cash payment confirmation.');
-      navigate('customer/orders');
-
     } else if (mode === 'gcash') {
       setGcashProcessing(true);
-      await new Promise(r => setTimeout(r, 1500));
-      const payment: Payment = {
+      await new Promise(r => setTimeout(r, 1000));
+      finalPayment = {
         id: `pay${Date.now()}`,
         paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
         customerId: customer.id,
@@ -103,15 +108,11 @@ export function CheckoutPage() {
         createdAt: new Date().toISOString(),
         paidAt: new Date().toISOString(),
       };
-      const order = { ...orderBase, status: 'processing' as const, paymentStatus: 'paid' as const };
-      dispatch({ type: 'PLACE_ORDER', order, payment });
-      setGcashProcessing(false);
-      showToast('success', 'GCash payment successful! Order is now processing.');
-      navigate('customer/orders');
-
+      finalOrder = { ...orderBase, status: 'completed' as const, paymentStatus: 'paid' as const };
+      showToast('success', 'GCash payment successful! Order is completed.');
     } else if (mode === 'financing') {
       const schedule = generateSchedule(installmentCount, weeklyInstallment);
-      const financing: Financing = {
+      finalFinancing = {
         id: finId,
         financingNo: `FIN-${String(state.financing.length + 1).padStart(4, '0')}`,
         customerId: customer.id,
@@ -128,19 +129,16 @@ export function CheckoutPage() {
         schedule,
         createdAt: new Date().toISOString(),
       };
-      const order = { ...orderBase, financingId: finId, status: 'pending_financing' as const };
-      await new Promise(r => setTimeout(r, 600));
-      dispatch({ type: 'PLACE_ORDER', order, financing });
+      finalOrder = { ...orderBase, financingId: finId, status: 'pending_financing' as const };
+      await new Promise(r => setTimeout(r, 400));
       showToast('info', 'Financing request submitted! Awaiting supervisor approval.');
-      navigate('customer/orders');
-
     } else if (mode === 'split') {
       if (splitMethod === 'gcash') {
         setGcashProcessing(true);
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 1000));
       }
       const schedule = generateSchedule(installmentCount, splitWeekly);
-      const financing: Financing = {
+      finalFinancing = {
         id: finId,
         financingNo: `FIN-${String(state.financing.length + 1).padStart(4, '0')}`,
         customerId: customer.id,
@@ -157,7 +155,7 @@ export function CheckoutPage() {
         schedule,
         createdAt: new Date().toISOString(),
       };
-      const cashPayment: Payment = {
+      finalPayment = {
         id: `pay${Date.now()}`,
         paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
         customerId: customer.id,
@@ -169,14 +167,42 @@ export function CheckoutPage() {
         createdAt: new Date().toISOString(),
         paidAt: splitMethod === 'gcash' ? new Date().toISOString() : undefined,
       };
-      const order = { ...orderBase, financingId: finId, status: 'pending_financing' as const, splitCashAmount: splitRemainder, splitFinancingAmount: financingAmount, splitMethod };
-      dispatch({ type: 'PLACE_ORDER', order, payment: cashPayment, financing });
-      setGcashProcessing(false);
+      finalOrder = { ...orderBase, financingId: finId, status: 'pending_financing' as const, splitCashAmount: splitRemainder, splitFinancingAmount: financingAmount, splitMethod };
       showToast('info', `Split payment processed. ₱${splitRemainder.toLocaleString()} ${splitMethod.toUpperCase()} paid. Financing awaiting approval.`);
-      navigate('customer/orders');
+    } else {
+      finalOrder = { ...orderBase };
     }
 
+    try {
+      await saveRecord('orders', finalOrder);
+      if (finalPayment) await saveRecord('payments', finalPayment);
+      if (finalFinancing) await saveRecord('financing', finalFinancing);
+
+      // Decrement product inventory in RTDB
+      for (const item of items) {
+        const prod = state.products.find(p => p.id === item.productId);
+        if (prod) {
+          const newStock = Math.max(0, prod.stock - item.quantity);
+          await updateRecord('products', prod.id, { stock: newStock });
+        }
+      }
+
+      // Update customer used credit if financing was used
+      if (finalFinancing) {
+        const cust = state.customers.find(c => c.id === customer.id);
+        if (cust) {
+          await updateRecord('customers', cust.id, { usedCredit: cust.usedCredit + finalFinancing.principal });
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to save order to RTDB:', err);
+    }
+
+    dispatch({ type: 'PLACE_ORDER', order: finalOrder, payment: finalPayment, financing: finalFinancing });
+    setGcashProcessing(false);
     setPlacing(false);
+    isPlacingRef.current = false;
+    navigate('customer/orders');
   };
 
   if (gcashProcessing) {

@@ -2,12 +2,6 @@ import { useState } from 'react';
 import logo from '../../imports/image-1.png';
 import { useApp } from '../../context/AppContext';
 
-const CUSTOMER_DEMOS = [
-  { label: 'Maria Santos', email: 'maria@store.ph', password: 'maria123', store: "Maria's Sari-Sari Store" },
-  { label: 'Ana Cruz', email: 'ana@store.ph', password: 'ana123', store: "Ana's Corner Store" },
-  { label: 'Roberto Tan', email: 'roberto@store.ph', password: 'rob123', store: "Tan's Neighborhood Store" },
-];
-
 export function CustomerLoginPage() {
   const { login, navigate, showToast } = useApp();
   const [email, setEmail] = useState('');
@@ -18,23 +12,17 @@ export function CustomerLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise(r => setTimeout(r, 400));
-    const ok = login(email, password);
+    const ok = await login(email.trim(), password);
     setLoading(false);
-    if (!ok) showToast('error', 'Invalid credentials. Please try again.');
-  };
-
-  const handleQuick = async (demo: typeof CUSTOMER_DEMOS[0]) => {
-    setEmail(demo.email);
-    setPassword(demo.password);
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 300));
-    login(demo.email, demo.password);
-    setLoading(false);
+    if (!ok) {
+      showToast('error', 'Invalid email or password. Please verify your credentials or contact store staff.');
+    } else {
+      showToast('success', 'Welcome back!');
+    }
   };
 
   return (
-    <div className="min-h-full bg-[#F7F8F6] flex flex-col items-center justify-center p-6">
+    <div className="min-h-full bg-[#F7F8F6] flex flex-col items-center justify-center p-6 relative">
       {/* Back */}
       <button
         onClick={() => navigate('home')}
@@ -54,17 +42,17 @@ export function CustomerLoginPage() {
         </div>
 
         <h1 className="text-2xl font-800 text-[#10212B] mb-1">Welcome Back</h1>
-        <p className="text-sm text-[#65727A] mb-7">Sign in to shop and manage your financing.</p>
+        <p className="text-sm text-[#65727A] mb-7">Sign in with your personal store credentials issued by Sari-Fi.</p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="text-xs font-700 text-[#65727A] uppercase tracking-wider">Email</label>
+            <label className="text-xs font-700 text-[#65727A] uppercase tracking-wider">Login Email</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              placeholder="you@example.ph"
+              placeholder="store@domain.ph"
               className="mt-1.5 w-full px-4 py-3 bg-white border border-[#E4E8E6] rounded-xl text-sm text-[#10212B] placeholder-[#C5CBD0] focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B] transition-all"
             />
           </div>
@@ -90,43 +78,20 @@ export function CustomerLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#1E7D3B] hover:bg-[#22913f] text-white font-700 rounded-xl transition-all text-sm disabled:opacity-60 shadow-md shadow-[#1E7D3B]/20"
+            className="w-full py-3 bg-[#1E7D3B] hover:bg-[#22913f] text-white font-700 rounded-xl transition-all text-sm disabled:opacity-60 shadow-md shadow-[#1E7D3B]/20 cursor-pointer"
           >
-            {loading ? 'Signing in…' : 'Sign In'}
+            {loading ? 'Authenticating with Firebase…' : 'Sign In'}
           </button>
         </form>
 
-        {/* Quick login */}
-        <div className="mt-7">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex-1 h-px bg-[#E4E8E6]" />
-            <span className="text-[11px] text-[#65727A] font-500">Demo Accounts</span>
-            <div className="flex-1 h-px bg-[#E4E8E6]" />
-          </div>
-          <div className="space-y-2">
-            {CUSTOMER_DEMOS.map(demo => (
-              <button
-                key={demo.email}
-                onClick={() => handleQuick(demo)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-white border border-[#E4E8E6] rounded-xl hover:border-[#1E7D3B]/40 hover:bg-[#F0FAF3] transition-all group"
-              >
-                <div className="text-left">
-                  <div className="text-sm font-600 text-[#10212B] group-hover:text-[#1E7D3B]">{demo.label}</div>
-                  <div className="text-xs text-[#65727A]">{demo.store}</div>
-                </div>
-                <svg className="w-4 h-4 text-[#C5CBD0] group-hover:text-[#1E7D3B] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            ))}
-          </div>
+        <div className="mt-8 p-4 bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl">
+          <div className="text-xs font-700 text-[#166534] mb-1">New Store Owner?</div>
+          <p className="text-[11px] text-[#15803D] leading-relaxed">
+            Customer accounts cannot register online. Please visit any Sari-Fi branch with your store business permit to get verified and receive your account credentials.
+          </p>
         </div>
 
-        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
-          <span className="font-700">Not yet a member?</span> Sari-Fi accounts are created in person at a branch. There is no online registration.
-        </div>
-
-        <div className="mt-5 text-center">
+        <div className="mt-6 text-center">
           <button onClick={() => navigate('login')} className="text-sm group">
             <span className="text-[#65727A]">Sari-Fi Staff? </span>
             <span className="font-700 text-[#0D2B45] group-hover:underline">Sign in to Staff Portal →</span>

@@ -91,11 +91,12 @@ export function AdminDashboard() {
             <div className="space-y-2">
               {recentOrders.map(order => {
                 const customer = getCustomer(order.customerId);
+                const orderItems = Array.isArray(order.items) ? order.items : order.items ? Object.values(order.items) : [];
                 return (
                   <div key={order.id} className="flex items-center justify-between py-2.5 border-b border-[#F7F8F6] last:border-0">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-[#F7F8F6] rounded-xl flex items-center justify-center text-[11px] font-700 text-[#65727A]">
-                        {order.items.length}
+                        {orderItems.length}
                       </div>
                       <div>
                         <div className="text-sm font-600 text-[#10212B]">{order.orderNo}</div>

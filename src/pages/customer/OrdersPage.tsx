@@ -1,6 +1,7 @@
 import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
 import { OrderStatusBadge } from '../../components/ui/Badge';
+import type { OrderItem } from '../../types';
 
 export function OrdersPage() {
   const { state, navigate, getCurrentCustomer, getCustomerOrders, dispatch, showToast, formatPHP } = useApp();
@@ -50,17 +51,22 @@ export function OrdersPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 mb-4">
-                    {order.items.slice(0, 3).map(item => (
-                      <div key={item.productId} className="flex justify-between text-sm">
-                        <span className="text-[#65727A]">{item.productName} ×{item.quantity}</span>
-                        <span className="font-600 text-[#10212B]">{formatPHP(item.price * item.quantity)}</span>
+                  {(() => {
+                    const orderItems = (Array.isArray(order.items) ? order.items : order.items ? Object.values(order.items) : []) as OrderItem[];
+                    return (
+                      <div className="space-y-1.5 mb-4">
+                        {orderItems.slice(0, 3).map(item => (
+                          <div key={item.productId} className="flex justify-between text-sm">
+                            <span className="text-[#65727A]">{item.productName} ×{item.quantity}</span>
+                            <span className="font-600 text-[#10212B]">{formatPHP(item.price * item.quantity)}</span>
+                          </div>
+                        ))}
+                        {orderItems.length > 3 && (
+                          <div className="text-xs text-[#65727A]">+{orderItems.length - 3} more items</div>
+                        )}
                       </div>
-                    ))}
-                    {order.items.length > 3 && (
-                      <div className="text-xs text-[#65727A]">+{order.items.length - 3} more items</div>
-                    )}
-                  </div>
+                    );
+                  })()}
 
                   <div className="border-t border-[#F7F8F6] pt-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">

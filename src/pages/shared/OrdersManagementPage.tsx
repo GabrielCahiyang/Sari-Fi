@@ -2,23 +2,20 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { OrderStatusBadge } from '../../components/ui/Badge';
-import type { OrderStatus } from '../../types';
+import type { Order, OrderStatus } from '../../types';
+import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
 
 export function OrdersManagementPage() {
-  const { state, dispatch, getCustomer, showToast, formatPHP } = useApp();
+  const { state, dispatch, getCustomer, showToast, logAudit, formatPHP, navigate } = useApp();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-  const role = state.currentUser?.role || 'employee';
-
-  const STATUS_OPTIONS = [
-    { value: 'all', label: 'All' },
-    { value: 'pending_payment', label: 'Pending Payment' },
-    { value: 'pending_financing', label: 'Pending Financing' },
-    { value: 'processing', label: 'Processing' },
-    { value: 'ready', label: 'Ready' },
-    { value: 'delivered', label: 'Delivered' },
+  const STATUS_OPTIONS: { value: string; label: string }[] = [
+    { value: 'all', label: 'All Statuses' },
     { value: 'completed', label: 'Completed' },
+    { value: 'pending_financing', label: 'Pending Financing' },
+    { value: 'pending_payment', label: 'Pending Payment' },
     { value: 'cancelled', label: 'Cancelled' },
   ];
 
@@ -29,17 +26,73 @@ export function OrdersManagementPage() {
     return matchesSearch && matchesStatus;
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  const updateStatus = (orderId: string, status: OrderStatus) => {
-    dispatch({ type: 'UPDATE_ORDER_STATUS', orderId, status, confirmedBy: state.currentUser!.name });
-    showToast('success', `Order status updated to ${status.replace('_', ' ')}.`);
+  const updateStatus = async (orderId: string, status: OrderStatus) => {
+    const confirmedBy = state.currentUser?.name || 'Staff';
+    const updatedAt = new Date().toISOString();
+    try {
+      const o = state.orders.find(x => x.id === orderId);
+      if (o) {
+        await saveRecord('orders', { ...o, status, confirmedBy, updatedAt });
+      } else {
+        await updateRecord('orders', orderId, { status, confirmedBy, updatedAt });
+      }
+      dispatch({ type: 'UPDATE_ORDER_STATUS', orderId, status, confirmedBy });
+      await logAudit({
+        category: 'order',
+        action: 'order.status',
+        summary: `Order ${o?.orderNo ?? orderId} updated to ${status.replace(/_/g, ' ')}`,
+        targetType: 'order',
+        targetId: orderId,
+        targetLabel: o?.orderNo,
+      });
+      showToast('success', `Order status updated to ${status.replace(/_/g, ' ')}.`);
+    } catch (err: any) {
+      showToast('error', 'Failed to update order: ' + err.message);
+    }
   };
 
-  const STATUS_FLOW: Record<string, OrderStatus[]> = {
-    processing: ['ready'],
-    ready: ['out_for_delivery'],
-    out_for_delivery: ['delivered'],
-    delivered: ['completed'],
+  const handleConfirmCash = async (paymentId: string, orderId?: string) => {
+    const confirmedBy = state.currentUser?.name || 'Staff';
+    const paidAt = new Date().toISOString();
+    try {
+      await updateRecord('payments', paymentId, { status: 'paid', confirmedBy, paidAt });
+      if (orderId) {
+        const o = state.orders.find(x => x.id === orderId);
+        if (o) {
+          await saveRecord('orders', {
+            ...o,
+            paymentStatus: 'paid',
+            status: 'completed',
+            confirmedBy,
+            updatedAt: paidAt
+          });
+        } else {
+          await updateRecord('orders', orderId, {
+            paymentStatus: 'paid',
+            status: 'completed',
+            confirmedBy,
+            updatedAt: paidAt
+          });
+        }
+      }
+      dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId, confirmedBy });
+      const p = state.payments.find(x => x.id === paymentId);
+      await logAudit({
+        category: 'payment',
+        action: 'payment.confirm_cash',
+        summary: `Confirmed cash payment ${p?.paymentNo ?? ''} (${formatPHP(p?.amount ?? 0)}) for order`,
+        targetType: 'payment',
+        targetId: paymentId,
+        targetLabel: p?.paymentNo,
+        amount: p?.amount,
+      });
+      showToast('success', 'Cash payment confirmed!');
+    } catch (err: any) {
+      showToast('error', 'Failed to confirm cash: ' + err.message);
+    }
   };
+
+  const role = state.currentUser?.role || 'employee';
 
   return (
     <InternalLayout title="Orders">
@@ -75,42 +128,61 @@ export function OrdersManagementPage() {
               <tbody className="divide-y divide-[#F7F8F6]">
                 {orders.map(order => {
                   const customer = getCustomer(order.customerId);
-                  const nextStatuses = STATUS_FLOW[order.status] || [];
                   const cashPay = state.payments.find(p => p.orderId === order.id && p.method === 'cash' && p.status === 'pending');
+                  const orderItems = Array.isArray(order.items) ? order.items : order.items ? Object.values(order.items) : [];
                   return (
                     <tr key={order.id} className="hover:bg-[#F7F8F6]/50 transition-colors">
                       <td className="px-5 py-3">
-                        <div className="font-700 text-sm text-[#10212B]">{order.orderNo}</div>
-                        <div className="text-[11px] text-[#65727A]">{new Date(order.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</div>
+                        <div className="font-700 text-sm text-[#10212B]">{order.orderNo || order.id || '—'}</div>
+                        <div className="text-[11px] text-[#65727A]">
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : '—'}
+                        </div>
                       </td>
                       <td className="px-5 py-3">
-                        <div className="text-sm text-[#10212B]">{customer?.fullName}</div>
-                        <div className="text-[11px] text-[#65727A]">{customer?.storeName}</div>
+                        <div className="text-sm text-[#10212B]">{customer?.fullName || 'Walk-in / Unregistered'}</div>
+                        <div className="text-[11px] text-[#65727A]">{customer?.storeName || '—'}</div>
                       </td>
-                      <td className="px-5 py-3 text-sm text-[#65727A]">{order.items.length} items</td>
+                      <td className="px-5 py-3 text-sm text-[#65727A]">{orderItems.length} items</td>
                       <td className="px-5 py-3 font-700 text-sm text-[#10212B]">{formatPHP(order.total)}</td>
-                      <td className="px-5 py-3 text-xs text-[#65727A] capitalize">{order.paymentType}</td>
+                      <td className="px-5 py-3 text-xs text-[#65727A] capitalize">{order.paymentType || '—'}</td>
                       <td className="px-5 py-3"><OrderStatusBadge status={order.status} /></td>
                       <td className="px-5 py-3">
-                        <div className="flex gap-1">
-                          {cashPay && (
+                        {order.status === 'completed' || order.status === 'cancelled' ? (
+                          <span className="text-[#65727A] text-xs font-500">—</span>
+                        ) : order.status === 'pending_financing' ? (
+                          role === 'admin' || role === 'supervisor' ? (
                             <button
-                              onClick={() => { dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId: cashPay.id, confirmedBy: state.currentUser!.name }); showToast('success', 'Cash confirmed!'); }}
-                              className="px-2.5 py-1.5 bg-[#1E7D3B] text-white text-xs font-600 rounded-lg hover:bg-[#22913f] transition-all"
+                              onClick={() => navigate(role === 'admin' ? 'admin/financing' : 'supervisor/financing')}
+                              className="px-2.5 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-600 rounded-lg hover:bg-amber-100 transition-all cursor-pointer"
                             >
-                              Confirm Cash
+                              Review Financing
                             </button>
-                          )}
-                          {nextStatuses.map(s => (
+                          ) : (
+                            <span className="text-amber-600 text-xs font-500">Awaiting Approval</span>
+                          )
+                        ) : cashPay ? (
+                          <button
+                            onClick={() => handleConfirmCash(cashPay.id, order.id)}
+                            className="px-2.5 py-1.5 bg-[#1E7D3B] text-white text-xs font-600 rounded-lg hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
+                          >
+                            Confirm Cash & Complete
+                          </button>
+                        ) : (
+                          <div className="flex gap-1.5">
                             <button
-                              key={s}
-                              onClick={() => updateStatus(order.id, s)}
-                              className="px-2.5 py-1.5 bg-[#0D2B45] text-white text-xs font-600 rounded-lg hover:bg-[#1a3d5c] transition-all capitalize"
+                              onClick={() => updateStatus(order.id, 'completed')}
+                              className="px-2.5 py-1.5 bg-[#1E7D3B] text-white text-xs font-600 rounded-lg hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
                             >
-                              {s.replace('_', ' ')}
+                              Complete
                             </button>
-                          ))}
-                        </div>
+                            <button
+                              onClick={() => updateStatus(order.id, 'cancelled')}
+                              className="px-2.5 py-1.5 bg-red-50 text-red-600 border border-red-200 text-xs font-600 rounded-lg hover:bg-red-100 transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

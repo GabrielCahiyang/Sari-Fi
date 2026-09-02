@@ -145,15 +145,18 @@ export function CustomerDashboard() {
             </div>
             {activeOrders.length > 0 ? (
               <div className="space-y-3">
-                {activeOrders.slice(0, 3).map(order => (
-                  <div key={order.id} className="flex items-center justify-between py-2 border-b border-[#F7F8F6] last:border-0">
-                    <div>
-                      <div className="font-600 text-sm text-[#10212B]">{order.orderNo}</div>
-                      <div className="text-[#65727A] text-xs">{order.items.length} item{order.items.length > 1 ? 's' : ''} · {formatPHP(order.total)}</div>
+                {activeOrders.slice(0, 3).map(order => {
+                  const orderItems = Array.isArray(order.items) ? order.items : order.items ? Object.values(order.items) : [];
+                  return (
+                    <div key={order.id} className="flex items-center justify-between py-2 border-b border-[#F7F8F6] last:border-0">
+                      <div>
+                        <div className="font-600 text-sm text-[#10212B]">{order.orderNo}</div>
+                        <div className="text-[#65727A] text-xs">{orderItems.length} item{orderItems.length !== 1 ? 's' : ''} · {formatPHP(order.total)}</div>
+                      </div>
+                      <OrderStatusBadge status={order.status} />
                     </div>
-                    <OrderStatusBadge status={order.status} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-6">

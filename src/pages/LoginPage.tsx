@@ -2,15 +2,9 @@ import { useState } from 'react';
 import logo from '../imports/image-1.png';
 import { useApp } from '../context/AppContext';
 
-const STAFF_USERS = [
-  { label: 'Admin Rosa', email: 'admin@sarifi.ph', password: 'admin123', role: 'Admin' },
-  { label: 'Supervisor Ben', email: 'ben@sarifi.ph', password: 'super123', role: 'Supervisor' },
-  { label: 'Employee Jay', email: 'jay@sarifi.ph', password: 'emp123', role: 'Employee' },
-];
-
 export function LoginPage() {
   const { login, navigate, showToast } = useApp();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('admin@sarifi.ph');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -18,27 +12,21 @@ export function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise(r => setTimeout(r, 400));
-    const ok = login(email, password);
+    const ok = await login(email.trim(), password);
     setLoading(false);
-    if (!ok) showToast('error', 'Invalid credentials. Please try again.');
-  };
-
-  const handleQuick = async (q: typeof STAFF_USERS[0]) => {
-    setEmail(q.email);
-    setPassword(q.password);
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 300));
-    login(q.email, q.password);
-    setLoading(false);
+    if (!ok) {
+      showToast('error', 'Invalid credentials. Please verify your email and password.');
+    } else {
+      showToast('success', 'Admin signed in successfully.');
+    }
   };
 
   return (
-    <div className="min-h-full bg-[#F7F8F6] flex flex-col items-center justify-center p-6">
+    <div className="min-h-full bg-[#F7F8F6] flex flex-col items-center justify-center p-6 relative">
       {/* Back to home */}
       <button
         onClick={() => navigate('home')}
-        className="absolute top-6 left-6 flex items-center gap-2 text-sm text-[#65727A] hover:text-[#0D2B45] transition-colors"
+        className="absolute top-6 left-6 flex items-center gap-2 text-sm text-[#65727A] hover:text-[#0D2B45] transition-colors cursor-pointer"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -90,35 +78,14 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#0D2B45] hover:bg-[#1a3d5c] text-white font-700 rounded-xl transition-all text-sm disabled:opacity-60"
+            className="w-full py-3 bg-[#0D2B45] hover:bg-[#1a3d5c] text-white font-700 rounded-xl transition-all text-sm disabled:opacity-60 cursor-pointer shadow-md shadow-[#0D2B45]/20"
           >
             {loading ? 'Signing in…' : 'Sign In to Staff Portal'}
           </button>
         </form>
 
-        {/* Quick login */}
-        <div className="mt-7">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex-1 h-px bg-[#E4E8E6]" />
-            <span className="text-[11px] text-[#65727A] font-500">Demo Quick Login</span>
-            <div className="flex-1 h-px bg-[#E4E8E6]" />
-          </div>
-          <div className="space-y-2">
-            {STAFF_USERS.map(q => (
-              <button
-                key={q.email}
-                onClick={() => handleQuick(q)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-white border border-[#E4E8E6] rounded-xl hover:border-[#0D2B45]/40 hover:bg-[#F7F8F6] transition-all group"
-              >
-                <div className="text-sm font-600 text-[#10212B] group-hover:text-[#0D2B45]">{q.label}</div>
-                <span className="text-xs text-[#65727A] bg-[#F7F8F6] px-2 py-0.5 rounded-full border border-[#E4E8E6]">{q.role}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div className="mt-6 text-center">
-          <button onClick={() => navigate('customer/login')} className="text-sm group">
+          <button onClick={() => navigate('customer/login')} className="text-sm group cursor-pointer">
             <span className="text-[#65727A]">Are you a customer? </span>
             <span className="font-700 text-[#1E7D3B] group-hover:underline">Sign in to Customer Portal →</span>
           </button>

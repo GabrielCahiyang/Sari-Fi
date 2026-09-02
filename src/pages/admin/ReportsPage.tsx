@@ -39,7 +39,8 @@ export function ReportsPage() {
   // Top 5 products by sales volume
   const productSales = state.products.map(p => {
     const sold = state.orders.reduce((s, o) => {
-      const item = o.items.find(i => i.productId === p.id);
+      const orderItems = (Array.isArray(o.items) ? o.items : o.items ? Object.values(o.items) : []) as { productId: string; quantity: number }[];
+      const item = orderItems.find(i => i.productId === p.id);
       return s + (item?.quantity || 0);
     }, 0);
     return { ...p, sold, revenue: sold * p.sellingPrice };

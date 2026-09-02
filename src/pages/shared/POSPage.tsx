@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import type { Order, Financing, Payment, InstallmentSchedule, Customer } from '../../types';
+import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
 
 const CATEGORIES = ['All', 'Beverages', 'Snacks', 'Instant Noodles', 'Canned Goods', 'Condiments', 'Household', 'Personal Care'];
 type Mode = 'cash' | 'gcash' | 'financing' | 'split';
@@ -100,8 +101,11 @@ export function POSPage() {
     setCheckoutOpen(true);
   };
 
+  const isPlacingRef = useRef(false);
+
   const placeOrder = async () => {
-    if (!customer || items.length === 0) return;
+    if (!customer || items.length === 0 || isPlacingRef.current) return;
+    isPlacingRef.current = true;
     setProcessing(true);
     const orderId = `ord${Date.now()}`;
     const finId = `fin${Date.now()}`;
@@ -115,7 +119,7 @@ export function POSPage() {
       total,
       paymentType: mode,
       paymentStatus: 'pending',
-      status: mode === 'cash' ? 'pending_payment' : mode === 'gcash' ? 'processing' : 'pending_financing',
+      status: mode === 'cash' || mode === 'gcash' ? 'completed' : 'pending_financing',
       createdAt: now,
       updatedAt: now,
       channel: 'pos',
@@ -123,59 +127,88 @@ export function POSPage() {
     };
 
     if (mode === 'gcash' || (mode === 'split' && splitMethod === 'gcash')) {
-      await new Promise(r => setTimeout(r, 900));
+      await new Promise(r => setTimeout(r, 600));
     } else {
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 300));
     }
 
+    let finalOrder: Order;
+    let finalPayment: Payment | undefined;
+    let finalFinancing: Financing | undefined;
+
     if (mode === 'cash') {
-      const payment: Payment = {
+      finalPayment = {
         id: `pay${Date.now()}`, paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
         customerId: customer.id, orderId, type: 'purchase', method: 'cash', amount: total,
         status: 'paid', confirmedBy: staffName, createdAt: now, paidAt: now,
       };
-      // In-store cash is collected at the counter, so it's confirmed immediately.
-      const order = { ...orderBase, status: 'processing' as const, paymentStatus: 'paid' as const, confirmedBy: staffName };
-      dispatch({ type: 'PLACE_ORDER', order, payment });
-      showToast('success', `Order ${order.orderNo} — ${formatPHP(total)} cash collected.`);
+      // In-store counter cash: paid and completed immediately!
+      finalOrder = { ...orderBase, status: 'completed' as const, paymentStatus: 'paid' as const, confirmedBy: staffName };
+      showToast('success', `Order ${finalOrder.orderNo} — ${formatPHP(total)} cash collected. Order completed!`);
     } else if (mode === 'gcash') {
-      const payment: Payment = {
+      finalPayment = {
         id: `pay${Date.now()}`, paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
         customerId: customer.id, orderId, type: 'purchase', method: 'gcash', amount: total,
-        status: 'paid', createdAt: now, paidAt: now,
+        status: 'paid', confirmedBy: staffName, createdAt: now, paidAt: now,
       };
-      const order = { ...orderBase, status: 'processing' as const, paymentStatus: 'paid' as const };
-      dispatch({ type: 'PLACE_ORDER', order, payment });
-      showToast('success', `Order ${order.orderNo} — GCash payment received.`);
+      // In-store counter GCash: paid and completed immediately!
+      finalOrder = { ...orderBase, status: 'completed' as const, paymentStatus: 'paid' as const, confirmedBy: staffName };
+      showToast('success', `Order ${finalOrder.orderNo} — GCash payment received. Order completed!`);
     } else if (mode === 'financing') {
-      const financing: Financing = {
+      finalFinancing = {
         id: finId, financingNo: `FIN-${String(state.financing.length + 1).padStart(4, '0')}`,
         customerId: customer.id, orderId, principal: total, chargePercent: financingCharge,
         chargeAmount, totalRepayable, plan, installmentCount, weeklyInstallment, paidPrincipal: 0,
         status: 'pending', schedule: generateSchedule(installmentCount, weeklyInstallment), createdAt: now,
       };
-      const order = { ...orderBase, financingId: finId, status: 'pending_financing' as const };
-      dispatch({ type: 'PLACE_ORDER', order, financing });
-      showToast('info', `Order ${order.orderNo} — financing sent for supervisor approval.`);
+      finalOrder = { ...orderBase, financingId: finId, status: 'pending_financing' as const };
+      showToast('info', `Order ${finalOrder.orderNo} — financing sent for supervisor approval.`);
     } else {
-      const financing: Financing = {
+      finalFinancing = {
         id: finId, financingNo: `FIN-${String(state.financing.length + 1).padStart(4, '0')}`,
         customerId: customer.id, orderId, principal: financingAmount, chargePercent: financingCharge,
         chargeAmount: splitCharge, totalRepayable: splitTotalRepayable, plan, installmentCount,
         weeklyInstallment: splitWeekly, paidPrincipal: 0, status: 'pending',
         schedule: generateSchedule(installmentCount, splitWeekly), createdAt: now,
       };
-      const cashPayment: Payment = {
+      finalPayment = {
         id: `pay${Date.now()}`, paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
         customerId: customer.id, orderId, type: 'purchase', method: splitMethod, amount: splitRemainder,
         status: 'paid', confirmedBy: splitMethod === 'cash' ? staffName : undefined, createdAt: now, paidAt: now,
       };
-      const order = { ...orderBase, financingId: finId, status: 'pending_financing' as const, splitCashAmount: splitRemainder, splitFinancingAmount: financingAmount, splitMethod };
-      dispatch({ type: 'PLACE_ORDER', order, payment: cashPayment, financing });
-      showToast('info', `Order ${order.orderNo} — ${formatPHP(splitRemainder)} ${splitMethod.toUpperCase()} paid, ${formatPHP(financingAmount)} financed.`);
+      finalOrder = { ...orderBase, financingId: finId, status: 'pending_financing' as const, splitCashAmount: splitRemainder, splitFinancingAmount: financingAmount, splitMethod };
+      showToast('info', `Order ${finalOrder.orderNo} — ${formatPHP(splitRemainder)} ${splitMethod.toUpperCase()} paid, ${formatPHP(financingAmount)} financed.`);
     }
 
+    try {
+      await saveRecord('orders', finalOrder);
+      if (finalPayment) await saveRecord('payments', finalPayment);
+      if (finalFinancing) await saveRecord('financing', finalFinancing);
+
+      // Decrement product inventory in RTDB
+      for (const item of items) {
+        const prod = state.products.find(p => p.id === item.productId);
+        if (prod) {
+          const newStock = Math.max(0, prod.stock - item.quantity);
+          await updateRecord('products', prod.id, { stock: newStock });
+        }
+      }
+
+      // Update customer credit limit usage in RTDB if financing was used
+      if (finalFinancing) {
+        const cust = state.customers.find(c => c.id === customer.id);
+        if (cust) {
+          await updateRecord('customers', cust.id, { usedCredit: cust.usedCredit + finalFinancing.principal });
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to save POS order to RTDB:', err);
+    }
+
+    dispatch({ type: 'PLACE_ORDER', order: finalOrder, payment: finalPayment, financing: finalFinancing });
+
     setProcessing(false);
+    isPlacingRef.current = false;
     setCheckoutOpen(false);
     clearTicket();
     setCustomerId('');

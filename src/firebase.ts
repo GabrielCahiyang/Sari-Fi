@@ -1,4 +1,7 @@
 import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getDatabase } from "firebase/database";
+import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
 const firebaseConfig = {
@@ -15,6 +18,11 @@ const firebaseConfig = {
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
 
+// Initialize Firebase services
+export const auth = getAuth(app);
+export const database = getDatabase(app);
+export const storage = getStorage(app);
+
 // Initialize Analytics conditionally for supported environments
 export const analytics =
   typeof window !== "undefined"
@@ -22,3 +30,4 @@ export const analytics =
     : Promise.resolve(null);
 
 export default app;
+

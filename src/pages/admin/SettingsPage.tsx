@@ -1,23 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import type { SystemSettings } from '../../types';
+import { saveSettings } from '../../services/firebase/rtdbService';
 
 export function SettingsPage() {
-  const { state, dispatch, showToast, formatPHP } = useApp();
+  const { state, dispatch, showToast, logAudit, formatPHP } = useApp();
   const [settings, setSettings] = useState<SystemSettings>(state.settings);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    setSettings(state.settings);
+  }, [state.settings]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch({ type: 'UPDATE_SETTINGS', settings });
-    showToast('success', 'Settings saved successfully.');
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaving(true);
+    try {
+      await saveSettings(settings);
+      dispatch({ type: 'UPDATE_SETTINGS', settings });
+      await logAudit({
+        category: 'settings',
+        action: 'settings.update',
+        summary: 'Updated system financing & credit limits settings',
+        targetType: 'settings',
+      });
+      showToast('success', 'Settings saved successfully.');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: any) {
+      console.error(err);
+      showToast('error', 'Failed to save settings: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const update = (key: keyof SystemSettings, value: number) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    setSettings(prev => ({ ...prev, [key]: isNaN(value) ? 0 : value }));
   };
 
   // Live financing calculation preview
@@ -74,7 +95,7 @@ export function SettingsPage() {
                 <div className="text-[11px] text-[#65727A] mt-0.5">Applied per overdue week on base installment</div>
               </div>
               <div className="bg-[#FFF8E1] border border-[#FFC107]/30 rounded-xl p-3 text-xs">
-                <div className="font-700 text-[#10212B] mb-1">Example</div>
+                <div className="font-700 text-[#10212B] mb-1">Live Calculation</div>
                 <div className="text-[#65727A]">Base installment: ₱500</div>
                 <div className="text-[#65727A]">Penalty ({settings.weeklyPenalty}%): {formatPHP(Math.round(500 * settings.weeklyPenalty / 100))}</div>
                 <div className="font-700 text-[#10212B] mt-1">Total due: {formatPHP(Math.round(500 + 500 * settings.weeklyPenalty / 100))}</div>
@@ -118,9 +139,12 @@ export function SettingsPage() {
 
           <button
             type="submit"
-            className={`w-full py-3 font-700 text-sm rounded-xl transition-all ${saved ? 'bg-[#7DBE4C] text-white' : 'bg-[#1E7D3B] text-white hover:bg-[#22913f]'}`}
+            disabled={saving}
+            className={`w-full py-3 font-700 text-sm rounded-xl transition-all cursor-pointer ${
+              saved ? 'bg-[#7DBE4C] text-white' : 'bg-[#1E7D3B] text-white hover:bg-[#22913f]'
+            } disabled:opacity-60`}
           >
-            {saved ? '✓ Saved!' : 'Save Settings'}
+            {saving ? 'Saving…' : saved ? '✓ Saved Settings!' : 'Save Settings'}
           </button>
         </form>
       </div>
