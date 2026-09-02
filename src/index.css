@@ -1,0 +1,199 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-navy: #0D2B45;
+  --color-navy-light: #1a3d5c;
+  --color-sarifi-green: #1E7D3B;
+  --color-sarifi-green-light: #22913f;
+  --color-growth-green: #7DBE4C;
+  --color-sarifi-yellow: #FFC107;
+  --color-soft-gray: #E6E6E6;
+  --color-bg: #F7F8F6;
+  --color-surface: #FFFFFF;
+  --color-text: #10212B;
+  --color-text-secondary: #65727A;
+  --color-border: #E4E8E6;
+  --color-red: #DC2626;
+  --color-red-light: #FEE2E2;
+
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+
+  --radius-card: 20px;
+  --radius-control: 12px;
+
+  /* Soft, navy-tinted elevation — reads as depth, never a hard drop shadow */
+  --shadow-xs: 0 1px 2px rgba(13, 43, 69, 0.04);
+  --shadow-sm: 0 1px 2px rgba(13, 43, 69, 0.04), 0 2px 6px rgba(13, 43, 69, 0.05);
+  --shadow-md: 0 2px 4px rgba(13, 43, 69, 0.04), 0 8px 20px rgba(13, 43, 69, 0.08);
+  --shadow-lg: 0 4px 8px rgba(13, 43, 69, 0.05), 0 20px 44px rgba(13, 43, 69, 0.12);
+  --shadow-xl: 0 8px 16px rgba(13, 43, 69, 0.08), 0 32px 64px rgba(13, 43, 69, 0.18);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: #F7F8F6;
+  color: #10212B;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  /* Barely-there radial wash so flat neutral grounds get subtle atmosphere */
+  background-image:
+    radial-gradient(1200px 600px at 100% -10%, rgba(125, 190, 76, 0.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 0%, rgba(13, 43, 69, 0.05), transparent 55%);
+  background-attachment: fixed;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Financial figures line up in columns and read as data, not prose */
+.tnum,
+.font-800,
+.tabular {
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+::selection {
+  background: rgba(30, 125, 59, 0.18);
+  color: #0D2B45;
+}
+
+/* Consistent, on-brand focus ring for keyboard users */
+:focus-visible {
+  outline: 2px solid rgba(30, 125, 59, 0.55);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+a, button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+/* Scrollbar thumb only materializes while the region is hovered/scrolled */
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(101, 114, 122, 0.32);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(101, 114, 122, 0.55) !important;
+  background-clip: padding-box;
+}
+
+/* ── Motion primitives ──────────────────────────────────────────── */
+@keyframes sf-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sf-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes sf-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes sf-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sf-shimmer {
+  100% { transform: translateX(100%); }
+}
+@keyframes sf-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.5); }
+  70%  { box-shadow: 0 0 0 6px rgba(255, 193, 7, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+}
+
+.animate-fade-up   { animation: sf-fade-up 0.5s var(--ease-out-soft) both; }
+.animate-scale-in  { animation: sf-scale-in 0.24s var(--ease-out-soft) both; }
+.animate-fade-in   { animation: sf-fade-in 0.3s ease both; }
+.animate-slide-up  { animation: sf-slide-up 0.32s var(--ease-out-soft) both; }
+.pulse-ring        { animation: sf-pulse-ring 2s ease-out infinite; }
+
+/* Stagger helper: children fade up in sequence for dashboard grids */
+.stagger > * { animation: sf-fade-up 0.5s var(--ease-out-soft) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger > *:nth-child(3) { animation-delay: 0.10s; }
+.stagger > *:nth-child(4) { animation-delay: 0.14s; }
+.stagger > *:nth-child(5) { animation-delay: 0.18s; }
+.stagger > *:nth-child(6) { animation-delay: 0.22s; }
+.stagger > *:nth-child(7) { animation-delay: 0.26s; }
+.stagger > *:nth-child(8) { animation-delay: 0.30s; }
+
+/* ── Reusable surface treatments ────────────────────────────────── */
+/* Interactive card lift — depth + hairline warms on hover */
+.card-lift {
+  transition: transform 0.28s var(--ease-out-soft),
+              box-shadow 0.28s var(--ease-out-soft),
+              border-color 0.28s var(--ease-out-soft);
+  will-change: transform;
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(30, 125, 59, 0.28);
+}
+
+/* Skeleton shimmer for loading placeholders */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #eef0ee;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: sf-shimmer 1.4s infinite;
+}
+
+/* Fine top-highlight on dark cards for a lit, dimensional edge */
+.lit-top {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--shadow-md);
+}
+
+.shadow-soft-sm { box-shadow: var(--shadow-sm); }
+.shadow-soft-md { box-shadow: var(--shadow-md); }
+.shadow-soft-lg { box-shadow: var(--shadow-lg); }
+.shadow-soft-xl { box-shadow: var(--shadow-xl); }
+
+/* Gradient ink for hero-scale display headings */
+.text-gradient-green {
+  background: linear-gradient(100deg, #7DBE4C 0%, #22913f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

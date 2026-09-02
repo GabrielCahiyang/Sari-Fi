@@ -1,0 +1,10 @@
+{
+  "description": "Streamlines project implementation by organizing plans and resources in one place, helping teams execute strategies efficiently and effectively.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
