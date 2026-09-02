@@ -1,0 +1,7 @@
+allowBuilds:
+  '@firebase/util': true
+  protobufjs: true
+minimumReleaseAgeExclude:
+  - framer-motion@13.2.0
+  - motion-dom@13.2.0
+  - motion@13.2.0
