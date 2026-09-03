@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { SupplierLayout } from '../../components/layout/SupplierLayout';
 import { useApp } from '../../context/AppContext';
-import { saveRecord } from '../../services/firebase/rtdbService';
+import { transitionOrderFlow } from '../../services/firebase/rtdbService';
 import type { OrderStatus } from '../../types';
+import { canTransitionOrder } from '../../domain/orderFlow';
 
 export function SupplierDashboard() {
   const { state, dispatch, formatPHP, navigate, showToast } = useApp();
@@ -32,32 +33,34 @@ export function SupplierDashboard() {
   // Orders that contain this supplier's products
   const myOrders = useMemo(() => {
     return state.orders.filter(o =>
+      ['processing', 'ready', 'out_for_delivery'].includes(o.status) &&
       o.items.some(it => myProducts.some(p => p.id === it.productId))
     );
   }, [state.orders, myProducts]);
 
   const pendingOrders = useMemo(() => {
-    return myOrders.filter(o => o.status === 'processing' || o.status === 'approved');
+    return myOrders.filter(o => o.status === 'processing' || o.status === 'ready' || o.status === 'out_for_delivery');
   }, [myOrders]);
 
   const completedOrdersCount = useMemo(() => {
-    return myOrders.filter(o => o.status === 'delivered' || o.status === 'completed').length;
-  }, [myOrders]);
+    return state.orders.filter(o =>
+      (o.status === 'delivered' || o.status === 'completed') &&
+      o.items.some(it => myProducts.some(p => p.id === it.productId))
+    ).length;
+  }, [state.orders, myProducts]);
 
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
     const target = state.orders.find(o => o.id === orderId);
-    if (!target) return;
-
-    const updated = {
-      ...target,
-      status: newStatus,
-      updatedAt: new Date().toISOString(),
-    };
+    if (!target || !canTransitionOrder(target.status, newStatus) || newStatus === 'completed') {
+      showToast('error', 'That supplier status transition is not allowed.');
+      return;
+    }
 
     try {
-      await saveRecord('orders', updated);
-    } catch (err) {
-      console.warn('Failed to update order status in RTDB:', err);
+      await transitionOrderFlow(orderId, newStatus, 'supplier');
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to update order status.');
+      return;
     }
 
     dispatch({ type: 'UPDATE_ORDER_STATUS', orderId, status: newStatus });
@@ -222,7 +225,14 @@ export function SupplierDashboard() {
                           <div className="text-sm font-800 text-[#1E7D3B] tnum">{formatPHP(supplierSubtotal)}</div>
                         </div>
 
-                        {o.status === 'processing' || o.status === 'approved' ? (
+                        {o.status === 'processing' ? (
+                          <button
+                            onClick={() => handleUpdateStatus(o.id, 'ready')}
+                            className="px-3 py-1.5 text-xs font-700 bg-[#0D2B45] text-white hover:bg-[#194368] rounded-lg transition-colors cursor-pointer"
+                          >
+                            Mark Ready
+                          </button>
+                        ) : o.status === 'ready' ? (
                           <button
                             onClick={() => handleUpdateStatus(o.id, 'out_for_delivery')}
                             className="px-3 py-1.5 text-xs font-700 bg-[#0D2B45] text-white hover:bg-[#194368] rounded-lg transition-colors cursor-pointer"

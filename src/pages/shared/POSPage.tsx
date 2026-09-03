@@ -4,7 +4,17 @@ import { InternalLayout } from '../../components/layout/InternalLayout';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import type { Order, Financing, Payment, InstallmentSchedule, Customer } from '../../types';
-import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
+import {
+  cancelOrderFlow,
+  createOrderWithReservation,
+  settleOrderPayment,
+} from '../../services/firebase/rtdbService';
+import {
+  generateMockGcashReference,
+  processMockGcashWebhook,
+  type MockGcashWebhookPayload,
+} from '../../services/payment/mockGcashService';
+import { resolveFinancialOrderStatus } from '../../domain/orderFlow';
 
 type Mode = 'cash' | 'gcash' | 'financing' | 'split';
 
@@ -33,6 +43,7 @@ export function POSPage() {
   const [plan, setPlan] = useState<1 | 2>(1);
   const [splitMethod, setSplitMethod] = useState<'cash' | 'gcash'>('gcash');
   const [processing, setProcessing] = useState(false);
+  const [pendingWebhookData, setPendingWebhookData] = useState<{ order: Order; payment: Payment } | null>(null);
 
   const customer = state.customers.find(c => c.id === customerId);
 
@@ -47,11 +58,12 @@ export function POSPage() {
       .filter(([, q]) => q > 0)
       .map(([productId, quantity]) => {
         const p = state.products.find(x => x.id === productId)!;
-        return { productId, productName: p.name, quantity, price: p.sellingPrice };
+        return { productId, productName: p.name, quantity, price: p.sellingPrice, supplierId: p.supplierId };
       }), [lines, state.products]);
 
   const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const ticketCount = items.reduce((s, i) => s + i.quantity, 0);
+  const hasSingleSupplier = new Set(items.map(item => item.supplierId)).size <= 1;
 
   const addLine = (id: string, delta: number) => {
     const prod = state.products.find(p => p.id === id)!;
@@ -111,6 +123,10 @@ export function POSPage() {
 
   const placeOrder = async () => {
     if (!customer || items.length === 0 || isPlacingRef.current) return;
+    if (!hasSingleSupplier) {
+      showToast('error', 'Create separate tickets for products from different suppliers.');
+      return;
+    }
     isPlacingRef.current = true;
     setProcessing(true);
     const orderId = `ord${Date.now()}`;
@@ -125,7 +141,8 @@ export function POSPage() {
       total,
       paymentType: mode,
       paymentStatus: 'pending',
-      status: mode === 'cash' || mode === 'gcash' ? 'completed' : 'pending_financing',
+      status: mode === 'cash' || mode === 'gcash' ? 'pending_payment' : 'pending_financing',
+      stockReservationStatus: 'reserved',
       createdAt: now,
       updatedAt: now,
       channel: 'pos',
@@ -148,18 +165,17 @@ export function POSPage() {
         customerId: customer.id, orderId, type: 'purchase', method: 'cash', amount: total,
         status: 'paid', confirmedBy: staffName, createdAt: now, paidAt: now,
       };
-      // In-store counter cash: paid and completed immediately!
-      finalOrder = { ...orderBase, status: 'completed' as const, paymentStatus: 'paid' as const, confirmedBy: staffName };
-      showToast('success', `Order ${finalOrder.orderNo} — ${formatPHP(total)} cash collected. Order completed!`);
+      finalOrder = { ...orderBase, status: 'processing' as const, paymentStatus: 'paid' as const, confirmedBy: staffName };
+      showToast('success', `Order ${finalOrder.orderNo} — ${formatPHP(total)} cash collected. Sent for processing.`);
     } else if (mode === 'gcash') {
+      const mockRef = generateMockGcashReference();
       finalPayment = {
         id: `pay${Date.now()}`, paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
         customerId: customer.id, orderId, type: 'purchase', method: 'gcash', amount: total,
-        status: 'paid', confirmedBy: staffName, createdAt: now, paidAt: now,
+        status: 'pending', mockTransactionId: mockRef.transactionId, referenceId: mockRef.referenceId, createdAt: now,
       };
-      // In-store counter GCash: paid and completed immediately!
-      finalOrder = { ...orderBase, status: 'completed' as const, paymentStatus: 'paid' as const, confirmedBy: staffName };
-      showToast('success', `Order ${finalOrder.orderNo} — GCash payment received. Order completed!`);
+      finalOrder = { ...orderBase, status: 'pending_payment' as const, paymentStatus: 'pending' as const };
+      showToast('info', `Order ${finalOrder.orderNo} reserved. Awaiting the GCash callback.`);
     } else if (mode === 'financing') {
       finalFinancing = {
         id: finId, financingNo: `FIN-${String(state.financing.length + 1).padStart(4, '0')}`,
@@ -170,6 +186,7 @@ export function POSPage() {
       finalOrder = { ...orderBase, financingId: finId, status: 'pending_financing' as const };
       showToast('info', `Order ${finalOrder.orderNo} — financing sent for supervisor approval.`);
     } else {
+      const mockRef = splitMethod === 'gcash' ? generateMockGcashReference() : undefined;
       finalFinancing = {
         id: finId, financingNo: `FIN-${String(state.financing.length + 1).padStart(4, '0')}`,
         customerId: customer.id, orderId, principal: financingAmount, chargePercent: financingCharge,
@@ -180,30 +197,27 @@ export function POSPage() {
       finalPayment = {
         id: `pay${Date.now()}`, paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
         customerId: customer.id, orderId, type: 'purchase', method: splitMethod, amount: splitRemainder,
-        status: 'paid', confirmedBy: splitMethod === 'cash' ? staffName : undefined, createdAt: now, paidAt: now,
+        status: splitMethod === 'cash' ? 'paid' : 'pending',
+        confirmedBy: splitMethod === 'cash' ? staffName : undefined,
+        mockTransactionId: mockRef?.transactionId,
+        referenceId: mockRef?.referenceId,
+        createdAt: now,
+        paidAt: splitMethod === 'cash' ? now : undefined,
       };
       finalOrder = { ...orderBase, financingId: finId, status: 'pending_financing' as const, splitCashAmount: splitRemainder, splitFinancingAmount: financingAmount, splitMethod };
-      showToast('info', `Order ${finalOrder.orderNo} — ${formatPHP(splitRemainder)} ${splitMethod.toUpperCase()} paid, ${formatPHP(financingAmount)} financed.`);
+      showToast('info', splitMethod === 'gcash'
+        ? `Order ${finalOrder.orderNo} reserved. Awaiting GCash and financing confirmation.`
+        : `Order ${finalOrder.orderNo}: cash collected; financing is awaiting approval.`);
     }
 
     try {
-      await saveRecord('orders', finalOrder);
-      if (finalPayment) await saveRecord('payments', finalPayment);
-      if (finalFinancing) await saveRecord('financing', finalFinancing);
-
-      // Decrement product inventory in RTDB
-      for (const item of items) {
-        const prod = state.products.find(p => p.id === item.productId);
-        if (prod) {
-          const newStock = Math.max(0, prod.stock - item.quantity);
-          await updateRecord('products', prod.id, { stock: newStock });
-        }
-      }
-
-      // INVARIANT: Submitting financing does NOT consume customer credit.
-      // Credit is only consumed once supervisor approves the financing.
+      await createOrderWithReservation(finalOrder, finalPayment, finalFinancing);
     } catch (err: any) {
-      console.error('Failed to save POS order to RTDB:', err);
+      console.error('Failed to reserve POS order in RTDB:', err);
+      showToast('error', err.message || 'Could not reserve this order.');
+      setProcessing(false);
+      isPlacingRef.current = false;
+      return;
     }
 
     dispatch({ type: 'PLACE_ORDER', order: finalOrder, payment: finalPayment, financing: finalFinancing });
@@ -214,6 +228,51 @@ export function POSPage() {
     clearTicket();
     setCustomerId('');
     setCustQuery('');
+
+    if ((mode === 'gcash' || (mode === 'split' && splitMethod === 'gcash')) && finalPayment) {
+      setPendingWebhookData({ order: finalOrder, payment: finalPayment });
+    }
+  };
+
+  const handleGcashWebhook = async (status: 'SUCCESS' | 'FAILED') => {
+    if (!pendingWebhookData || processing) return;
+    setProcessing(true);
+    const { order, payment } = pendingWebhookData;
+    const payload: MockGcashWebhookPayload = {
+      event: status === 'SUCCESS' ? 'payment.success' : 'payment.failed',
+      transactionId: payment.mockTransactionId || `GCASH-TXN-${Date.now()}`,
+      referenceId: payment.referenceId || `REF-${Date.now()}`,
+      paymentId: payment.id,
+      orderId: order.id,
+      amount: payment.amount,
+      status,
+      timestamp: new Date().toISOString(),
+    };
+    const result = processMockGcashWebhook(payload, payment);
+
+    try {
+      if (result.success && result.updatedPayment) {
+        await settleOrderPayment(payment.id);
+        const nextStatus = resolveFinancialOrderStatus(
+          order,
+          [...state.payments.filter(item => item.id !== payment.id), result.updatedPayment],
+          state.financing,
+        );
+        dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId: payment.id, confirmedBy: 'GCash webhook' });
+        showToast('success', nextStatus === 'processing'
+          ? 'GCash confirmed. The order is now processing.'
+          : 'GCash confirmed. Financing is still awaiting approval.');
+      } else {
+        await cancelOrderFlow(order.id, 'GCash payment failed');
+        dispatch({ type: 'CANCEL_ORDER', orderId: order.id, reason: 'GCash payment failed' });
+        showToast('error', result.error || 'GCash payment failed. The reservation was released.');
+      }
+      setPendingWebhookData(null);
+    } catch (error: any) {
+      showToast('error', error.message || 'Could not process the callback.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const customerResults = state.customers.filter(c =>
@@ -515,7 +574,7 @@ export function POSPage() {
 
             <button
               onClick={placeOrder}
-              disabled={processing}
+              disabled={processing || !hasSingleSupplier}
               className="w-full py-3 bg-[#1E7D3B] text-white font-700 text-sm rounded-xl hover:bg-[#22913f] transition-all disabled:opacity-60"
             >
               {processing ? 'Processing…' :
@@ -524,7 +583,44 @@ export function POSPage() {
                 mode === 'financing' ? 'Submit for Financing' :
                 `Take ${formatPHP(splitRemainder)} ${splitMethod.toUpperCase()} + Finance`}
             </button>
+            {!hasSingleSupplier && (
+              <div className="text-center text-[11px] text-amber-700">
+                One supplier per order: split this ticket before checkout.
+              </div>
+            )}
             <div className="text-center text-[11px] text-[#65727A]">Ringing up as <span className="font-600 text-[#10212B]">{modeLabel(mode)}</span> · Cashier: {staffName}</div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(pendingWebhookData)}
+        onClose={() => undefined}
+        title="Awaiting GCash Confirmation"
+        size="sm"
+      >
+        {pendingWebhookData && (
+          <div className="space-y-4">
+            <div className="rounded-xl bg-sky-50 border border-sky-100 p-4 text-xs space-y-2">
+              <div className="flex justify-between gap-3"><span className="text-[#65727A]">Order</span><span className="font-700">{pendingWebhookData.order.orderNo}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-[#65727A]">Reference</span><span className="font-mono font-700">{pendingWebhookData.payment.referenceId}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-[#65727A]">Amount</span><span className="font-800 text-[#1E7D3B]">{formatPHP(pendingWebhookData.payment.amount)}</span></div>
+            </div>
+            <p className="text-xs text-[#65727A]">The order stays unavailable to suppliers until this callback succeeds and every financing part is approved.</p>
+            <button
+              onClick={() => handleGcashWebhook('SUCCESS')}
+              disabled={processing}
+              className="w-full py-3 bg-[#1E7D3B] text-white font-700 text-xs rounded-xl hover:bg-[#22913f] disabled:opacity-60"
+            >
+              {processing ? 'Processing callback…' : 'Simulate Webhook: SUCCESS'}
+            </button>
+            <button
+              onClick={() => handleGcashWebhook('FAILED')}
+              disabled={processing}
+              className="w-full py-2.5 bg-red-50 text-red-600 border border-red-200 font-700 text-xs rounded-xl hover:bg-red-100 disabled:opacity-60"
+            >
+              Simulate Webhook: FAILED
+            </button>
           </div>
         )}
       </Modal>

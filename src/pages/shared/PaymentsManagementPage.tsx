@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { Badge } from '../../components/ui/Badge';
-import { updateRecord } from '../../services/firebase/rtdbService';
+import { settleOrderPayment } from '../../services/firebase/rtdbService';
 
 export function PaymentsManagementPage() {
   const { state, dispatch, getCustomer, showToast, formatPHP, logAudit } = useApp();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'cash' | 'gcash'>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending' | 'failed'>('all');
 
   const payments = state.payments.filter(p => {
     const customer = getCustomer(p.customerId);
@@ -24,20 +24,14 @@ export function PaymentsManagementPage() {
     if (!p || p.status === 'paid') return;
 
     const confirmedBy = state.currentUser?.name || 'Staff';
-    const paidAt = new Date().toISOString();
     try {
-      await updateRecord('payments', paymentId, { status: 'paid', confirmedBy, paidAt });
-      if (orderId) {
-        await updateRecord('orders', orderId, {
-          paymentStatus: 'paid',
-          status: 'completed',
-          confirmedBy,
-          updatedAt: paidAt
-        });
-      }
+      await settleOrderPayment(paymentId, confirmedBy);
       // Single authoritative audit created by reducer deriveAudit
       dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId, confirmedBy });
-      showToast('success', 'Cash payment confirmed.');
+      const order = orderId ? state.orders.find(item => item.id === orderId) : undefined;
+      showToast('success', order?.paymentType === 'split'
+        ? 'Cash confirmed. The order will process when financing is also approved.'
+        : 'Cash confirmed. The order is now processing.');
     } catch (err: any) {
       showToast('error', 'Failed to confirm cash: ' + err.message);
     }
@@ -136,6 +130,7 @@ export function PaymentsManagementPage() {
               <option value="all">All Statuses</option>
               <option value="paid">Paid</option>
               <option value="pending">Pending</option>
+              <option value="failed">Failed</option>
             </select>
           </div>
         </div>
@@ -158,8 +153,8 @@ export function PaymentsManagementPage() {
                         {new Date(pay.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </div>
                     </div>
-                    <Badge variant={pay.status === 'paid' ? 'green' : 'yellow'} size="sm">
-                      {pay.status === 'paid' ? 'Paid' : 'Pending'}
+                    <Badge variant={pay.status === 'paid' ? 'green' : pay.status === 'failed' ? 'red' : 'yellow'} size="sm">
+                      {pay.status === 'paid' ? 'Paid' : pay.status === 'failed' ? 'Failed' : 'Pending'}
                     </Badge>
                   </div>
 
@@ -241,7 +236,9 @@ export function PaymentsManagementPage() {
                       </td>
                       <td className="px-5 py-3 font-700 text-sm text-[#10212B]">{formatPHP(pay.amount)}</td>
                       <td className="px-5 py-3">
-                        <Badge variant={pay.status === 'paid' ? 'green' : 'yellow'}>{pay.status === 'paid' ? 'Paid' : 'Pending'}</Badge>
+                        <Badge variant={pay.status === 'paid' ? 'green' : pay.status === 'failed' ? 'red' : 'yellow'}>
+                          {pay.status === 'paid' ? 'Paid' : pay.status === 'failed' ? 'Failed' : 'Pending'}
+                        </Badge>
                       </td>
                       <td className="px-5 py-3 text-xs text-[#65727A]">{pay.confirmedBy || (pay.method === 'gcash' ? 'Auto (GCash)' : '—')}</td>
                       <td className="px-5 py-3">

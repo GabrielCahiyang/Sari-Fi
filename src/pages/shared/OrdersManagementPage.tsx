@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { OrderStatusBadge } from '../../components/ui/Badge';
-import type { Order, OrderStatus } from '../../types';
-import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
+import type { Order } from '../../types';
+import { cancelOrderFlow, settleOrderPayment } from '../../services/firebase/rtdbService';
 
 export function OrdersManagementPage() {
   const { state, dispatch, getCustomer, showToast, logAudit, formatPHP, navigate } = useApp();
@@ -16,6 +16,10 @@ export function OrdersManagementPage() {
     { value: 'completed', label: 'Completed' },
     { value: 'pending_financing', label: 'Pending Financing' },
     { value: 'pending_payment', label: 'Pending Payment' },
+    { value: 'processing', label: 'Processing' },
+    { value: 'ready', label: 'Ready' },
+    { value: 'out_for_delivery', label: 'Out for Delivery' },
+    { value: 'delivered', label: 'Delivered' },
     { value: 'cancelled', label: 'Cancelled' },
   ];
 
@@ -26,21 +30,13 @@ export function OrdersManagementPage() {
     return matchesSearch && matchesStatus;
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  const updateStatus = async (orderId: string, status: OrderStatus) => {
-    const confirmedBy = state.currentUser?.name || 'Staff';
-    const updatedAt = new Date().toISOString();
+  const cancelOrder = async (orderId: string) => {
     try {
-      const o = state.orders.find(x => x.id === orderId);
-      if (o) {
-        await saveRecord('orders', { ...o, status, confirmedBy, updatedAt });
-      } else {
-        await updateRecord('orders', orderId, { status, confirmedBy, updatedAt });
-      }
-      // Single authoritative audit created by reducer deriveAudit
-      dispatch({ type: 'UPDATE_ORDER_STATUS', orderId, status, confirmedBy });
-      showToast('success', `Order status updated to ${status.replace(/_/g, ' ')}.`);
+      await cancelOrderFlow(orderId, 'Cancelled by staff');
+      dispatch({ type: 'CANCEL_ORDER', orderId, reason: 'Cancelled by staff' });
+      showToast('success', 'Order cancelled and reserved stock released.');
     } catch (err: any) {
-      showToast('error', 'Failed to update order: ' + err.message);
+      showToast('error', 'Failed to cancel order: ' + err.message);
     }
   };
 
@@ -50,31 +46,13 @@ export function OrdersManagementPage() {
     if (!p || p.status === 'paid') return;
 
     const confirmedBy = state.currentUser?.name || 'Staff';
-    const paidAt = new Date().toISOString();
     try {
-      await updateRecord('payments', paymentId, { status: 'paid', confirmedBy, paidAt });
-      if (orderId) {
-        const o = state.orders.find(x => x.id === orderId);
-        if (o) {
-          await saveRecord('orders', {
-            ...o,
-            paymentStatus: 'paid',
-            status: 'completed',
-            confirmedBy,
-            updatedAt: paidAt
-          });
-        } else {
-          await updateRecord('orders', orderId, {
-            paymentStatus: 'paid',
-            status: 'completed',
-            confirmedBy,
-            updatedAt: paidAt
-          });
-        }
-      }
-      // Single authoritative audit created by reducer deriveAudit
+      await settleOrderPayment(paymentId, confirmedBy);
       dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId, confirmedBy });
-      showToast('success', 'Cash payment confirmed!');
+      const order = orderId ? state.orders.find(item => item.id === orderId) : undefined;
+      showToast('success', order?.paymentType === 'split'
+        ? 'Cash confirmed. The financing decision still controls fulfillment.'
+        : 'Cash confirmed. The order is now processing.');
     } catch (err: any) {
       showToast('error', 'Failed to confirm cash: ' + err.message);
     }
@@ -165,23 +143,17 @@ export function OrdersManagementPage() {
                         onClick={() => handleConfirmCash(cashPay.id, order.id)}
                         className="w-full py-2 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
                       >
-                        Confirm Cash & Complete
+                        Confirm Cash
+                      </button>
+                    ) : order.status === 'pending_payment' ? (
+                      <button
+                        onClick={() => cancelOrder(order.id)}
+                        className="w-full py-2 bg-red-50 text-red-600 border border-red-200 text-xs font-600 rounded-xl hover:bg-red-100 transition-all cursor-pointer"
+                      >
+                        Cancel & Release Stock
                       </button>
                     ) : (
-                      <div className="flex gap-2 w-full">
-                        <button
-                          onClick={() => updateStatus(order.id, 'completed')}
-                          className="flex-1 py-2 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
-                        >
-                          Complete
-                        </button>
-                        <button
-                          onClick={() => updateStatus(order.id, 'cancelled')}
-                          className="px-4 py-2 bg-red-50 text-red-600 border border-red-200 text-xs font-600 rounded-xl hover:bg-red-100 transition-all cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                      <span className="text-[#65727A] text-xs font-500">Managed by supplier lifecycle</span>
                     )}
                   </div>
                 </div>
@@ -246,23 +218,17 @@ export function OrdersManagementPage() {
                             onClick={() => handleConfirmCash(cashPay.id, order.id)}
                             className="px-2.5 py-1.5 bg-[#1E7D3B] text-white text-xs font-600 rounded-lg hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
                           >
-                            Confirm Cash & Complete
+                            Confirm Cash
+                          </button>
+                        ) : order.status === 'pending_payment' ? (
+                          <button
+                            onClick={() => cancelOrder(order.id)}
+                            className="px-2.5 py-1.5 bg-red-50 text-red-600 border border-red-200 text-xs font-600 rounded-lg hover:bg-red-100 transition-all cursor-pointer"
+                          >
+                            Cancel & Release
                           </button>
                         ) : (
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={() => updateStatus(order.id, 'completed')}
-                              className="px-2.5 py-1.5 bg-[#1E7D3B] text-white text-xs font-600 rounded-lg hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
-                            >
-                              Complete
-                            </button>
-                            <button
-                              onClick={() => updateStatus(order.id, 'cancelled')}
-                              className="px-2.5 py-1.5 bg-red-50 text-red-600 border border-red-200 text-xs font-600 rounded-lg hover:bg-red-100 transition-all cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                          </div>
+                          <span className="text-[#65727A] text-xs font-500">Supplier/customer managed</span>
                         )}
                       </td>
                     </tr>

@@ -1,8 +1,9 @@
-import { ref, onValue, set, update, remove, get } from 'firebase/database';
+import { ref, onValue, set, update, remove, get, runTransaction } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { database, storage } from '../../firebase';
-import type { SystemSettings, AuditEntry } from '../../types';
+import type { SystemSettings, AuditEntry, Financing, Order, Payment, Product } from '../../types';
 import { DEFAULT_SETTINGS } from '../../data/seed';
+import { canTransitionOrder, resolveFinancialOrderStatus } from '../../domain/orderFlow';
 
 /**
  * Generic Realtime Database List Subscriber
@@ -121,6 +122,182 @@ export async function getRecord<T>(nodePath: string, id: string): Promise<T | nu
  */
 export async function updateRootPaths(paths: Record<string, unknown>): Promise<void> {
   await update(ref(database), cleanUndefined(paths));
+}
+
+async function readCollection<T>(nodePath: string): Promise<Record<string, T>> {
+  const snapshot = await get(ref(database, nodePath));
+  if (!snapshot.exists()) return {};
+  const data = snapshot.val();
+  if (Array.isArray(data)) {
+    return Object.fromEntries(data.map((value, index) => [String(index), value]).filter(([, value]) => Boolean(value)));
+  }
+  return data && typeof data === 'object' ? data as Record<string, T> : {};
+}
+
+/** Atomically creates the order records and reserves inventory exactly once. */
+export async function createOrderWithReservation(
+  order: Order,
+  payment?: Payment,
+  financing?: Financing,
+): Promise<void> {
+  if (await getRecord<Order>('orders', order.id)) return;
+
+  const products = await Promise.all(order.items.map(item => getRecord<Product>('products', item.productId)));
+  const supplierIds = new Set<string>();
+  const paths: Record<string, unknown> = {};
+  order.items.forEach((item, index) => {
+    const product = products[index];
+    if (!product) throw new Error(`Product ${item.productName} is no longer available.`);
+    supplierIds.add(item.supplierId || product.supplierId);
+    if (product.stock < item.quantity) throw new Error(`${item.productName} only has ${product.stock} units left.`);
+    paths[`products/${product.id}/stock`] = product.stock - item.quantity;
+  });
+  if (supplierIds.size !== 1) throw new Error('Each order must contain products from one supplier only.');
+
+  paths[`orders/${order.id}`] = cleanUndefined({ ...order, stockReservationStatus: 'reserved' });
+  if (payment) paths[`payments/${payment.id}`] = cleanUndefined(payment);
+  if (financing) paths[`financing/${financing.id}`] = cleanUndefined(financing);
+  await updateRootPaths(paths);
+}
+
+/**
+ * Cancels a still-pending order and releases its reservation in one multi-path update.
+ * Repeated callbacks/retries see `released` and therefore cannot restore stock twice.
+ */
+export async function cancelOrderFlow(
+  orderId: string,
+  reason: string,
+  rejectedBy?: string,
+): Promise<void> {
+  const order = await getRecord<Order>('orders', orderId);
+  if (!order) throw new Error('Order not found.');
+  if (order.status === 'cancelled' && order.stockReservationStatus === 'released') return;
+  if (!['pending_payment', 'pending_financing', 'approved'].includes(order.status)) {
+    throw new Error('Only an order awaiting payment or financing can be cancelled.');
+  }
+
+  const [payments, financing, products] = await Promise.all([
+    readCollection<Payment>('payments'),
+    readCollection<Financing>('financing'),
+    Promise.all((order.items || []).map(item => getRecord<Product>('products', item.productId))),
+  ]);
+  const now = new Date().toISOString();
+  const paths: Record<string, unknown> = {
+    [`orders/${orderId}/status`]: 'cancelled',
+    [`orders/${orderId}/paymentStatus`]: 'failed',
+    [`orders/${orderId}/stockReservationStatus`]: 'released',
+    [`orders/${orderId}/cancellationReason`]: reason,
+    [`orders/${orderId}/cancelledAt`]: now,
+    [`orders/${orderId}/updatedAt`]: now,
+  };
+  if (order.stockReservationStatus !== 'released') {
+    order.items.forEach((item, index) => {
+      const product = products[index];
+      if (product) paths[`products/${product.id}/stock`] = product.stock + item.quantity;
+    });
+  }
+  Object.entries(payments).forEach(([id, payment]) => {
+    if (payment.orderId === orderId && payment.status === 'pending') paths[`payments/${id}/status`] = 'failed';
+  });
+  Object.entries(financing).forEach(([id, loan]) => {
+    if ((loan.orderId === orderId || id === order.financingId) && loan.status === 'pending') {
+      paths[`financing/${id}/status`] = 'rejected';
+      if (rejectedBy) paths[`financing/${id}/rejectedBy`] = rejectedBy;
+    }
+  });
+  await updateRootPaths(paths);
+}
+
+/** Approves financing once, consumes credit once, then applies the financial gate to its order. */
+export async function approveFinancingFlow(financingId: string, approvedBy: string): Promise<void> {
+  const loan = await getRecord<Financing>('financing', financingId);
+  if (!loan) throw new Error('Financing record not found.');
+  if (loan.status !== 'pending') return;
+
+  const [orders, payments, customer] = await Promise.all([
+    readCollection<Order>('orders'),
+    readCollection<Payment>('payments'),
+    getRecord<any>('customers', loan.customerId),
+  ]);
+  const now = new Date().toISOString();
+  const today = new Date();
+  const activeLoan: Financing = {
+    ...loan,
+    status: 'active',
+    approvedBy,
+    approvedAt: now,
+    schedule: loan.schedule.map((entry, index) => {
+      const due = new Date(today);
+      due.setDate(due.getDate() + (index + 1) * 7);
+      return { ...entry, dueDate: due.toISOString().split('T')[0], status: index === 0 ? 'due' : 'upcoming' };
+    }),
+  };
+  const paths: Record<string, unknown> = { [`financing/${financingId}`]: cleanUndefined(activeLoan) };
+  const order = Object.values(orders).find(item => item.financingId === financingId || item.id === loan.orderId);
+  if (order) {
+    paths[`orders/${order.id}/status`] = resolveFinancialOrderStatus(order, Object.values(payments), [activeLoan]);
+    paths[`orders/${order.id}/updatedAt`] = now;
+  }
+  if (customer) paths[`customers/${loan.customerId}/usedCredit`] = (customer.usedCredit || 0) + loan.principal;
+  await updateRootPaths(paths);
+}
+
+/** Marks a purchase payment paid and advances the order only when every financial requirement is clear. */
+export async function settleOrderPayment(paymentId: string, confirmedBy?: string): Promise<void> {
+  const payment = await getRecord<Payment>('payments', paymentId);
+  if (!payment) throw new Error('Payment record not found.');
+  if (payment.status === 'paid') return;
+  if (payment.status === 'failed') throw new Error('A failed payment cannot be confirmed.');
+
+  const now = new Date().toISOString();
+  const paidPayment: Payment = cleanUndefined({ ...payment, status: 'paid', paidAt: now, confirmedBy });
+  const paths: Record<string, unknown> = { [`payments/${paymentId}`]: paidPayment };
+  if (payment.orderId) {
+    const [order, financing] = await Promise.all([
+      getRecord<Order>('orders', payment.orderId),
+      readCollection<Financing>('financing'),
+    ]);
+    if (order) {
+      paths[`orders/${order.id}/paymentStatus`] = 'paid';
+      paths[`orders/${order.id}/status`] = resolveFinancialOrderStatus(order, [paidPayment], Object.values(financing));
+      paths[`orders/${order.id}/updatedAt`] = now;
+      if (confirmedBy) paths[`orders/${order.id}/confirmedBy`] = confirmedBy;
+    }
+  }
+  await updateRootPaths(paths);
+}
+
+/** Enforces actor-specific fulfillment transitions at the durable write boundary. */
+export async function transitionOrderFlow(
+  orderId: string,
+  nextStatus: Order['status'],
+  actor: 'supplier' | 'customer',
+): Promise<void> {
+  let failure: string | null = null;
+  const result = await runTransaction(ref(database, `orders/${orderId}`), current => {
+    failure = null;
+    const order = current as Order | null;
+    if (!order) {
+      failure = 'Order not found.';
+      return;
+    }
+    const actorAllows = actor === 'supplier'
+      ? nextStatus === 'ready' || nextStatus === 'out_for_delivery' || nextStatus === 'delivered'
+      : nextStatus === 'completed';
+    if (!actorAllows || !canTransitionOrder(order.status, nextStatus)) {
+      failure = `Cannot move this order from ${order.status} to ${nextStatus}.`;
+      return;
+    }
+    return {
+      ...order,
+      status: nextStatus,
+      stockReservationStatus: nextStatus === 'ready' ? 'committed' : order.stockReservationStatus,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  if (failure) throw new Error(failure);
+  if (!result.committed) throw new Error('Order status update was not committed.');
 }
 
 /**

@@ -14,6 +14,7 @@ import {
 import {
   loginWithEmail, logoutUser, subscribeToAuth
 } from '../services/firebase/authService';
+import { canTransitionOrder, resolveFinancialOrderStatus } from '../domain/orderFlow';
 
 type Action = (
   | { type: 'LOGIN'; user: AuthUser }
@@ -28,6 +29,7 @@ type Action = (
   | { type: 'SET_CHECKOUT_DATA'; data: AppState['checkoutData'] }
   | { type: 'PLACE_ORDER'; order: Order; payment?: Payment; financing?: Financing }
   | { type: 'UPDATE_ORDER_STATUS'; orderId: string; status: OrderStatus; confirmedBy?: string }
+  | { type: 'CANCEL_ORDER'; orderId: string; reason?: string }
   | { type: 'APPROVE_FINANCING'; financingId: string; approvedBy: string }
   | { type: 'REJECT_FINANCING'; financingId: string; rejectedBy: string }
   | { type: 'PAY_INSTALLMENT'; financingId: string; weekNo: number; method: 'cash' | 'gcash'; confirmedBy?: string }
@@ -142,7 +144,7 @@ function coreReducer(state: AppState, action: Action): AppState {
       return { ...state, checkoutData: action.data };
     case 'PLACE_ORDER': {
       const orderMap = new Map<string, Order>();
-      orderMap.set(action.order.id, action.order);
+      orderMap.set(action.order.id, { ...action.order, stockReservationStatus: action.order.stockReservationStatus || 'reserved' });
       state.orders.forEach(o => { if (!orderMap.has(o.id)) orderMap.set(o.id, o); });
       const newOrders = Array.from(orderMap.values());
 
@@ -162,24 +164,52 @@ function coreReducer(state: AppState, action: Action): AppState {
         newFinancing = Array.from(finMap.values());
       }
 
-      const updatedProducts = state.products.map(p => {
-        const item = action.order.items.find(i => i.productId === p.id);
-        if (item) return { ...p, stock: Math.max(0, p.stock - item.quantity) };
-        return p;
-      });
       // INVARIANT: Submitting financing must NOT consume customer credit!
       // Customer credit is only consumed once approved by a supervisor/admin.
-      return { ...state, orders: newOrders, payments: newPayments, financing: newFinancing, products: updatedProducts, cart: [], checkoutData: null };
+      // Inventory is reserved by createOrderWithReservation and arrives via RTDB sync.
+      return { ...state, orders: newOrders, payments: newPayments, financing: newFinancing, cart: [], checkoutData: null };
     }
-    case 'UPDATE_ORDER_STATUS':
+    case 'UPDATE_ORDER_STATUS': {
+      const target = state.orders.find(o => o.id === action.orderId);
+      if (!target || !canTransitionOrder(target.status, action.status)) return state;
       return {
         ...state,
         orders: state.orders.map(o =>
           o.id === action.orderId
-            ? { ...o, status: action.status, confirmedBy: action.confirmedBy, updatedAt: new Date().toISOString() }
+            ? {
+                ...o,
+                status: action.status,
+                confirmedBy: action.confirmedBy,
+                stockReservationStatus: action.status === 'ready' ? 'committed' : o.stockReservationStatus,
+                updatedAt: new Date().toISOString(),
+              }
             : o
         ),
       };
+    }
+    case 'CANCEL_ORDER': {
+      const target = state.orders.find(o => o.id === action.orderId);
+      if (!target || target.stockReservationStatus === 'released' || !canTransitionOrder(target.status, 'cancelled')) return state;
+      const now = new Date().toISOString();
+      return {
+        ...state,
+        orders: state.orders.map(order => order.id === target.id ? {
+          ...order,
+          status: 'cancelled',
+          paymentStatus: 'failed',
+          stockReservationStatus: 'released',
+          cancellationReason: action.reason,
+          cancelledAt: now,
+          updatedAt: now,
+        } : order),
+        payments: state.payments.map(payment => payment.orderId === target.id && payment.status === 'pending'
+          ? { ...payment, status: 'failed' as const }
+          : payment),
+        financing: state.financing.map(fin => (fin.orderId === target.id || fin.id === target.financingId) && fin.status === 'pending'
+          ? { ...fin, status: 'rejected' as const }
+          : fin),
+      };
+    }
     case 'APPROVE_FINANCING': {
       const fin = state.financing.find(f => f.id === action.financingId);
       // Defensive Guard / Idempotency: only pending financing can be approved
@@ -196,16 +226,21 @@ function coreReducer(state: AppState, action: Action): AppState {
           ? { ...f, status: 'active' as const, approvedBy: action.approvedBy, approvedAt: new Date().toISOString(), schedule }
           : f
       );
+      const approvedFinancing = updatedFinancing.find(f => f.id === action.financingId)!;
       const updatedOrders = state.orders.map(o =>
         (o.financingId === action.financingId || o.id === fin.orderId)
-          ? { ...o, status: 'completed' as OrderStatus, paymentStatus: 'paid' as const, updatedAt: new Date().toISOString() }
+          ? {
+              ...o,
+              status: resolveFinancialOrderStatus(o, state.payments, [
+                ...state.financing.filter(f => f.id !== action.financingId),
+                approvedFinancing,
+              ]),
+              updatedAt: new Date().toISOString(),
+            }
           : o
       );
-      // INVARIANT: Approving financing consumes the principal EXACTLY ONCE
-      const updatedCustomers = state.customers.map(c =>
-        c.id === fin.customerId ? { ...c, usedCredit: c.usedCredit + fin.principal } : c
-      );
-      return { ...state, financing: updatedFinancing, orders: updatedOrders, customers: updatedCustomers };
+      // Durable credit consumption is applied by approveFinancingFlow and synced from RTDB.
+      return { ...state, financing: updatedFinancing, orders: updatedOrders };
     }
     case 'REJECT_FINANCING': {
       const fin = state.financing.find(f => f.id === action.financingId);
@@ -215,13 +250,29 @@ function coreReducer(state: AppState, action: Action): AppState {
       const updatedFinancing = state.financing.map(f =>
         f.id === action.financingId ? { ...f, status: 'rejected' as const, rejectedBy: action.rejectedBy } : f
       );
+      const relatedOrder = state.orders.find(o => o.financingId === action.financingId || o.id === fin.orderId);
       const updatedOrders = state.orders.map(o =>
         (o.financingId === action.financingId || o.id === fin.orderId)
-          ? { ...o, status: 'cancelled' as OrderStatus, updatedAt: new Date().toISOString() }
+          ? {
+              ...o,
+              status: 'cancelled' as OrderStatus,
+              paymentStatus: 'failed' as const,
+              stockReservationStatus: 'released' as const,
+              cancellationReason: 'Financing rejected',
+              cancelledAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
           : o
       );
       // INVARIANT: Rejecting financing consumes ZERO credit
-      return { ...state, financing: updatedFinancing, orders: updatedOrders };
+      return {
+        ...state,
+        financing: updatedFinancing,
+        orders: updatedOrders,
+        payments: state.payments.map(payment => payment.orderId === relatedOrder?.id && payment.status === 'pending'
+          ? { ...payment, status: 'failed' as const }
+          : payment),
+      };
     }
     case 'PAY_INSTALLMENT': {
       const fin = state.financing.find(f => f.id === action.financingId);
@@ -336,9 +387,19 @@ function coreReducer(state: AppState, action: Action): AppState {
       );
       let updatedOrders = state.orders;
       if (payment.orderId) {
+        const paidPayment = updatedPayments.find(p => p.id === action.paymentId)!;
         updatedOrders = state.orders.map(o =>
           o.id === payment.orderId
-            ? { ...o, paymentStatus: 'paid' as const, status: 'completed' as OrderStatus, confirmedBy: action.confirmedBy, updatedAt: new Date().toISOString() }
+            ? {
+                ...o,
+                paymentStatus: 'paid' as const,
+                status: resolveFinancialOrderStatus(o, [
+                  ...state.payments.filter(p => p.id !== action.paymentId),
+                  paidPayment,
+                ], state.financing),
+                confirmedBy: action.confirmedBy,
+                updatedAt: new Date().toISOString(),
+              }
             : o
         );
       }
@@ -467,15 +528,22 @@ function coreReducer(state: AppState, action: Action): AppState {
         const items = (Array.isArray(o?.items) ? o.items : o?.items ? Object.values(o.items) : []) as OrderItem[];
         const calcTotal = items.reduce((sum, it) => sum + (Number(it?.price) || 0) * (Number(it?.quantity) || 0), 0);
         const total = typeof o?.total === 'number' && !isNaN(o.total) ? o.total : calcTotal;
+        const normalizedStatus: OrderStatus = o.status === 'approved' ? 'processing' : (o.status || 'pending_payment');
+        const reservationStatus = o.stockReservationStatus || (
+          normalizedStatus === 'cancelled' ? 'released'
+            : ['ready', 'out_for_delivery', 'delivered', 'completed'].includes(normalizedStatus) ? 'committed'
+              : 'reserved'
+        );
         return {
           ...o,
           id: o.id,
           orderNo: o.orderNo || `ORD-${String(o.id).slice(-4)}`,
           total,
           items,
-          status: o.status || 'pending_payment',
+          status: normalizedStatus,
           paymentType: o.paymentType || 'cash',
-          paymentStatus: o.paymentStatus || 'pending',
+          paymentStatus: o.paymentStatus || (normalizedStatus === 'cancelled' ? 'failed' : 'pending'),
+          stockReservationStatus: reservationStatus,
           createdAt: o.createdAt || new Date().toISOString(),
           updatedAt: o.updatedAt || new Date().toISOString(),
         } as Order;

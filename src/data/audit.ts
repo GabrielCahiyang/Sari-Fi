@@ -103,6 +103,18 @@ function describe(action: AnyAction, prev: AppState, next: AppState): Derived | 
         targetLabel: label,
       };
     }
+    case 'CANCEL_ORDER': {
+      const o = next.orders.find(x => x.id === a.orderId);
+      const label = o?.orderNo ?? a.orderId;
+      return {
+        category: 'order',
+        action: 'order.cancel',
+        summary: `Cancelled order ${label}; payment/financing closed and reserved stock released`,
+        targetType: 'order',
+        targetId: a.orderId,
+        targetLabel: label,
+      };
+    }
     case 'APPROVE_FINANCING': {
       const f = next.financing.find(x => x.id === a.financingId);
       const who = customerName(next, f?.customerId);

@@ -25,10 +25,11 @@ export function SupplierLayout({ children }: { children: React.ReactNode }) {
 
   // Filter orders that have items from this supplier
   const supplierOrders = state.orders.filter(o =>
+    ['processing', 'ready', 'out_for_delivery'].includes(o.status) &&
     o.items.some(it => myProducts.some(p => p.id === it.productId))
   );
   const pendingFulfillCount = supplierOrders.filter(
-    o => o.status === 'processing' || o.status === 'approved'
+    o => o.status === 'processing' || o.status === 'ready' || o.status === 'out_for_delivery'
   ).length;
 
   const navItems: NavItem[] = [

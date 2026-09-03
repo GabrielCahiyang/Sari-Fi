@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { useApp } from './AppContext';
-import { getRecord, saveRecord, updateRootPaths } from '../services/firebase/rtdbService';
+import {
+  approveFinancingFlow,
+  createOrderWithReservation,
+  getRecord,
+  saveRecord,
+  updateRootPaths,
+} from '../services/firebase/rtdbService';
 import type { AuthUser, Product, Order, Financing, Payment, Customer } from '../types';
 
 export type TourPhase = 'focusing' | 'clicking' | 'success';
@@ -91,11 +97,11 @@ export const TOUR_STEPS: TourStep[] = [
     roleIcon: '🚚',
     roleBadgeColor: 'bg-[#0D2B45] text-[#FFC107]',
     title: 'Supplier Dispatches Store Delivery',
-    summary: 'Supplier prepares crates and clicks "Dispatch / Out for Delivery".',
+    summary: 'Supplier marks the packed crates ready, then dispatches them.',
     detailedInstruction:
-      'Back in the Supplier Portal under "Orders to Fulfill"! Watch the spotlight focus on Gabriel\'s order card and click "Dispatch / Out for Delivery" to put the crates on the road.',
+      'Back in the Supplier Portal under "Orders to Fulfill"! Watch the order move through READY before the supplier dispatches it for delivery.',
     targetFocusName: 'Order Fulfillment & Delivery Dispatch Pipeline',
-    actionButtonLabel: 'Dispatch / Out for Delivery',
+    actionButtonLabel: 'Prepare & Dispatch Order',
     targetPage: 'supplier/orders',
     targetUser: {
       id: 'sup1788397726900',
@@ -332,6 +338,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
             status: 'pending_financing',
             paymentType: 'financing',
             paymentStatus: 'pending',
+            stockReservationStatus: 'reserved',
             financingId: finId,
             channel: 'online',
             createdAt: new Date().toISOString(),
@@ -361,8 +368,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
             createdAt: new Date().toISOString(),
           };
 
-          await saveRecord('orders', order);
-          await saveRecord('financing', financing);
+          await createOrderWithReservation(order, undefined, financing);
           tourDispatch({ type: 'PLACE_ORDER', order, financing });
           showToast('success', '✓ Order #ORD-TOUR-001 placed via 4-Week Financing (₱378/wk)!');
           break;
@@ -395,34 +401,20 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
             ],
           };
 
-          const updatedFin = { ...fin, status: 'active' as const, approvedBy: 'SuperJeff', approvedAt: new Date().toISOString() };
-          await saveRecord('financing', updatedFin);
+          await approveFinancingFlow(fin.id, 'SuperJeff');
           tourDispatch({ type: 'APPROVE_FINANCING', financingId: 'fin_tour_001', approvedBy: 'SuperJeff' });
 
-          const ord = currentState.orders.find(o => o.id === 'ord_tour_001');
-          if (ord) {
-            const updatedOrd = { ...ord, status: 'approved' as const, updatedAt: new Date().toISOString() };
-            await saveRecord('orders', updatedOrd);
-            tourDispatch({ type: 'UPDATE_ORDER_STATUS', orderId: 'ord_tour_001', status: 'approved' });
-          }
-
-          const cust = currentState.customers.find(c => c.id === 'cust1788380537668');
-          if (cust) {
-            const updatedCust = { ...cust, usedCredit: (cust.usedCredit || 0) + 1440 };
-            await saveRecord('customers', updatedCust);
-            tourDispatch({ type: 'UPDATE_CUSTOMER', customer: updatedCust });
-          }
-
-          showToast('success', '✓ Supervisor SuperJeff APPROVED credit FIN-TOUR-001!');
+          showToast('success', '✓ Supervisor approved FIN-TOUR-001. The order is now PROCESSING.');
           break;
         }
 
         case 3: {
           // STEP 4: Supplier Dispatches
           const ord = currentState.orders.find(o => o.id === 'ord_tour_001');
-          const updatedOrd: Order = ord ? {
+          const readyOrder: Order = ord ? {
             ...ord,
-            status: 'out_for_delivery' as const,
+            status: 'ready' as const,
+            stockReservationStatus: 'committed',
             updatedAt: new Date().toISOString(),
           } : {
             id: 'ord_tour_001',
@@ -430,34 +422,31 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
             customerId: 'cust1788380537668',
             items: [{ productId: 'prod_tour_coke', productName: 'Coca-Cola 1.5L (Case of 12)', quantity: 3, price: 480, supplierId: 'sup1788397726900' }],
             total: 1440,
-            status: 'out_for_delivery',
+            status: 'ready',
             paymentType: 'financing',
             paymentStatus: 'pending',
+            stockReservationStatus: 'committed',
             financingId: 'fin_tour_001',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
 
+          await saveRecord('orders', readyOrder);
+          tourDispatch({ type: 'UPDATE_ORDER_STATUS', orderId: 'ord_tour_001', status: 'ready' });
+          await new Promise(resolve => setTimeout(resolve, 650));
+          const updatedOrd: Order = { ...readyOrder, status: 'out_for_delivery', updatedAt: new Date().toISOString() };
           await saveRecord('orders', updatedOrd);
           tourDispatch({ type: 'UPDATE_ORDER_STATUS', orderId: 'ord_tour_001', status: 'out_for_delivery' });
-
-          const prod = currentState.products.find(p => p.id === 'prod_tour_coke');
-          if (prod) {
-            const updatedProd = { ...prod, stock: Math.max(0, prod.stock - 3) };
-            await saveRecord('products', updatedProd);
-            tourDispatch({ type: 'UPDATE_PRODUCT', product: updatedProd });
-          }
-
-          showToast('success', '✓ Supplier clicked "Dispatch"! Van is out for delivery.');
+          showToast('success', '✓ Supplier marked the order READY, then dispatched it.');
           break;
         }
 
         case 4: {
           // STEP 5: Delivery & Store Owner Confirms Receipt
           const ord = currentState.orders.find(o => o.id === 'ord_tour_001');
-          const updatedOrd: Order = ord ? {
+          const deliveredOrder: Order = ord ? {
             ...ord,
-            status: 'completed' as const,
+            status: 'delivered' as const,
             updatedAt: new Date().toISOString(),
           } : {
             id: 'ord_tour_001',
@@ -465,7 +454,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
             customerId: 'cust1788380537668',
             items: [{ productId: 'prod_tour_coke', productName: 'Coca-Cola 1.5L (Case of 12)', quantity: 3, price: 480, supplierId: 'sup1788397726900' }],
             total: 1440,
-            status: 'completed',
+            status: 'delivered',
             paymentType: 'financing',
             paymentStatus: 'pending',
             financingId: 'fin_tour_001',
@@ -473,6 +462,10 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
             updatedAt: new Date().toISOString(),
           };
 
+          await saveRecord('orders', deliveredOrder);
+          tourDispatch({ type: 'UPDATE_ORDER_STATUS', orderId: 'ord_tour_001', status: 'delivered' });
+          await new Promise(resolve => setTimeout(resolve, 650));
+          const updatedOrd: Order = { ...deliveredOrder, status: 'completed', updatedAt: new Date().toISOString() };
           await saveRecord('orders', updatedOrd);
           tourDispatch({ type: 'UPDATE_ORDER_STATUS', orderId: 'ord_tour_001', status: 'completed' });
           showToast('success', '✓ Store Owner Gabriel confirmed receipt! Order marked COMPLETED.');

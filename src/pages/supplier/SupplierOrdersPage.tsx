@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
 import { SupplierLayout } from '../../components/layout/SupplierLayout';
 import { useApp } from '../../context/AppContext';
-import { saveRecord } from '../../services/firebase/rtdbService';
+import { transitionOrderFlow } from '../../services/firebase/rtdbService';
 import type { OrderStatus, Order } from '../../types';
+import { canTransitionOrder } from '../../domain/orderFlow';
 
 export function SupplierOrdersPage() {
   const { state, dispatch, formatPHP, showToast } = useApp();
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'out_for_delivery' | 'delivered'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'ready' | 'out_for_delivery' | 'delivered'>('all');
   const [search, setSearch] = useState('');
 
   const supplier = useMemo(() => {
@@ -26,6 +27,7 @@ export function SupplierOrdersPage() {
   // Orders that contain at least one item from this supplier
   const myOrders = useMemo(() => {
     return state.orders.filter(o =>
+      ['processing', 'ready', 'out_for_delivery', 'delivered', 'completed'].includes(o.status) &&
       o.items.some(it => myProductIds.has(it.productId))
     );
   }, [state.orders, myProductIds]);
@@ -40,7 +42,10 @@ export function SupplierOrdersPage() {
       if (!matchSearch) return false;
 
       if (statusFilter === 'pending') {
-        return o.status === 'processing' || o.status === 'approved';
+        return o.status === 'processing';
+      }
+      if (statusFilter === 'ready') {
+        return o.status === 'ready';
       }
       if (statusFilter === 'out_for_delivery') {
         return o.status === 'out_for_delivery';
@@ -53,14 +58,12 @@ export function SupplierOrdersPage() {
   }, [myOrders, search, statusFilter, state.customers]);
 
   const handleUpdateStatus = async (order: Order, newStatus: OrderStatus) => {
-    const updated: Order = {
-      ...order,
-      status: newStatus,
-      updatedAt: new Date().toISOString(),
-    };
-
+    if (!canTransitionOrder(order.status, newStatus) || newStatus === 'completed') {
+      showToast('error', 'That supplier status transition is not allowed.');
+      return;
+    }
     try {
-      await saveRecord('orders', updated);
+      await transitionOrderFlow(order.id, newStatus, 'supplier');
       dispatch({ type: 'UPDATE_ORDER_STATUS', orderId: order.id, status: newStatus });
       showToast('success', `Order ${order.orderNo} updated to "${newStatus.replace(/_/g, ' ')}".`);
     } catch (err: any) {
@@ -107,6 +110,7 @@ export function SupplierOrdersPage() {
             {[
               { key: 'all', label: 'All Orders' },
               { key: 'pending', label: 'To Dispatch' },
+              { key: 'ready', label: 'Ready' },
               { key: 'out_for_delivery', label: 'In Transit' },
               { key: 'delivered', label: 'Delivered' },
             ].map(tab => (
@@ -143,7 +147,8 @@ export function SupplierOrdersPage() {
               const itemsForThisSupplier = o.items.filter(it => myProductIds.has(it.productId));
               const supplierSubtotal = itemsForThisSupplier.reduce((s, it) => s + (it.price * it.quantity), 0);
 
-              const isPending = o.status === 'processing' || o.status === 'approved';
+              const isPending = o.status === 'processing';
+              const isReady = o.status === 'ready';
               const isInTransit = o.status === 'out_for_delivery';
               const isDelivered = o.status === 'delivered' || o.status === 'completed';
 
@@ -244,12 +249,21 @@ export function SupplierOrdersPage() {
                   <div className="flex items-center justify-end gap-2 pt-2">
                     {isPending && (
                       <button
-                        onClick={() => handleUpdateStatus(o, 'out_for_delivery')}
+                        onClick={() => handleUpdateStatus(o, 'ready')}
                         className="px-4 py-2 text-xs font-700 bg-[#0D2B45] text-white hover:bg-[#194368] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
+                        Mark Ready
+                      </button>
+                    )}
+
+                    {isReady && (
+                      <button
+                        onClick={() => handleUpdateStatus(o, 'out_for_delivery')}
+                        className="px-4 py-2 text-xs font-700 bg-[#0D2B45] text-white hover:bg-[#194368] rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                      >
                         Dispatch / Out for Delivery
                       </button>
                     )}

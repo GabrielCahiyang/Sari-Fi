@@ -1,6 +1,7 @@
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { OrderStatusBadge, FinancingStatusBadge } from '../../components/ui/Badge';
+import { approveFinancingFlow, cancelOrderFlow } from '../../services/firebase/rtdbService';
 
 export function SupervisorDashboard() {
   const { state, dispatch, navigate, getCustomer, showToast, formatPHP } = useApp();
@@ -14,14 +15,29 @@ export function SupervisorDashboard() {
   const totalOutstanding = activeFinancing.reduce((s, f) => s + (f.totalRepayable - (f.paidPrincipal / f.principal * f.totalRepayable)), 0);
   const totalOverdue = overdueAccounts.reduce((s, f) => s + (f.totalRepayable - (f.paidPrincipal / f.principal * f.totalRepayable)), 0);
 
-  const approveFinancing = (finId: string) => {
-    dispatch({ type: 'APPROVE_FINANCING', financingId: finId, approvedBy: state.currentUser!.name });
-    showToast('success', 'Financing approved! Customer can now proceed.');
+  const approveFinancing = async (finId: string) => {
+    const approvedBy = state.currentUser?.name || 'Supervisor';
+    try {
+      await approveFinancingFlow(finId, approvedBy);
+      dispatch({ type: 'APPROVE_FINANCING', financingId: finId, approvedBy });
+      showToast('success', 'Financing is active. The order is processing only if all payment parts are cleared.');
+    } catch (error: any) {
+      showToast('error', error.message || 'Could not approve financing.');
+    }
   };
 
-  const rejectFinancing = (finId: string) => {
-    dispatch({ type: 'REJECT_FINANCING', financingId: finId, rejectedBy: state.currentUser!.name });
-    showToast('info', 'Financing rejected.');
+  const rejectFinancing = async (finId: string) => {
+    const financing = state.financing.find(fin => fin.id === finId);
+    const order = state.orders.find(item => item.financingId === finId || item.id === financing?.orderId);
+    const rejectedBy = state.currentUser?.name || 'Supervisor';
+    if (!financing || financing.status !== 'pending' || !order) return;
+    try {
+      await cancelOrderFlow(order.id, 'Financing rejected', rejectedBy);
+      dispatch({ type: 'REJECT_FINANCING', financingId: finId, rejectedBy });
+      showToast('info', 'Financing rejected, order cancelled, and stock released.');
+    } catch (error: any) {
+      showToast('error', error.message || 'Could not reject financing.');
+    }
   };
 
   return (

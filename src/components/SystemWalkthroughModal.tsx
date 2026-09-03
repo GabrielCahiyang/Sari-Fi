@@ -146,7 +146,7 @@ export function SystemWalkthroughModal({ isOpen, onClose }: SystemWalkthroughMod
       title: 'Supplier Receives Store Order & Dispatches Goods',
       headline: 'Warehouse packages the items and sends out delivery',
       storyNarrative:
-        'Test Supplier checks their "Orders to Fulfill" queue. The new approved order ORD-0001 for Gabriel’s store appears with the destination address and packing list. The warehouse staff packs the 3 cases and clicks "Dispatch / Out for Delivery". The inventory is in transit.',
+        'Test Supplier checks the financially-cleared order queue. ORD-0001 moves from Processing to Ready after packing, then to Out for Delivery when dispatched. The supplier cannot complete the order.',
       portalRoute: 'supplier/orders',
       portalButtonText: 'Open Supplier Orders →',
       screenSimulation: {

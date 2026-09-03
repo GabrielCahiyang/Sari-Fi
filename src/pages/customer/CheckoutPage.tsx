@@ -1,8 +1,13 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
-import type { Order, Financing, Payment, InstallmentSchedule } from '../../types';
-import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
+import type { Order, Financing, Payment, InstallmentSchedule, OrderItem } from '../../types';
+import {
+  cancelOrderFlow,
+  createOrderWithReservation,
+  settleOrderPayment,
+} from '../../services/firebase/rtdbService';
+import { resolveFinancialOrderStatus } from '../../domain/orderFlow';
 import {
   generateMockGcashReference,
   processMockGcashWebhook,
@@ -24,8 +29,8 @@ export function CheckoutPage() {
 
   const items = state.cart.map(item => {
     const p = getProduct(item.productId);
-    return p ? { productId: item.productId, productName: p.name, quantity: item.quantity, price: p.sellingPrice } : null;
-  }).filter(Boolean) as { productId: string; productName: string; quantity: number; price: number }[];
+    return p ? { productId: item.productId, productName: p.name, quantity: item.quantity, price: p.sellingPrice, supplierId: p.supplierId } : null;
+  }).filter(Boolean) as OrderItem[];
 
   const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const available = customer ? customer.creditLimit - customer.usedCredit : 0;
@@ -44,8 +49,8 @@ export function CheckoutPage() {
 
   const canFinance = available >= total;
   const canSplit = available > 0 && available < total;
-  const orderId = `ord${Date.now()}`;
-  const finId = `fin${Date.now()}`;
+  const supplierIds = new Set(items.map(item => item.supplierId).filter(Boolean));
+  const hasSingleSupplier = supplierIds.size === 1;
 
   const generateSchedule = (count: number, amount: number): InstallmentSchedule[] => {
     const today = new Date();
@@ -64,8 +69,17 @@ export function CheckoutPage() {
 
   const placeOrder = async () => {
     if (!customer || items.length === 0 || isPlacingRef.current) return;
+    if (!hasSingleSupplier) {
+      showToast('error', 'Please place separate orders for products from different suppliers.');
+      return;
+    }
     isPlacingRef.current = true;
     setPlacing(true);
+
+    const idSeed = Date.now();
+    const orderId = `ord${idSeed}`;
+    const finId = `fin${idSeed}`;
+    const now = new Date().toISOString();
 
     const orderBase: Order = {
       id: orderId,
@@ -75,9 +89,10 @@ export function CheckoutPage() {
       total,
       paymentType: mode,
       paymentStatus: 'pending',
-      status: mode === 'cash' ? 'pending_payment' : mode === 'gcash' ? 'completed' : 'pending_financing',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      status: mode === 'cash' || mode === 'gcash' ? 'pending_payment' : 'pending_financing',
+      stockReservationStatus: 'reserved',
+      createdAt: now,
+      updatedAt: now,
     };
 
     let finalOrder: Order;
@@ -94,7 +109,7 @@ export function CheckoutPage() {
         method: 'cash',
         amount: total,
         status: 'pending',
-        createdAt: new Date().toISOString(),
+        createdAt: now,
       };
       finalOrder = { ...orderBase };
       await new Promise(r => setTimeout(r, 400));
@@ -112,7 +127,7 @@ export function CheckoutPage() {
         status: 'pending',
         mockTransactionId: mockRef.transactionId,
         referenceId: mockRef.referenceId,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
       };
       finalOrder = { ...orderBase, status: 'pending_payment' as const, paymentStatus: 'pending' as const };
     } else if (mode === 'financing') {
@@ -132,7 +147,7 @@ export function CheckoutPage() {
         paidPrincipal: 0,
         status: 'pending',
         schedule,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
       };
       finalOrder = { ...orderBase, financingId: finId, status: 'pending_financing' as const };
       await new Promise(r => setTimeout(r, 300));
@@ -155,7 +170,7 @@ export function CheckoutPage() {
         paidPrincipal: 0,
         status: 'pending',
         schedule,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
       };
       finalPayment = {
         id: `pay${Date.now()}`,
@@ -165,46 +180,38 @@ export function CheckoutPage() {
         type: 'purchase',
         method: splitMethod,
         amount: splitRemainder,
-        status: splitMethod === 'gcash' ? 'paid' : 'pending',
+        status: 'pending',
         mockTransactionId: mockRef?.transactionId,
         referenceId: mockRef?.referenceId,
-        createdAt: new Date().toISOString(),
-        paidAt: splitMethod === 'gcash' ? new Date().toISOString() : undefined,
+        createdAt: now,
       };
       finalOrder = { ...orderBase, financingId: finId, status: 'pending_financing' as const, splitCashAmount: splitRemainder, splitFinancingAmount: financingAmount, splitMethod };
-      showToast('info', `Split payment processed. ${formatPHP(splitRemainder)} ${splitMethod.toUpperCase()} paid. Financing awaiting approval.`);
+      showToast('info', splitMethod === 'gcash'
+        ? `Order reserved. Confirm the ${formatPHP(splitRemainder)} GCash callback next.`
+        : `Order reserved. ${formatPHP(splitRemainder)} cash and financing are awaiting confirmation.`);
     } else {
       finalOrder = { ...orderBase };
     }
 
     try {
-      await saveRecord('orders', finalOrder);
-      if (finalPayment) await saveRecord('payments', finalPayment);
-      if (finalFinancing) await saveRecord('financing', finalFinancing);
-
-      // Decrement product inventory in RTDB
-      for (const item of items) {
-        const prod = state.products.find(p => p.id === item.productId);
-        if (prod) {
-          const newStock = Math.max(0, prod.stock - item.quantity);
-          await updateRecord('products', prod.id, { stock: newStock });
-        }
-      }
-
-      // INVARIANT: Submitting financing does NOT consume customer credit.
-      // Customer credit is only consumed once supervisor approves the financing.
+      await createOrderWithReservation(finalOrder, finalPayment, finalFinancing);
     } catch (err: any) {
-      console.error('Failed to save order to RTDB:', err);
+      console.error('Failed to reserve order in RTDB:', err);
+      setPlacing(false);
+      isPlacingRef.current = false;
+      showToast('error', err.message || 'Could not reserve this order.');
+      return;
     }
 
-    if (mode === 'gcash' && finalPayment) {
+    dispatch({ type: 'PLACE_ORDER', order: finalOrder, payment: finalPayment, financing: finalFinancing });
+
+    if ((mode === 'gcash' || (mode === 'split' && splitMethod === 'gcash')) && finalPayment) {
       setPlacing(false);
       isPlacingRef.current = false;
       setPendingWebhookData({ order: finalOrder, payment: finalPayment });
       return;
     }
 
-    dispatch({ type: 'PLACE_ORDER', order: finalOrder, payment: finalPayment, financing: finalFinancing });
     setPlacing(false);
     isPlacingRef.current = false;
     navigate('customer/orders');
@@ -226,30 +233,30 @@ export function CheckoutPage() {
       timestamp: new Date().toISOString(),
     };
 
-    const result = processMockGcashWebhook(payload, payment, order);
+    const result = processMockGcashWebhook(payload, payment);
 
-    if (result.success && result.updatedPayment && result.updatedOrder) {
-      await saveRecord('payments', result.updatedPayment);
-      await saveRecord('orders', result.updatedOrder);
-      dispatch({ type: 'PLACE_ORDER', order: result.updatedOrder, payment: result.updatedPayment });
-      showToast('success', 'Mock GCash Webhook verified! Payment confirmed and order completed.');
+    try {
+      if (result.success && result.updatedPayment) {
+        await settleOrderPayment(payment.id);
+        const nextStatus = resolveFinancialOrderStatus(
+          order,
+          [...state.payments.filter(p => p.id !== payment.id), result.updatedPayment],
+          state.financing,
+        );
+        dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId: payment.id, confirmedBy: 'GCash webhook' });
+        showToast('success', nextStatus === 'processing'
+          ? 'GCash confirmed. The order is now ready for supplier processing.'
+          : 'GCash confirmed. The financing portion is still awaiting approval.');
+      } else {
+        await cancelOrderFlow(order.id, 'GCash payment failed');
+        dispatch({ type: 'CANCEL_ORDER', orderId: order.id, reason: 'GCash payment failed' });
+        showToast('error', result.error || 'GCash payment simulation failed.');
+      }
       setPendingWebhookData(null);
-      setSimulatingWebhook(false);
       navigate('customer/orders');
-    } else {
-      if (result.updatedPayment) {
-        await saveRecord('payments', result.updatedPayment);
-      }
-      // If payment failed, restore inventory
-      for (const item of items) {
-        const prod = state.products.find(p => p.id === item.productId);
-        if (prod) {
-          await updateRecord('products', prod.id, { stock: prod.stock + item.quantity });
-        }
-      }
-      await updateRecord('orders', order.id, { status: 'cancelled' as const });
-      showToast('error', result.error || 'GCash payment simulation failed.');
-      setPendingWebhookData(null);
+    } catch (error: any) {
+      showToast('error', error.message || 'Could not process the GCash callback.');
+    } finally {
       setSimulatingWebhook(false);
     }
   };
@@ -347,7 +354,7 @@ export function CheckoutPage() {
                   <input type="radio" name="mode" checked={mode === 'gcash'} onChange={() => setMode('gcash')} className="text-[#1E7D3B]" />
                   <div>
                     <div className="font-600 text-sm text-[#10212B]">Pay in Full — GCash</div>
-                    <div className="text-xs text-[#65727A]">Instant mock GCash payment. Auto-confirmed.</div>
+                    <div className="text-xs text-[#65727A]">Pending until the simulated webhook confirms it.</div>
                   </div>
                 </label>
                 {/* Financing */}
@@ -461,7 +468,7 @@ export function CheckoutPage() {
               </div>
               <button
                 onClick={placeOrder}
-                disabled={placing}
+                disabled={placing || !hasSingleSupplier}
                 className="w-full py-3 bg-[#1E7D3B] text-white font-700 text-sm rounded-xl hover:bg-[#22913f] transition-all disabled:opacity-60"
               >
                 {placing ? 'Placing order…' :
@@ -471,6 +478,11 @@ export function CheckoutPage() {
                   'Place Order — Split Payment'
                 }
               </button>
+              {!hasSingleSupplier && (
+                <p className="mt-2 text-center text-xs text-amber-700">
+                  This cart contains multiple suppliers. Place one supplier order at a time.
+                </p>
+              )}
             </div>
           </div>
         </div>

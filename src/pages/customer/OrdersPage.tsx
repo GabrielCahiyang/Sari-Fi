@@ -1,7 +1,7 @@
 import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
 import { OrderStatusBadge } from '../../components/ui/Badge';
-import { saveRecord } from '../../services/firebase/rtdbService';
+import { cancelOrderFlow, transitionOrderFlow } from '../../services/firebase/rtdbService';
 import type { OrderItem } from '../../types';
 
 export function OrdersPage() {
@@ -9,25 +9,30 @@ export function OrdersPage() {
   const customer = getCurrentCustomer();
   const orders = getCustomerOrders(customer?.id || '').sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  const cancelOrder = (orderId: string) => {
-    dispatch({ type: 'UPDATE_ORDER_STATUS', orderId, status: 'cancelled' });
-    showToast('success', 'Order cancelled successfully.');
+  const cancelOrder = async (orderId: string) => {
+    const target = state.orders.find(order => order.id === orderId);
+    if (!target || (target.status !== 'pending_payment' && target.status !== 'pending_financing')) return;
+    try {
+      await cancelOrderFlow(orderId, 'Cancelled by customer');
+      dispatch({ type: 'CANCEL_ORDER', orderId, reason: 'Cancelled by customer' });
+      showToast('success', 'Order cancelled and reserved stock released.');
+    } catch (error: any) {
+      showToast('error', error.message || 'Could not cancel this order.');
+    }
   };
 
   const handleConfirmReceived = async (orderId: string) => {
     const target = state.orders.find(o => o.id === orderId);
-    if (!target) return;
-
-    const updated = {
-      ...target,
-      status: 'completed' as const,
-      updatedAt: new Date().toISOString(),
-    };
+    if (!target || target.status !== 'delivered') {
+      showToast('error', 'Only a delivered order can be confirmed as received.');
+      return;
+    }
 
     try {
-      await saveRecord('orders', updated);
-    } catch (e) {
-      console.warn('Failed to sync to RTDB:', e);
+      await transitionOrderFlow(orderId, 'completed', 'customer');
+    } catch (error: any) {
+      showToast('error', error.message || 'Could not confirm this delivery.');
+      return;
     }
 
     dispatch({ type: 'UPDATE_ORDER_STATUS', orderId, status: 'completed' });
@@ -130,9 +135,14 @@ export function OrdersPage() {
                           <span>🚚 Out for Delivery</span>
                         </div>
                       )}
-                      {order.paymentType === 'cash' && order.paymentStatus === 'pending' && (
+                      {order.status === 'pending_payment' && (
                         <div className="text-xs text-amber-600 font-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                          Awaiting Cash Confirmation
+                          Awaiting {(order.paymentType === 'split' ? order.splitMethod : order.paymentType)?.toUpperCase()} Confirmation
+                        </div>
+                      )}
+                      {order.status === 'pending_financing' && (
+                        <div className="text-xs text-amber-700 font-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                          Awaiting Financing Approval
                         </div>
                       )}
                       {order.financingId && (

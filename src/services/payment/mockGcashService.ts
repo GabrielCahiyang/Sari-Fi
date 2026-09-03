@@ -1,4 +1,4 @@
-﻿import type { Payment, Order } from '../../types';
+import type { Payment } from '../../types';
 
 export interface MockGcashWebhookPayload {
   event: 'payment.success' | 'payment.failed';
@@ -16,12 +16,8 @@ export interface WebhookValidationResult {
   alreadyProcessed?: boolean;
   error?: string;
   updatedPayment?: Payment;
-  updatedOrder?: Order;
 }
 
-/**
- * Creates a unique mock GCash transaction reference for a pending checkout payment.
- */
 export function generateMockGcashReference(): { transactionId: string; referenceId: string } {
   const seed = Math.random().toString(36).substring(2, 9).toUpperCase();
   const numSeed = Math.floor(100000 + Math.random() * 900000);
@@ -32,82 +28,38 @@ export function generateMockGcashReference(): { transactionId: string; reference
 }
 
 /**
- * Validates and processes a simulated incoming GCash webhook event.
- * Enforces strict idempotency and validation rules:
- * - Payment must exist
- * - Payment method must be GCash
- * - Amount must match
- * - If already paid, returns alreadyProcessed = true without applying duplicate state mutations
+ * Validates a simulated incoming GCash webhook. This deliberately only resolves
+ * payment state; inventory and fulfillment are owned by the order-flow service.
  */
 export function processMockGcashWebhook(
   payload: MockGcashWebhookPayload,
   payment: Payment,
-  order?: Order
 ): WebhookValidationResult {
-  if (!payment) {
-    return { success: false, error: 'Payment record not found.' };
-  }
-
-  if (payment.id !== payload.paymentId) {
-    return { success: false, error: 'Payment ID mismatch.' };
-  }
-
-  if (payment.method !== 'gcash') {
-    return { success: false, error: 'Payment method is not GCash.' };
-  }
-
+  if (!payment) return { success: false, error: 'Payment record not found.' };
+  if (payment.id !== payload.paymentId) return { success: false, error: 'Payment ID mismatch.' };
+  if (payment.method !== 'gcash') return { success: false, error: 'Payment method is not GCash.' };
   if (payment.amount !== payload.amount) {
-    return {
-      success: false,
-      error: `Amount mismatch: Expected ₱${payment.amount}, received ₱${payload.amount}.`,
-    };
+    return { success: false, error: `Amount mismatch: Expected ₱${payment.amount}, received ₱${payload.amount}.` };
   }
-
-  // Idempotency Check: if already processed and paid, do not re-apply mutations
   if (payment.status === 'paid') {
-    return {
-      success: true,
-      alreadyProcessed: true,
-      updatedPayment: payment,
-      updatedOrder: order,
-    };
+    return { success: true, alreadyProcessed: true, updatedPayment: payment };
   }
-
   if (payload.status !== 'SUCCESS' || payload.event !== 'payment.success') {
-    const failedPayment: Payment = {
-      ...payment,
-      status: 'failed',
-    };
     return {
       success: false,
       error: 'GCash payment was rejected or failed.',
-      updatedPayment: failedPayment,
+      updatedPayment: { ...payment, status: 'failed' },
     };
   }
-
-  const now = new Date().toISOString();
-  const updatedPayment: Payment = {
-    ...payment,
-    status: 'paid',
-    mockTransactionId: payload.transactionId,
-    referenceId: payload.referenceId,
-    paidAt: now,
-  };
-
-  let updatedOrder: Order | undefined = undefined;
-  if (order) {
-    updatedOrder = {
-      ...order,
-      status: 'completed',
-      paymentStatus: 'paid',
-      updatedAt: now,
-    };
-  }
-
   return {
     success: true,
     alreadyProcessed: false,
-    updatedPayment,
-    updatedOrder,
+    updatedPayment: {
+      ...payment,
+      status: 'paid',
+      mockTransactionId: payload.transactionId,
+      referenceId: payload.referenceId,
+      paidAt: new Date().toISOString(),
+    },
   };
 }

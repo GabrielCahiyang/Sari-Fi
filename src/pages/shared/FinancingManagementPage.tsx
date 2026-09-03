@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { FinancingStatusBadge } from '../../components/ui/Badge';
-import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
-import type { InstallmentSchedule, OrderStatus } from '../../types';
+import { approveFinancingFlow, cancelOrderFlow } from '../../services/firebase/rtdbService';
 
 export function FinancingManagementPage() {
   const { state, dispatch, getCustomer, showToast, formatPHP, logAudit } = useApp();
@@ -26,47 +25,10 @@ export function FinancingManagementPage() {
     // Defensive guard / Idempotency: only pending financing can be approved
     if (!fin || fin.status !== 'pending') return;
     const approvedBy = state.currentUser?.name || 'Admin';
-    const approvedAt = new Date().toISOString();
-
-    const today = new Date();
-    const schedule: InstallmentSchedule[] = fin.schedule.map((s, i) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + (i + 1) * 7);
-      return { ...s, dueDate: d.toISOString().split('T')[0], status: i === 0 ? 'due' : 'upcoming' };
-    });
-
-    const updatedFinancing = {
-      ...fin,
-      status: 'active' as const,
-      approvedBy,
-      approvedAt,
-      schedule,
-    };
-
     try {
-      await saveRecord('financing', updatedFinancing);
-
-      // Update order status to completed and paymentStatus to paid
-      const relatedOrder = state.orders.find(o => o.financingId === finId || o.id === fin.orderId);
-      if (relatedOrder) {
-        await updateRecord('orders', relatedOrder.id, {
-          status: 'completed' as OrderStatus,
-          paymentStatus: 'paid' as const,
-          updatedAt: approvedAt,
-        });
-      }
-
-      // INVARIANT: Consume customer credit limit exactly once on approval
-      const customer = state.customers.find(c => c.id === fin.customerId);
-      if (customer) {
-        await updateRecord('customers', customer.id, {
-          usedCredit: customer.usedCredit + fin.principal,
-        });
-      }
-
-      // Reducer deriveAudit will automatically create the single authoritative audit event
+      await approveFinancingFlow(finId, approvedBy);
       dispatch({ type: 'APPROVE_FINANCING', financingId: finId, approvedBy });
-      showToast('success', `Financing ${fin.financingNo} approved!`);
+      showToast('success', `Financing ${fin.financingNo} is active. The order will process once every payment part is cleared.`);
     } catch (err: any) {
       showToast('error', 'Failed to approve financing: ' + err.message);
     }
@@ -79,27 +41,12 @@ export function FinancingManagementPage() {
     const rejectedBy = state.currentUser?.name || 'Admin';
 
     try {
-      await updateRecord('financing', finId, { status: 'rejected', rejectedBy });
       const relatedOrder = state.orders.find(o => o.financingId === finId || o.id === fin.orderId);
-      if (relatedOrder) {
-        await updateRecord('orders', relatedOrder.id, {
-          status: 'cancelled' as OrderStatus,
-          updatedAt: new Date().toISOString(),
-        });
+      if (!relatedOrder) throw new Error('Related order not found.');
+      await cancelOrderFlow(relatedOrder.id, 'Financing rejected', rejectedBy);
 
-        // INVARIANT: Restore reserved inventory upon rejection
-        const orderItems = Array.isArray(relatedOrder.items) ? relatedOrder.items : [];
-        for (const item of orderItems) {
-          const prod = state.products.find(p => p.id === item.productId);
-          if (prod) {
-            await updateRecord('products', prod.id, { stock: prod.stock + item.quantity });
-          }
-        }
-      }
-
-      // Reducer deriveAudit will automatically create the single authoritative audit event
       dispatch({ type: 'REJECT_FINANCING', financingId: finId, rejectedBy });
-      showToast('info', 'Financing request rejected.');
+      showToast('info', 'Financing rejected, order cancelled, and reserved stock released.');
     } catch (err: any) {
       showToast('error', 'Failed to reject financing: ' + err.message);
     }

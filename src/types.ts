@@ -109,7 +109,11 @@ export interface Order {
   total: number;
   status: OrderStatus;
   paymentType: 'cash' | 'gcash' | 'financing' | 'split';
-  paymentStatus: 'pending' | 'paid';
+  paymentStatus: 'pending' | 'paid' | 'failed';
+  /** Inventory is reserved once at checkout and is either released on failure/cancel or committed for fulfillment. */
+  stockReservationStatus?: 'reserved' | 'released' | 'committed';
+  cancelledAt?: string;
+  cancellationReason?: string;
   financingId?: string;
   splitCashAmount?: number;
   splitFinancingAmount?: number;
