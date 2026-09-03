@@ -209,23 +209,52 @@ a, button {
 
 /* Print & PDF Export Styling */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+
   aside,
   header,
+  nav,
   .no-print {
     display: none !important;
   }
 
-  html, body, #root {
+  html, body, #root,
+  #root > div,
+  #root > div > div {
     background: #ffffff !important;
     height: auto !important;
-    min-height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     overflow: visible !important;
+    display: block !important;
+    position: static !important;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
   }
 
   main {
     padding: 0 !important;
+    margin: 0 !important;
     overflow: visible !important;
     background: #ffffff !important;
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    position: static !important;
+  }
+
+  /* Prevent awkward mid-card or mid-row page cutoffs */
+  .print-break-inside-avoid,
+  .break-inside-avoid,
+  article,
+  section,
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   .print-only {

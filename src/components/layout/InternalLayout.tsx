@@ -88,12 +88,12 @@ export function InternalLayout({ children, title }: InternalLayoutProps) {
   const pendingFinancingCount = state.financing.filter(f => f.status === 'pending').length;
 
   return (
-    <div className="flex h-screen w-full bg-[#F7F8F6] relative overflow-hidden">
+    <div className="flex h-screen w-full bg-[#F7F8F6] relative overflow-hidden print:h-auto print:overflow-visible print:bg-white print:block">
       {/* Mobile Backdrop */}
       {mobileDrawerOpen && (
         <div
           onClick={() => setMobileDrawerOpen(false)}
-          className="fixed inset-0 bg-[#0D2B45]/60 backdrop-blur-xs z-40 md:hidden transition-opacity"
+          className="fixed inset-0 bg-[#0D2B45]/60 backdrop-blur-xs z-40 md:hidden transition-opacity print:hidden"
         />
       )}
 
@@ -101,7 +101,7 @@ export function InternalLayout({ children, title }: InternalLayoutProps) {
       <aside
         className={`flex flex-col bg-gradient-to-b from-[#0D2B45] to-[#0a2237] text-white transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] shadow-soft-lg z-50
           fixed inset-y-0 left-0 ${mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static md:z-10
-          ${sidebarOpen ? 'w-64' : 'w-64 md:w-16'} shrink-0`}
+          ${sidebarOpen ? 'w-64' : 'w-64 md:w-16'} shrink-0 print:hidden`}
       >
         {/* Logo & Mobile Close */}
         <div className="px-4 py-4 border-b border-white/10 flex items-center justify-between">
@@ -189,9 +189,9 @@ export function InternalLayout({ children, title }: InternalLayoutProps) {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:h-auto print:overflow-visible print:block">
         {/* Topbar */}
-        <header className="flex items-center gap-3 sm:gap-4 px-3.5 sm:px-6 py-3 sm:py-4 bg-white/80 backdrop-blur-md border-b border-[#E4E8E6] shrink-0 z-[5]">
+        <header className="flex items-center gap-3 sm:gap-4 px-3.5 sm:px-6 py-3 sm:py-4 bg-white/80 backdrop-blur-md border-b border-[#E4E8E6] shrink-0 z-[5] print:hidden">
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileDrawerOpen(true)}
@@ -230,8 +230,8 @@ export function InternalLayout({ children, title }: InternalLayoutProps) {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-6">
-          <div key={state.currentPage} className="animate-fade-up">
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-6 print:p-0 print:overflow-visible print:h-auto print:block">
+          <div key={state.currentPage} className="animate-fade-up print:animate-none print:transform-none">
             {children}
           </div>
         </main>

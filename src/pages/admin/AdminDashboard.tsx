@@ -31,7 +31,7 @@ export function AdminDashboard() {
 
   const totalBreakdown = paymentMethodBreakdown.cash + paymentMethodBreakdown.gcash;
   const cashPercent = totalBreakdown ? Math.round(paymentMethodBreakdown.cash / totalBreakdown * 100) : 0;
-  const gcashPercent = 100 - cashPercent;
+  const gcashPercent = totalBreakdown ? Math.round(paymentMethodBreakdown.gcash / totalBreakdown * 100) : 0;
 
   return (
     <InternalLayout title="Admin Dashboard">

@@ -168,8 +168,10 @@ export function CustomersManagementPage() {
       phone: formData.phone.trim(),
       email: formData.email.trim(),
       address: formData.address.trim(),
-      storeName: formData.storeName.trim() || 'Sari-Sari Store',
-      storeAddress: formData.storeAddress.trim(),
+      storeName: (formData.storeName.trim() && formData.storeName.trim().toLowerCase() !== 'individual buyer')
+        ? formData.storeName.trim()
+        : `${formData.fullName.trim()}'s Sari-Sari Store`,
+      storeAddress: formData.storeAddress.trim() || formData.address.trim(),
       yearsOperating: parseInt(formData.yearsOperating) || 0,
       notes: formData.notes.trim(),
       loginEmail: formData.loginEmail.trim().toLowerCase(),

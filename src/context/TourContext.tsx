@@ -260,6 +260,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
     if (customerSnapshotRef.current) {
       paths['customers/cust1788380537668'] = customerSnapshotRef.current;
+    } else {
+      paths['customers/cust1788380537668'] = null;
     }
 
     await updateRootPaths(paths);
@@ -367,6 +369,34 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
             ],
             createdAt: new Date().toISOString(),
           };
+
+          // Ensure Gabriel exists as a valid Sari-Sari Store customer in the database
+          const existingCust = currentState.customers.find(c => c.id === 'cust1788380537668');
+          if (!existingCust) {
+            const tourCustomer: Customer = {
+              id: 'cust1788380537668',
+              accountNo: 'SF-0001',
+              fullName: 'Gabriel Cahiyang',
+              storeName: "Gabriel's Sari-Sari Store",
+              storeAddress: 'Poblacion, Ormoc City',
+              yearsOperating: 3,
+              phone: '09383309742',
+              email: 'gabzcah@gmail.com',
+              loginEmail: 'gabzcah@gmail.com',
+              address: 'Ormoc City, Leyte',
+              creditLimit: 6000,
+              usedCredit: 0,
+              notes: 'Tour demo store owner account',
+              status: 'active',
+              createdAt: '2026-09-02',
+            };
+            await saveRecord('customers', tourCustomer);
+            tourDispatch({ type: 'SYNC_CUSTOMERS', customers: [...currentState.customers, tourCustomer] });
+          } else if (existingCust.storeName?.toLowerCase() === 'individual buyer') {
+            const fixedCust = { ...existingCust, storeName: "Gabriel's Sari-Sari Store" };
+            await saveRecord('customers', fixedCust);
+            tourDispatch({ type: 'UPDATE_CUSTOMER', customer: fixedCust });
+          }
 
           await createOrderWithReservation(order, undefined, financing);
           tourDispatch({ type: 'PLACE_ORDER', order, financing });
