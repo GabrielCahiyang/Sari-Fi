@@ -50,11 +50,11 @@ export function ReportsPage() {
     <InternalLayout title="Reports">
       <div className="space-y-6">
         {/* Summary Bento */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {summaryCards.map(card => (
-            <div key={card.label} className={`rounded-2xl p-4 ${card.color}`}>
-              <div className={`text-xs font-600 uppercase tracking-wider ${card.color.includes('text-white') ? 'text-white/70' : 'text-[#65727A]'}`}>{card.label}</div>
-              <div className={`font-800 text-xl mt-2 ${card.color.includes('text-white') ? 'text-white' : 'text-[#10212B]'}`}>{card.value}</div>
+            <div key={card.label} className={`rounded-2xl p-3.5 sm:p-4 ${card.color}`}>
+              <div className={`text-[11px] sm:text-xs font-600 uppercase tracking-wider ${card.color.includes('text-white') ? 'text-white/70' : 'text-[#65727A]'}`}>{card.label}</div>
+              <div className={`font-800 text-lg sm:text-xl mt-1.5 sm:mt-2 truncate ${card.color.includes('text-white') ? 'text-white' : 'text-[#10212B]'}`}>{card.value}</div>
             </div>
           ))}
         </div>
@@ -100,7 +100,7 @@ export function ReportsPage() {
           {/* Payment Types */}
           <div className="col-span-12 bg-white rounded-2xl border border-[#E4E8E6] p-5">
             <div className="font-700 text-sm text-[#10212B] mb-4">Payment Type Summary</div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {[
                 { label: 'Purchase Payments', payments: purchasePayments },
                 { label: 'Installment Payments', payments: installmentPayments },

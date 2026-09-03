@@ -258,7 +258,7 @@ export function CheckoutPage() {
     const { order, payment } = pendingWebhookData;
     return (
       <CustomerLayout>
-        <div className="max-w-md mx-auto my-12 p-6 bg-white rounded-3xl border border-[#E4E8E6] shadow-sm text-center">
+        <div className="max-w-md mx-auto my-6 sm:my-12 p-4 sm:p-6 bg-white rounded-3xl border border-[#E4E8E6] shadow-sm text-center">
           <div className="w-14 h-14 bg-sky-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <span className="text-sky-600 font-900 text-2xl">G</span>
           </div>
@@ -278,7 +278,7 @@ export function CheckoutPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-[#65727A]">Transaction ID:</span>
-              <span className="font-700 text-[#10212B] font-mono truncate max-w-[200px]">{payment.mockTransactionId}</span>
+              <span className="font-700 text-[#10212B] font-mono truncate max-w-[150px] sm:max-w-[200px]">{payment.mockTransactionId}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-[#65727A]">Amount Due:</span>
@@ -320,22 +320,22 @@ export function CheckoutPage() {
 
   return (
     <CustomerLayout>
-      <div className="max-w-5xl mx-auto p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => navigate('customer/cart')} className="text-[#65727A] hover:text-[#0D2B45] transition-colors">
+      <div className="max-w-5xl mx-auto p-3.5 sm:p-6">
+        <div className="flex items-center gap-3 mb-4 sm:mb-6">
+          <button onClick={() => navigate('customer/cart')} className="text-[#65727A] hover:text-[#0D2B45] transition-colors cursor-pointer">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <h1 className="text-2xl font-800 text-[#0D2B45]">Checkout</h1>
+          <h1 className="text-xl sm:text-2xl font-800 text-[#0D2B45]">Checkout</h1>
         </div>
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-12 gap-4 sm:gap-6">
           {/* Payment Mode Selection */}
           <div className="col-span-12 md:col-span-7 space-y-4">
-            <div className="bg-white rounded-2xl border border-[#E4E8E6] p-5">
+            <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5">
               <div className="font-700 text-sm text-[#10212B] mb-4">Payment Method</div>
               <div className="space-y-3">
                 {/* Pay in Full - Cash */}
-                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${mode === 'cash' ? 'border-[#1E7D3B] bg-[#F0FAF4]' : 'border-[#E4E8E6] hover:border-[#1E7D3B]/30'}`}>
+                <label className={`flex items-center gap-3 p-3.5 sm:p-4 rounded-xl border cursor-pointer transition-all ${mode === 'cash' ? 'border-[#1E7D3B] bg-[#F0FAF4]' : 'border-[#E4E8E6] hover:border-[#1E7D3B]/30'}`}>
                   <input type="radio" name="mode" checked={mode === 'cash'} onChange={() => setMode('cash')} className="text-[#1E7D3B]" />
                   <div>
                     <div className="font-600 text-sm text-[#10212B]">Pay in Full — Cash</div>
@@ -343,7 +343,7 @@ export function CheckoutPage() {
                   </div>
                 </label>
                 {/* Pay in Full - GCash */}
-                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${mode === 'gcash' ? 'border-[#1E7D3B] bg-[#F0FAF4]' : 'border-[#E4E8E6] hover:border-[#1E7D3B]/30'}`}>
+                <label className={`flex items-center gap-3 p-3.5 sm:p-4 rounded-xl border cursor-pointer transition-all ${mode === 'gcash' ? 'border-[#1E7D3B] bg-[#F0FAF4]' : 'border-[#E4E8E6] hover:border-[#1E7D3B]/30'}`}>
                   <input type="radio" name="mode" checked={mode === 'gcash'} onChange={() => setMode('gcash')} className="text-[#1E7D3B]" />
                   <div>
                     <div className="font-600 text-sm text-[#10212B]">Pay in Full — GCash</div>
@@ -351,7 +351,7 @@ export function CheckoutPage() {
                   </div>
                 </label>
                 {/* Financing */}
-                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${mode === 'financing' ? 'border-[#1E7D3B] bg-[#F0FAF4]' : 'border-[#E4E8E6] hover:border-[#1E7D3B]/30'} ${!canFinance ? 'opacity-50' : ''}`}>
+                <label className={`flex items-center gap-3 p-3.5 sm:p-4 rounded-xl border cursor-pointer transition-all ${mode === 'financing' ? 'border-[#1E7D3B] bg-[#F0FAF4]' : 'border-[#E4E8E6] hover:border-[#1E7D3B]/30'} ${!canFinance ? 'opacity-50' : ''}`}>
                   <input type="radio" name="mode" checked={mode === 'financing'} onChange={() => setMode('financing')} disabled={!canFinance} className="text-[#1E7D3B]" />
                   <div className="flex-1">
                     <div className="font-600 text-sm text-[#10212B]">Sari-Fi Financing</div>
@@ -361,7 +361,7 @@ export function CheckoutPage() {
                 </label>
                 {/* Split */}
                 {canSplit && (
-                  <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${mode === 'split' ? 'border-[#1E7D3B] bg-[#F0FAF4]' : 'border-[#E4E8E6] hover:border-[#1E7D3B]/30'}`}>
+                  <label className={`flex items-center gap-3 p-3.5 sm:p-4 rounded-xl border cursor-pointer transition-all ${mode === 'split' ? 'border-[#1E7D3B] bg-[#F0FAF4]' : 'border-[#E4E8E6] hover:border-[#1E7D3B]/30'}`}>
                     <input type="radio" name="mode" checked={mode === 'split'} onChange={() => setMode('split')} className="text-[#1E7D3B]" />
                     <div>
                       <div className="font-600 text-sm text-[#10212B]">Split Payment</div>
@@ -374,11 +374,11 @@ export function CheckoutPage() {
 
             {/* Financing details */}
             {(mode === 'financing' || mode === 'split') && (
-              <div className="bg-white rounded-2xl border border-[#E4E8E6] p-5">
+              <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5">
                 <div className="font-700 text-sm text-[#10212B] mb-4">Financing Plan</div>
 
                 {mode === 'split' && (
-                  <div className="bg-[#F7F8F6] rounded-xl p-4 mb-4 space-y-2">
+                  <div className="bg-[#F7F8F6] rounded-xl p-3.5 sm:p-4 mb-4 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-[#65727A]">Financed (credit)</span>
                       <span className="font-700 text-[#10212B]">{formatPHP(financingAmount)}</span>
@@ -394,7 +394,7 @@ export function CheckoutPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
                   {[1, 2].map(p => (
                     <label key={p} className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${plan === p ? 'border-[#1E7D3B] bg-[#F0FAF4]' : 'border-[#E4E8E6]'}`}>
                       <input type="radio" name="plan" checked={plan === p} onChange={() => setPlan(p as 1 | 2)} className="text-[#1E7D3B]" />

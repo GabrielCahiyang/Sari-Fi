@@ -53,9 +53,9 @@ export function SettingsPage() {
       <div className="max-w-3xl space-y-6">
         <form onSubmit={handleSave} className="space-y-6">
           {/* Financing Settings */}
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-6">
-            <div className="font-700 text-base text-[#10212B] mb-5">Financing Settings</div>
-            <div className="grid grid-cols-2 gap-5">
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-6">
+            <div className="font-700 text-base text-[#10212B] mb-4 sm:mb-5">Financing Settings</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               {[
                 { key: 'financingCharge', label: 'Financing Charge (%)', hint: 'Applied to principal amount', min: 1, max: 100 },
                 { key: 'startingCreditLimit', label: 'Starting Credit Limit (₱)', hint: 'Default for new customers', min: 1000, max: 50000 },
@@ -79,9 +79,9 @@ export function SettingsPage() {
           </div>
 
           {/* Penalty */}
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-6">
-            <div className="font-700 text-base text-[#10212B] mb-5">Overdue Penalty</div>
-            <div className="grid grid-cols-2 gap-5">
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-6">
+            <div className="font-700 text-base text-[#10212B] mb-4 sm:mb-5">Overdue Penalty</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               <div>
                 <label className="text-xs font-600 text-[#65727A]">Weekly Overdue Penalty (%)</label>
                 <input
@@ -104,9 +104,9 @@ export function SettingsPage() {
           </div>
 
           {/* Plans */}
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-6">
-            <div className="font-700 text-base text-[#10212B] mb-5">Repayment Plans</div>
-            <div className="grid grid-cols-2 gap-5">
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-6">
+            <div className="font-700 text-base text-[#10212B] mb-4 sm:mb-5">Repayment Plans</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               <div>
                 <label className="text-xs font-600 text-[#65727A]">1-Month Plan — Installments</label>
                 <input type="number" value={settings.plan1Installments} onChange={e => update('plan1Installments', parseInt(e.target.value))} min={1} max={12} className="mt-1 w-full px-3 py-2.5 border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B] font-600" />
@@ -119,9 +119,9 @@ export function SettingsPage() {
           </div>
 
           {/* Live Preview */}
-          <div className="bg-[#0D2B45] rounded-2xl p-6">
+          <div className="bg-[#0D2B45] rounded-2xl p-4 sm:p-6">
             <div className="font-700 text-sm text-white mb-4">Live Calculation Preview (₱5,000 example)</div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
               {[
                 ['Principal', formatPHP(principal)],
                 [`Finance Charge (${settings.financingCharge}%)`, formatPHP(charge)],

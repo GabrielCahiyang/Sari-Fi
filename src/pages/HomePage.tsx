@@ -445,11 +445,11 @@ export function HomePage() {
             </div>
 
             {/* Live Indicator */}
-            <div className="absolute -bottom-6 -right-6 bg-[#1E7D3B] text-white rounded-3xl p-5 shadow-2xl min-w-[240px] border border-white/20">
+            <div className="sm:absolute sm:-bottom-6 sm:-right-6 mt-4 sm:mt-0 bg-[#1E7D3B] text-white rounded-3xl p-4 sm:p-5 shadow-2xl w-full sm:w-auto sm:min-w-[240px] border border-white/20">
               <div className="text-white/70 text-[10px] font-700 uppercase tracking-widest mb-1">
                 Available Credit
               </div>
-              <div className="text-white font-900 text-3xl tnum">{peso(LIMIT - used)}</div>
+              <div className="text-white font-900 text-2xl sm:text-3xl tnum">{peso(LIMIT - used)}</div>
               <div className="mt-3 bg-white/20 rounded-full h-2 overflow-hidden">
                 <motion.div
                   className="bg-white h-2 rounded-full"
@@ -644,9 +644,9 @@ export function HomePage() {
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               />
             </div>
-            <div className="absolute top-5 -left-5 bg-white rounded-2xl p-4 shadow-xl border border-[#E4E8E6]">
+            <div className="absolute top-4 left-4 sm:top-5 sm:-left-5 bg-white rounded-2xl p-3.5 sm:p-4 shadow-xl border border-[#E4E8E6]">
               <div className="text-xs text-[#65727A] mb-0.5">Starting limit</div>
-              <div className="text-[#0D2B45] font-800 text-xl">₱5,000</div>
+              <div className="text-[#0D2B45] font-800 text-lg sm:text-xl">₱5,000</div>
               <div className="text-xs text-[#7DBE4C] font-600 mt-1">↑ Grows with every cycle</div>
             </div>
           </motion.div>

@@ -100,7 +100,100 @@ export function OrdersManagementPage() {
           <div className="px-5 py-3 border-b border-[#F7F8F6] flex items-center justify-between">
             <div className="text-sm font-700 text-[#10212B]">Orders ({orders.length})</div>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-[#F7F8F6]">
+            {orders.map(order => {
+              const customer = getCustomer(order.customerId);
+              const cashPay = state.payments.find(p => p.orderId === order.id && p.method === 'cash' && p.status === 'pending');
+              const orderItems = Array.isArray(order.items) ? order.items : order.items ? Object.values(order.items) : [];
+              return (
+                <div key={order.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-700 text-sm text-[#10212B]">{order.orderNo || order.id || '—'}</div>
+                      <div className="text-xs text-[#65727A]">
+                        {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                      </div>
+                    </div>
+                    <OrderStatusBadge status={order.status} />
+                  </div>
+
+                  <div className="bg-[#F7F8F6] p-3 rounded-xl space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-[#65727A]">Customer:</span>
+                      <span className="font-600 text-[#10212B] truncate max-w-[180px] text-right">
+                        {customer?.fullName || 'Walk-in / Unregistered'}
+                      </span>
+                    </div>
+                    {customer?.storeName && (
+                      <div className="flex justify-between">
+                        <span className="text-[#65727A]">Store:</span>
+                        <span className="text-[#10212B] truncate max-w-[180px] text-right">{customer.storeName}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-[#65727A]">Items:</span>
+                      <span className="font-600 text-[#10212B]">{orderItems.length} items</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#65727A]">Payment:</span>
+                      <span className="capitalize font-600 text-[#0D2B45]">{order.paymentType || '—'}</span>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-[#E4E8E6]">
+                      <span className="font-700 text-[#10212B]">Total:</span>
+                      <span className="font-800 text-sm text-[#0D2B45]">{formatPHP(order.total)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-1 flex items-center justify-end">
+                    {order.status === 'completed' || order.status === 'cancelled' ? (
+                      <span className="text-[#65727A] text-xs font-500">—</span>
+                    ) : order.status === 'pending_financing' ? (
+                      role === 'admin' || role === 'supervisor' ? (
+                        <button
+                          onClick={() => navigate(role === 'admin' ? 'admin/financing' : 'supervisor/financing')}
+                          className="w-full py-2 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-600 rounded-xl hover:bg-amber-100 transition-all cursor-pointer text-center"
+                        >
+                          Review Financing →
+                        </button>
+                      ) : (
+                        <span className="text-amber-600 text-xs font-500">Awaiting Approval</span>
+                      )
+                    ) : cashPay ? (
+                      <button
+                        onClick={() => handleConfirmCash(cashPay.id, order.id)}
+                        className="w-full py-2 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
+                      >
+                        Confirm Cash & Complete
+                      </button>
+                    ) : (
+                      <div className="flex gap-2 w-full">
+                        <button
+                          onClick={() => updateStatus(order.id, 'completed')}
+                          className="flex-1 py-2 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
+                        >
+                          Complete
+                        </button>
+                        <button
+                          onClick={() => updateStatus(order.id, 'cancelled')}
+                          className="px-4 py-2 bg-red-50 text-red-600 border border-red-200 text-xs font-600 rounded-xl hover:bg-red-100 transition-all cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {orders.length === 0 && (
+              <div className="text-center py-12 text-[#65727A] text-sm">No orders found</div>
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full">
               <thead>
                 <tr className="text-[11px] font-700 text-[#65727A] uppercase tracking-wider border-b border-[#F7F8F6]">

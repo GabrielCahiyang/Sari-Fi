@@ -34,6 +34,8 @@
 
 html, body, #root {
   height: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   font-family: 'Plus Jakarta Sans', sans-serif;
   background-color: #F7F8F6;
   color: #10212B;

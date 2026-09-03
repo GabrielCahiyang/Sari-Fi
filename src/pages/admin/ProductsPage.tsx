@@ -312,7 +312,7 @@ export function ProductsPage() {
 
   const renderFormFields = (isEdit: boolean) => (
     <form onSubmit={e => handleSubmitForm(e, isEdit)} className="space-y-4" noValidate>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <label className="text-xs font-600 text-[#65727A]">
             Product Name <span className="text-red-500">*</span>
@@ -511,8 +511,8 @@ export function ProductsPage() {
   return (
     <InternalLayout title="Products">
       <div className="space-y-5">
-        <div className="flex gap-3">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3">
+          <div className="relative flex-1 min-w-[200px]">
             <svg className="absolute left-3.5 top-3.5 w-4 h-4 text-[#65727A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -524,37 +524,93 @@ export function ProductsPage() {
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
             />
           </div>
-          <select
-            value={categoryFilter}
-            onChange={e => setCategoryFilter(e.target.value)}
-            className="px-4 py-2.5 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none cursor-pointer"
-          >
-            <option value="All">All Categories</option>
-            {availableCategoryNames.map(c => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => setShowCategoriesModal(true)}
-            className="px-4 py-2.5 bg-white border border-[#E4E8E6] text-[#0D2B45] font-600 text-sm rounded-xl hover:bg-[#F7F8F6] transition-all cursor-pointer shrink-0 shadow-sm flex items-center gap-2"
-          >
-            <span>🏷️ Categories</span>
-            <span className="text-xs bg-[#E4E8E6] px-1.5 py-0.5 rounded-full text-[#65727A]">
-              {availableCategoryNames.length}
-            </span>
-          </button>
-          <button
-            onClick={handleOpenAdd}
-            className="px-4 py-2.5 bg-[#1E7D3B] text-white font-600 text-sm rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shrink-0 shadow-sm shadow-[#1E7D3B]/20"
-          >
-            + Add Product
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              className="px-3.5 py-2.5 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none cursor-pointer"
+            >
+              <option value="All">All Categories</option>
+              {availableCategoryNames.map(c => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => setShowCategoriesModal(true)}
+              className="px-3.5 py-2.5 bg-white border border-[#E4E8E6] text-[#0D2B45] font-600 text-sm rounded-xl hover:bg-[#F7F8F6] transition-all cursor-pointer shrink-0 shadow-sm flex items-center gap-1.5"
+            >
+              <span>🏷️</span>
+              <span className="hidden sm:inline">Categories</span>
+              <span className="text-xs bg-[#E4E8E6] px-1.5 py-0.5 rounded-full text-[#65727A]">
+                {availableCategoryNames.length}
+              </span>
+            </button>
+            <button
+              onClick={handleOpenAdd}
+              className="px-4 py-2.5 bg-[#1E7D3B] text-white font-600 text-sm rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shrink-0 shadow-sm shadow-[#1E7D3B]/20"
+            >
+              + Add Product
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-[#F7F8F6]">
+            {products.map(p => (
+              <div key={p.id} className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  {p.imageUrl ? (
+                    <img src={p.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover border border-[#E4E8E6] shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-[#F7F8F6] flex items-center justify-center text-sm text-[#65727A] font-700 shrink-0">
+                      {p.name.charAt(0)}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-700 text-sm text-[#10212B] truncate">{p.name}</div>
+                    <div className="text-xs text-[#65727A]">{p.sku} · {p.category}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="font-800 text-sm text-[#0D2B45]">{formatPHP(p.sellingPrice)}</span>
+                      <span className="text-[11px] text-[#65727A]">Cost: {formatPHP(p.costPrice)}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <StockBadge stock={p.stock} reorderLevel={p.reorderLevel} />
+                    <Badge variant={p.status === 'active' ? 'green' : 'gray'} size="sm">{p.status}</Badge>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-[#F7F8F6]">
+                  <span className="text-xs text-[#65727A]">Stock: <b className="text-[#10212B]">{p.stock} units</b></span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setEditProduct(p)}
+                      className="px-2.5 py-1 bg-[#F7F8F6] hover:bg-[#E4E8E6] text-[#1E7D3B] text-xs font-600 rounded-lg cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setDeleteProductTarget(p)}
+                      className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-600 rounded-lg cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {products.length === 0 && (
+              <div className="p-8 text-center text-xs text-[#65727A]">
+                No products found. Click "+ Add Product" to add one.
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full">
               <thead>
                 <tr className="text-[11px] font-700 text-[#65727A] uppercase tracking-wider border-b border-[#F7F8F6] bg-[#F7F8F6]">

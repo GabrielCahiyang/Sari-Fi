@@ -21,6 +21,7 @@ export function POSPage() {
   const [custQuery, setCustQuery] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'catalog' | 'ticket'>('catalog');
 
   // Checkout state
   const [mode, setMode] = useState<Mode>('cash');
@@ -221,9 +222,30 @@ export function POSPage() {
 
   return (
     <InternalLayout title="Point of Sale">
-      <div className="grid grid-cols-12 gap-5 h-[calc(100vh-8.5rem)]">
+      {/* Mobile View Toggle */}
+      <div className="lg:hidden flex items-center bg-[#E4E8E6] p-1 rounded-xl mb-3">
+        <button
+          onClick={() => setMobileTab('catalog')}
+          className={`flex-1 py-2 text-xs font-700 rounded-lg transition-all cursor-pointer ${
+            mobileTab === 'catalog' ? 'bg-white text-[#0D2B45] shadow-xs' : 'text-[#65727A]'
+          }`}
+        >
+          Catalog ({filtered.length})
+        </button>
+        <button
+          onClick={() => setMobileTab('ticket')}
+          className={`flex-1 py-2 text-xs font-700 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobileTab === 'ticket' ? 'bg-white text-[#0D2B45] shadow-xs' : 'text-[#65727A]'
+          }`}
+        >
+          <span>Ticket ({ticketCount})</span>
+          {ticketCount > 0 && <span className="text-[#1E7D3B]">· {formatPHP(total)}</span>}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-12 gap-4 lg:gap-5 h-auto lg:h-[calc(100vh-8.5rem)] relative pb-16 lg:pb-0">
         {/* ---------- Catalog ---------- */}
-        <div className="col-span-12 lg:col-span-8 flex flex-col min-h-0">
+        <div className={`col-span-12 lg:col-span-8 flex flex-col min-h-0 ${mobileTab === 'catalog' ? 'flex' : 'hidden lg:flex'}`}>
           {/* Search + categories */}
           <div className="mb-4">
             <div className="relative mb-3">
@@ -240,7 +262,7 @@ export function POSPage() {
                 <button
                   key={cat}
                   onClick={() => setCategory(cat)}
-                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-600 transition-all border ${
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-600 transition-all border cursor-pointer ${
                     category === cat ? 'bg-[#0D2B45] text-white border-[#0D2B45]' : 'bg-white text-[#65727A] border-[#E4E8E6] hover:border-[#0D2B45]/30 hover:text-[#0D2B45]'
                   }`}
                 >{cat}</button>
@@ -251,7 +273,7 @@ export function POSPage() {
           {/* Product grid */}
           <div className="flex-1 overflow-y-auto -mx-1 px-1">
             {filtered.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 stagger">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3 stagger">
                 {filtered.map(product => {
                   const qty = lines[product.id] || 0;
                   const out = product.stock <= 0;
@@ -260,7 +282,7 @@ export function POSPage() {
                       key={product.id}
                       disabled={out}
                       onClick={() => addLine(product.id, 1)}
-                      className={`text-left bg-white rounded-2xl border p-3.5 flex flex-col transition-all card-lift ${
+                      className={`text-left bg-white rounded-2xl border p-3.5 flex flex-col transition-all card-lift cursor-pointer ${
                         qty > 0 ? 'border-[#1E7D3B] ring-2 ring-[#1E7D3B]/15' : 'border-[#E4E8E6] hover:border-[#1E7D3B]/40'
                       } ${out ? 'opacity-45 cursor-not-allowed' : ''}`}
                     >
@@ -269,7 +291,7 @@ export function POSPage() {
                         {qty > 0 && <span className="shrink-0 bg-[#1E7D3B] text-white text-[11px] font-800 min-w-[20px] h-5 px-1 inline-flex items-center justify-center rounded-lg tnum">{qty}</span>}
                       </div>
                       <div className="font-700 text-sm text-[#10212B] leading-tight mb-1 flex-1 line-clamp-2">{product.name}</div>
-                      <div className="text-lg font-800 text-[#0D2B45] tnum">{formatPHP(product.sellingPrice)}</div>
+                      <div className="text-base sm:text-lg font-800 text-[#0D2B45] tnum">{formatPHP(product.sellingPrice)}</div>
                       <div className={`text-[11px] font-600 mt-0.5 ${out ? 'text-red-500' : product.stock <= product.reorderLevel ? 'text-amber-600' : 'text-[#65727A]'}`}>
                         {out ? 'Out of stock' : `${product.stock} in stock`}
                       </div>
@@ -284,10 +306,23 @@ export function POSPage() {
               </div>
             )}
           </div>
+
+          {/* Mobile Floating Cart Summary */}
+          {ticketCount > 0 && (
+            <div className="lg:hidden fixed bottom-4 inset-x-4 z-20">
+              <button
+                onClick={() => setMobileTab('ticket')}
+                className="w-full py-3.5 px-5 bg-[#0D2B45] text-white rounded-2xl shadow-xl flex items-center justify-between font-700 text-sm cursor-pointer"
+              >
+                <span>{ticketCount} {ticketCount === 1 ? 'item' : 'items'} · {formatPHP(total)}</span>
+                <span className="flex items-center gap-1 text-[#7DBE4C]">View Ticket →</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ---------- Ticket ---------- */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col min-h-0 bg-white rounded-2xl border border-[#E4E8E6] shadow-soft-md overflow-hidden">
+        <div className={`col-span-12 lg:col-span-4 flex flex-col min-h-0 bg-white rounded-2xl border border-[#E4E8E6] shadow-soft-md overflow-hidden ${mobileTab === 'ticket' ? 'flex' : 'hidden lg:flex'}`}>
           {/* Customer selector */}
           <div className="p-4 border-b border-[#E4E8E6] bg-gradient-to-br from-[#0D2B45] to-[#0a2237]">
             {customer ? (
@@ -395,17 +430,17 @@ export function POSPage() {
       <Modal open={checkoutOpen} onClose={() => !processing && setCheckoutOpen(false)} title="Checkout" size="lg">
         {customer && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between bg-[#F7F8F6] rounded-xl p-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F7F8F6] rounded-xl p-3">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#1E7D3B] flex items-center justify-center text-white font-800 text-sm">{customer.fullName.charAt(0)}</div>
-                <div>
-                  <div className="text-sm font-700 text-[#10212B]">{customer.fullName}</div>
-                  <div className="text-[11px] text-[#65727A]">{customer.storeName} · {formatPHP(available)} available credit</div>
+                <div className="w-9 h-9 rounded-xl bg-[#1E7D3B] flex items-center justify-center text-white font-800 text-sm shrink-0">{customer.fullName.charAt(0)}</div>
+                <div className="min-w-0">
+                  <div className="text-sm font-700 text-[#10212B] truncate">{customer.fullName}</div>
+                  <div className="text-[11px] text-[#65727A] truncate">{customer.storeName} · {formatPHP(available)} credit</div>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-[#E4E8E6] flex sm:flex-col justify-between sm:justify-start items-center sm:items-end">
                 <div className="text-[11px] text-[#65727A]">{ticketCount} items</div>
-                <div className="text-xl font-800 text-[#0D2B45] tnum">{formatPHP(total)}</div>
+                <div className="text-lg sm:text-xl font-800 text-[#0D2B45] tnum">{formatPHP(total)}</div>
               </div>
             </div>
 
@@ -433,7 +468,7 @@ export function POSPage() {
             {(mode === 'financing' || mode === 'split') && (
               <div className="bg-[#F7F8F6] rounded-xl p-4">
                 <div className="font-700 text-xs text-[#10212B] uppercase tracking-wider mb-3">Financing Plan</div>
-                <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                   {[1, 2].map(p => (
                     <label key={p} className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${plan === p ? 'border-[#1E7D3B] bg-white' : 'border-[#E4E8E6] bg-white'}`}>
                       <input type="radio" name="posplan" checked={plan === p} onChange={() => setPlan(p as 1 | 2)} className="text-[#1E7D3B]" />

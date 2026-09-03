@@ -151,26 +151,26 @@ export function FinancingPage() {
 
   return (
     <CustomerLayout>
-      <div className="max-w-5xl mx-auto p-6">
+      <div className="max-w-5xl mx-auto p-3.5 sm:p-6">
         {/* Header Bento */}
-        <h1 className="text-2xl font-800 text-[#0D2B45] mb-5">My Financing</h1>
+        <h1 className="text-xl sm:text-2xl font-800 text-[#0D2B45] mb-4 sm:mb-5">My Financing</h1>
 
-        <div className="grid grid-cols-12 gap-4 mb-6">
-          <div className="col-span-6 md:col-span-3 bg-[#1E7D3B] rounded-2xl p-4">
-            <div className="text-white/70 text-xs font-600 uppercase tracking-wider">Available Credit</div>
-            <div className="text-white font-800 text-2xl mt-1">{formatPHP(available)}</div>
+        <div className="grid grid-cols-12 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="col-span-6 md:col-span-3 bg-[#1E7D3B] rounded-2xl p-3.5 sm:p-4">
+            <div className="text-white/70 text-[11px] sm:text-xs font-600 uppercase tracking-wider">Available Credit</div>
+            <div className="text-white font-800 text-xl sm:text-2xl mt-1 truncate">{formatPHP(available)}</div>
           </div>
-          <div className="col-span-6 md:col-span-3 bg-white rounded-2xl p-4 border border-[#E4E8E6]">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Credit Limit</div>
-            <div className="text-[#0D2B45] font-800 text-2xl mt-1">{formatPHP(customer.creditLimit)}</div>
+          <div className="col-span-6 md:col-span-3 bg-white rounded-2xl p-3.5 sm:p-4 border border-[#E4E8E6]">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Credit Limit</div>
+            <div className="text-[#0D2B45] font-800 text-xl sm:text-2xl mt-1 truncate">{formatPHP(customer.creditLimit)}</div>
           </div>
-          <div className="col-span-6 md:col-span-3 bg-white rounded-2xl p-4 border border-[#E4E8E6]">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Used Credit</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-1">{formatPHP(customer.usedCredit)}</div>
+          <div className="col-span-6 md:col-span-3 bg-white rounded-2xl p-3.5 sm:p-4 border border-[#E4E8E6]">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Used Credit</div>
+            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 truncate">{formatPHP(customer.usedCredit)}</div>
           </div>
-          <div className="col-span-6 md:col-span-3 bg-[#FFF8E1] rounded-2xl p-4 border border-[#FFC107]/30">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Outstanding</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-1">{formatPHP(Math.round(totalOutstanding))}</div>
+          <div className="col-span-6 md:col-span-3 bg-[#FFF8E1] rounded-2xl p-3.5 sm:p-4 border border-[#FFC107]/30">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Outstanding</div>
+            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 truncate">{formatPHP(Math.round(totalOutstanding))}</div>
           </div>
         </div>
 
@@ -190,7 +190,7 @@ export function FinancingPage() {
               const nextDue = fin.schedule.find(s => s.status === 'due' || s.status === 'overdue');
               return (
                 <div key={fin.id} className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden">
-                  <div className="p-5">
+                  <div className="p-4 sm:p-5">
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <div className="font-800 text-base text-[#10212B]">{fin.financingNo}</div>
@@ -201,18 +201,18 @@ export function FinancingPage() {
                       <FinancingStatusBadge status={fin.status} />
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 bg-[#F7F8F6] p-3 rounded-xl">
                       <div>
-                        <div className="text-xs text-[#65727A]">Principal</div>
-                        <div className="font-700 text-sm text-[#10212B]">{formatPHP(fin.principal)}</div>
+                        <div className="text-[10px] sm:text-xs text-[#65727A]">Principal</div>
+                        <div className="font-700 text-xs sm:text-sm text-[#10212B] truncate">{formatPHP(fin.principal)}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-[#65727A]">Total Repayable</div>
-                        <div className="font-700 text-sm text-[#10212B]">{formatPHP(fin.totalRepayable)}</div>
+                        <div className="text-[10px] sm:text-xs text-[#65727A]">Repayable</div>
+                        <div className="font-700 text-xs sm:text-sm text-[#10212B] truncate">{formatPHP(fin.totalRepayable)}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-[#65727A]">Remaining</div>
-                        <div className={`font-700 text-sm ${remaining > 0 ? 'text-[#10212B]' : 'text-[#1E7D3B]'}`}>{remaining > 0 ? formatPHP(remaining) : 'Fully Paid'}</div>
+                        <div className="text-[10px] sm:text-xs text-[#65727A]">Remaining</div>
+                        <div className={`font-700 text-xs sm:text-sm truncate ${remaining > 0 ? 'text-[#10212B]' : 'text-[#1E7D3B]'}`}>{remaining > 0 ? formatPHP(remaining) : 'Fully Paid'}</div>
                       </div>
                     </div>
 
@@ -232,8 +232,8 @@ export function FinancingPage() {
                     )}
 
                     {(fin.status === 'active' || fin.status === 'overdue') && nextDue && (
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                        <div className="text-xs sm:text-sm">
                           <span className="text-[#65727A]">Next due: </span>
                           <span className="font-700 text-[#10212B]">{formatPHP(nextDue.baseAmount + nextDue.penalty)}</span>
                           <span className="text-[#65727A]"> on {new Date(nextDue.dueDate).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</span>
@@ -242,13 +242,13 @@ export function FinancingPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => { setSelectedFin(fin.id); setPayWeekNo(nextDue.weekNo); }}
-                            className="px-3 py-1.5 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all"
+                            className="flex-1 sm:flex-initial px-3 py-2 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer text-center"
                           >
                             Pay Installment
                           </button>
                           <button
                             onClick={() => { setSelectedFin(fin.id); setPayFull(true); }}
-                            className="px-3 py-1.5 bg-[#0D2B45] text-white text-xs font-600 rounded-xl hover:bg-[#1a3d5c] transition-all"
+                            className="flex-1 sm:flex-initial px-3 py-2 bg-[#0D2B45] text-white text-xs font-600 rounded-xl hover:bg-[#1a3d5c] transition-all cursor-pointer text-center"
                           >
                             Pay Full Balance
                           </button>

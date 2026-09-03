@@ -90,6 +90,7 @@ interface InternalLayoutProps {
 export function InternalLayout({ children, title }: InternalLayoutProps) {
   const { state, navigate, logout } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const role = state.currentUser?.role || 'employee';
   const nav = buildNav(role);
 
@@ -97,30 +98,55 @@ export function InternalLayout({ children, title }: InternalLayoutProps) {
   const pendingFinancingCount = state.financing.filter(f => f.status === 'pending').length;
 
   return (
-    <div className="flex h-full bg-[#F7F8F6]">
+    <div className="flex h-full bg-[#F7F8F6] relative overflow-hidden">
+      {/* Mobile Backdrop */}
+      {mobileDrawerOpen && (
+        <div
+          onClick={() => setMobileDrawerOpen(false)}
+          className="fixed inset-0 bg-[#0D2B45]/60 backdrop-blur-xs z-40 md:hidden transition-opacity"
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`flex flex-col bg-gradient-to-b from-[#0D2B45] to-[#0a2237] text-white transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${sidebarOpen ? 'w-64' : 'w-16'} shrink-0 shadow-soft-lg relative z-10`}>
-        {/* Logo */}
-        <div className="px-4 py-4 border-b border-white/10">
-          {sidebarOpen ? (
+      <aside
+        className={`flex flex-col bg-gradient-to-b from-[#0D2B45] to-[#0a2237] text-white transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] shadow-soft-lg z-50
+          fixed inset-y-0 left-0 ${mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static md:z-10
+          ${sidebarOpen ? 'w-64' : 'w-64 md:w-16'} shrink-0`}
+      >
+        {/* Logo & Mobile Close */}
+        <div className="px-4 py-4 border-b border-white/10 flex items-center justify-between">
+          {(sidebarOpen || mobileDrawerOpen) ? (
             <div>
               <div className="bg-white rounded-xl px-3 py-2 inline-block">
                 <img src={logo} alt="Sari-Fi" className="h-7 object-contain" />
               </div>
-              <div className="text-[10px] text-white/40 uppercase tracking-wider mt-2 px-1">{role === 'admin' ? 'Admin Portal' : role === 'supervisor' ? 'Supervisor' : 'Employee'}</div>
+              <div className="text-[10px] text-white/40 uppercase tracking-wider mt-2 px-1">
+                {role === 'admin' ? 'Admin Portal' : role === 'supervisor' ? 'Supervisor' : 'Employee'}
+              </div>
             </div>
           ) : (
             <div className="bg-white rounded-xl p-1.5 flex items-center justify-center">
               <img src={logo} alt="Sari-Fi" className="w-8 h-8 object-contain" />
             </div>
           )}
+
+          {/* Close button inside mobile drawer */}
+          <button
+            onClick={() => setMobileDrawerOpen(false)}
+            className="md:hidden text-white/60 hover:text-white p-2 rounded-lg"
+            aria-label="Close menu"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
           {nav.sections.map((section, si) => (
             <div key={si} className={si > 0 ? 'mt-4' : ''}>
-              {section.label && sidebarOpen && (
+              {section.label && (sidebarOpen || mobileDrawerOpen) && (
                 <div className="text-[10px] font-700 text-white/40 uppercase tracking-widest px-2 mb-1">{section.label}</div>
               )}
               {section.items.map(item => {
@@ -128,17 +154,20 @@ export function InternalLayout({ children, title }: InternalLayoutProps) {
                 return (
                   <button
                     key={item.page}
-                    onClick={() => navigate(item.page)}
-                    className={`group relative w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-500 transition-all duration-200 ${active ? 'bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]' : 'text-white/55 hover:bg-white/[0.07] hover:text-white'}`}
+                    onClick={() => {
+                      navigate(item.page);
+                      setMobileDrawerOpen(false);
+                    }}
+                    className={`group relative w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-500 transition-all duration-200 cursor-pointer ${active ? 'bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]' : 'text-white/55 hover:bg-white/[0.07] hover:text-white'}`}
                   >
                     {/* Active accent bar */}
                     <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-[#7DBE4C] transition-all duration-200 ${active ? 'h-5 opacity-100' : 'h-0 opacity-0'}`} />
                     <span className={`shrink-0 transition-colors ${active ? 'text-[#7DBE4C]' : 'text-white/55 group-hover:text-[#7DBE4C]'}`}>{item.icon}</span>
-                    {sidebarOpen && <span className="truncate">{item.label}</span>}
-                    {sidebarOpen && item.label === 'Financing' && pendingFinancingCount > 0 && (role === 'supervisor' || role === 'admin') && (
+                    {(sidebarOpen || mobileDrawerOpen) && <span className="truncate">{item.label}</span>}
+                    {(sidebarOpen || mobileDrawerOpen) && item.label === 'Financing' && pendingFinancingCount > 0 && (role === 'supervisor' || role === 'admin') && (
                       <span className="ml-auto bg-[#FFC107] text-[#0D2B45] text-[10px] font-800 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-md tnum">{pendingFinancingCount}</span>
                     )}
-                    {sidebarOpen && item.label === 'Payments' && pendingCashCount > 0 && (
+                    {(sidebarOpen || mobileDrawerOpen) && item.label === 'Payments' && pendingCashCount > 0 && (
                       <span className="ml-auto bg-[#FFC107] text-[#0D2B45] text-[10px] font-800 min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-md tnum">{pendingCashCount}</span>
                     )}
                   </button>
@@ -154,14 +183,14 @@ export function InternalLayout({ children, title }: InternalLayoutProps) {
             <div className="w-9 h-9 bg-gradient-to-br from-[#22913f] to-[#1E7D3B] rounded-xl flex items-center justify-center shrink-0 text-white font-700 text-sm ring-1 ring-white/10 shadow-soft-sm">
               {state.currentUser?.name.charAt(0)}
             </div>
-            {sidebarOpen && (
+            {(sidebarOpen || mobileDrawerOpen) && (
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-600 text-white truncate">{state.currentUser?.name}</div>
                 <div className="text-[11px] text-white/50 capitalize">{role}</div>
               </div>
             )}
-            {sidebarOpen && (
-              <button onClick={logout} className="text-white/40 hover:text-white transition-colors p-1">
+            {(sidebarOpen || mobileDrawerOpen) && (
+              <button onClick={logout} className="text-white/40 hover:text-white transition-colors p-1 cursor-pointer" title="Sign Out">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
               </button>
             )}
@@ -172,23 +201,47 @@ export function InternalLayout({ children, title }: InternalLayoutProps) {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Topbar */}
-        <header className="flex items-center gap-4 px-6 py-4 bg-white/80 backdrop-blur-md border-b border-[#E4E8E6] shrink-0 z-[5]">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-[#65727A] hover:text-[#0D2B45] hover:bg-[#F7F8F6] -ml-1.5 p-1.5 rounded-lg transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+        <header className="flex items-center gap-3 sm:gap-4 px-3.5 sm:px-6 py-3 sm:py-4 bg-white/80 backdrop-blur-md border-b border-[#E4E8E6] shrink-0 z-[5]">
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setMobileDrawerOpen(true)}
+            className="md:hidden text-[#65727A] hover:text-[#0D2B45] hover:bg-[#F7F8F6] p-1.5 rounded-lg transition-colors cursor-pointer"
+            aria-label="Open menu"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
           </button>
-          {title && <h1 className="text-lg font-800 text-[#10212B] tracking-tight">{title}</h1>}
-          <div className="ml-auto flex items-center gap-3">
+
+          {/* Desktop sidebar toggle */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="hidden md:block text-[#65727A] hover:text-[#0D2B45] hover:bg-[#F7F8F6] -ml-1.5 p-1.5 rounded-lg transition-colors cursor-pointer"
+            aria-label="Toggle sidebar"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          {title && <h1 className="text-base sm:text-lg font-800 text-[#10212B] tracking-tight truncate">{title}</h1>}
+
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
             {(role === 'supervisor' || role === 'admin') && pendingFinancingCount > 0 && (
-              <button onClick={() => navigate(`${role}/financing`)} className="flex items-center gap-2 text-xs font-600 text-amber-800 bg-amber-50 ring-1 ring-amber-500/20 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors">
-                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full pulse-ring" />
-                {pendingFinancingCount} Pending Financing
+              <button
+                onClick={() => navigate(`${role}/financing`)}
+                className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-600 text-amber-800 bg-amber-50 ring-1 ring-amber-500/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full shrink-0 animate-pulse" />
+                <span className="hidden sm:inline">{pendingFinancingCount} Pending Financing</span>
+                <span className="sm:hidden">{pendingFinancingCount} Pending</span>
               </button>
             )}
           </div>
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-6">
           <div key={state.currentPage} className="animate-fade-up">
             {children}
           </div>

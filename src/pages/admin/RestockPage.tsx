@@ -134,7 +134,7 @@ export function RestockPage() {
     <InternalLayout title="Restock Center">
       <div className="space-y-5">
         {/* Bento */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <div className={`rounded-2xl p-4 border ${needsRestock.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}>
             <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Needs Restock</div>
             <div className="text-[#10212B] font-800 text-2xl mt-1">{needsRestock.length}</div>
@@ -150,13 +150,13 @@ export function RestockPage() {
         </div>
 
         {/* Tabs and Action */}
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
             {[
-              { key: 'needs-restock', label: 'Products Needing Restock' },
+              { key: 'needs-restock', label: 'Needing Restock' },
               { key: 'restock-orders', label: 'Restock Orders' },
             ].map(t => (
-              <button key={t.key} onClick={() => setTab(t.key as any)} className={`px-4 py-2 rounded-xl text-sm font-600 transition-all border ${tab === t.key ? 'bg-[#0D2B45] text-white border-[#0D2B45]' : 'bg-white text-[#65727A] border-[#E4E8E6] hover:border-[#0D2B45]/30'}`}>
+              <button key={t.key} onClick={() => setTab(t.key as any)} className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-600 transition-all border whitespace-nowrap ${tab === t.key ? 'bg-[#0D2B45] text-white border-[#0D2B45]' : 'bg-white text-[#65727A] border-[#E4E8E6] hover:border-[#0D2B45]/30'}`}>
                 {t.label}
               </button>
             ))}
@@ -164,7 +164,7 @@ export function RestockPage() {
 
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-[#1E7D3B] text-white text-xs font-700 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
+            className="px-4 py-2 bg-[#1E7D3B] text-white text-xs font-700 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20 self-start sm:self-auto shrink-0"
           >
             + Create Restock Order
           </button>
@@ -172,7 +172,47 @@ export function RestockPage() {
 
         {tab === 'needs-restock' && (
           <div className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-[#F7F8F6]">
+              {needsRestock.map(p => {
+                const supplier = getSupplier(p.supplierId);
+                const suggested = Math.max(p.reorderLevel * 2 - p.stock, p.reorderLevel);
+                return (
+                  <div key={p.id} className={`p-4 space-y-2.5 ${p.stock === 0 ? 'bg-red-50/20' : 'bg-amber-50/20'}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-700 text-sm text-[#10212B]">{p.name}</div>
+                        <div className="text-xs text-[#65727A]">{p.category} · Supplier: {supplier?.name || '—'}</div>
+                      </div>
+                      <span className={`font-800 text-lg ${p.stock === 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                        {p.stock} in stock
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-xs bg-white p-2.5 rounded-xl border border-[#E4E8E6]">
+                      <div>
+                        <span className="text-[#65727A] block text-[10px]">Reorder</span>
+                        <span className="font-600 text-[#10212B]">{p.reorderLevel}</span>
+                      </div>
+                      <div>
+                        <span className="text-[#65727A] block text-[10px]">Suggested</span>
+                        <span className="font-700 text-[#1E7D3B]">{suggested} units</span>
+                      </div>
+                      <div>
+                        <span className="text-[#65727A] block text-[10px]">Unit Cost</span>
+                        <span className="font-600 text-[#10212B]">{formatPHP(p.costPrice)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {needsRestock.length === 0 && (
+                <div className="text-center py-12 text-[#65727A] text-sm">All stock levels are good!</div>
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="overflow-x-auto hidden md:block">
               <table className="w-full">
                 <thead>
                   <tr className="text-[11px] font-700 text-[#65727A] uppercase tracking-wider border-b border-[#F7F8F6] bg-[#F7F8F6]">

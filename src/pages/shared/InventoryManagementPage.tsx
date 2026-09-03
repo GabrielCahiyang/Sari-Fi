@@ -42,7 +42,7 @@ export function InventoryManagementPage() {
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <svg className="absolute left-3.5 top-3.5 w-4 h-4 text-[#65727A]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products or SKU…" className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]" />
@@ -53,7 +53,43 @@ export function InventoryManagementPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-[#F7F8F6]">
+            {products.map(p => (
+              <div key={p.id} className="p-4 space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-700 text-sm text-[#10212B]">{p.name}</div>
+                    <div className="text-xs text-[#65727A] font-mono">{p.sku} · {p.category}</div>
+                  </div>
+                  <StockBadge stock={p.stock} reorderLevel={p.reorderLevel} />
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-xs bg-[#F7F8F6] p-2.5 rounded-xl">
+                  <div>
+                    <span className="text-[#65727A] block text-[10px]">Price</span>
+                    <span className="font-700 text-[#0D2B45]">{formatPHP(p.sellingPrice)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#65727A] block text-[10px]">In Stock</span>
+                    <span className={`font-800 ${p.stock === 0 ? 'text-red-500' : p.stock <= p.reorderLevel ? 'text-amber-500' : 'text-[#10212B]'}`}>
+                      {p.stock} units
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[#65727A] block text-[10px]">Reorder At</span>
+                    <span className="font-600 text-[#10212B]">{p.reorderLevel} units</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {products.length === 0 && (
+              <div className="text-center py-12 text-[#65727A] text-sm">No products found</div>
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full">
               <thead>
                 <tr className="text-[11px] font-700 text-[#65727A] uppercase tracking-wider border-b border-[#F7F8F6] bg-[#F7F8F6]">

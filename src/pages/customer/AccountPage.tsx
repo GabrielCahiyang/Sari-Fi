@@ -23,19 +23,19 @@ export function AccountPage() {
 
   return (
     <CustomerLayout>
-      <div className="max-w-3xl mx-auto p-6">
-        <h1 className="text-2xl font-800 text-[#0D2B45] mb-6">My Account</h1>
+      <div className="max-w-3xl mx-auto p-3.5 sm:p-6">
+        <h1 className="text-xl sm:text-2xl font-800 text-[#0D2B45] mb-4 sm:mb-6">My Account</h1>
 
         {/* Profile header */}
-        <div className="bg-[#0D2B45] rounded-2xl p-6 mb-5 flex items-center gap-5">
-          <div className="w-16 h-16 bg-[#1E7D3B] rounded-2xl flex items-center justify-center text-white font-800 text-2xl shrink-0">
+        <div className="bg-[#0D2B45] rounded-2xl p-4 sm:p-6 mb-4 sm:mb-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
+          <div className="w-14 sm:w-16 h-14 sm:h-16 bg-[#1E7D3B] rounded-2xl flex items-center justify-center text-white font-800 text-xl sm:text-2xl shrink-0">
             {customer.fullName.charAt(0)}
           </div>
-          <div className="flex-1">
-            <div className="text-white font-800 text-xl">{customer.fullName}</div>
-            <div className="text-[#7DBE4C] font-500 text-sm">{customer.storeName}</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-white font-800 text-lg sm:text-xl truncate">{customer.fullName}</div>
+            <div className="text-[#7DBE4C] font-500 text-xs sm:text-sm truncate">{customer.storeName}</div>
             <div className="flex items-center gap-2 mt-2">
-              <span className="text-white/50 text-xs">{customer.accountNo}</span>
+              <span className="text-white/50 text-xs font-mono">{customer.accountNo}</span>
               <Badge variant={customer.status === 'active' ? 'green' : 'red'} size="sm">
                 {customer.status === 'active' ? 'Active' : 'Suspended'}
               </Badge>
@@ -43,29 +43,29 @@ export function AccountPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-4 mb-5">
-          <div className="col-span-12 md:col-span-4 bg-[#1E7D3B] rounded-2xl p-4">
-            <div className="text-white/70 text-xs font-600 uppercase tracking-wider">Available Credit</div>
-            <div className="text-white font-800 text-2xl mt-1">{formatPHP(available)}</div>
+        <div className="grid grid-cols-12 gap-3 sm:gap-4 mb-4 sm:mb-5">
+          <div className="col-span-12 sm:col-span-4 bg-[#1E7D3B] rounded-2xl p-3.5 sm:p-4">
+            <div className="text-white/70 text-[11px] sm:text-xs font-600 uppercase tracking-wider">Available Credit</div>
+            <div className="text-white font-800 text-xl sm:text-2xl mt-1 truncate">{formatPHP(available)}</div>
             <div className="mt-2 bg-white/20 rounded-full h-1.5">
               <div className="bg-white h-1.5 rounded-full" style={{ width: `${availablePercent}%` }} />
             </div>
-            <div className="text-white/60 text-xs mt-1">{availablePercent}% of {formatPHP(customer.creditLimit)}</div>
+            <div className="text-white/60 text-[11px] mt-1">{availablePercent}% of {formatPHP(customer.creditLimit)}</div>
           </div>
-          <div className="col-span-6 md:col-span-4 bg-white rounded-2xl p-4 border border-[#E4E8E6]">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Credit Limit</div>
-            <div className="text-[#0D2B45] font-800 text-2xl mt-1">{formatPHP(customer.creditLimit)}</div>
+          <div className="col-span-6 sm:col-span-4 bg-white rounded-2xl p-3.5 sm:p-4 border border-[#E4E8E6]">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Credit Limit</div>
+            <div className="text-[#0D2B45] font-800 text-xl sm:text-2xl mt-1 truncate">{formatPHP(customer.creditLimit)}</div>
           </div>
-          <div className="col-span-6 md:col-span-4 bg-white rounded-2xl p-4 border border-[#E4E8E6]">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Used Credit</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-1">{formatPHP(customer.usedCredit)}</div>
+          <div className="col-span-6 sm:col-span-4 bg-white rounded-2xl p-3.5 sm:p-4 border border-[#E4E8E6]">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Used Credit</div>
+            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 truncate">{formatPHP(customer.usedCredit)}</div>
           </div>
         </div>
 
         {/* Personal info */}
-        <div className="bg-white rounded-2xl border border-[#E4E8E6] p-5 mb-4">
-          <div className="font-700 text-sm text-[#10212B] mb-4">Personal Information</div>
-          <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5 mb-4">
+          <div className="font-700 text-sm text-[#10212B] mb-3 sm:mb-4">Personal Information</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {[
               ['Full Name', customer.fullName],
               ['Phone', customer.phone],
@@ -74,16 +74,16 @@ export function AccountPage() {
             ].map(([label, value]) => (
               <div key={label}>
                 <div className="text-xs text-[#65727A] mb-0.5">{label}</div>
-                <div className="text-sm font-500 text-[#10212B]">{value}</div>
+                <div className="text-sm font-500 text-[#10212B] break-words">{value}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Store info */}
-        <div className="bg-white rounded-2xl border border-[#E4E8E6] p-5 mb-4">
-          <div className="font-700 text-sm text-[#10212B] mb-4">Store Information</div>
-          <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5 mb-4">
+          <div className="font-700 text-sm text-[#10212B] mb-3 sm:mb-4">Store Information</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {[
               ['Store Name', customer.storeName],
               ['Years Operating', `${customer.yearsOperating} years`],
@@ -91,7 +91,7 @@ export function AccountPage() {
             ].map(([label, value]) => (
               <div key={label}>
                 <div className="text-xs text-[#65727A] mb-0.5">{label}</div>
-                <div className="text-sm font-500 text-[#10212B]">{value}</div>
+                <div className="text-sm font-500 text-[#10212B] break-words">{value}</div>
               </div>
             ))}
           </div>

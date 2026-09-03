@@ -142,9 +142,84 @@ export function FinancingManagementPage() {
           ))}
         </div>
 
-        {/* Table */}
+        {/* Table & Cards */}
         <div className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-[#F7F8F6]">
+            {financing.map(fin => {
+              const customer = getCustomer(fin.customerId);
+              const paidInstallments = fin.schedule ? fin.schedule.filter(s => s.status === 'paid').length : 0;
+              return (
+                <div key={fin.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-700 text-sm text-[#10212B]">{fin.financingNo}</div>
+                      <div className="text-xs text-[#65727A]">
+                        {new Date(fin.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                    </div>
+                    <FinancingStatusBadge status={fin.status} />
+                  </div>
+
+                  <div className="bg-[#F7F8F6] p-3 rounded-xl space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-[#65727A]">Customer:</span>
+                      <span className="font-600 text-[#10212B] truncate max-w-[180px]">{customer?.fullName || '—'}</span>
+                    </div>
+                    {customer?.storeName && (
+                      <div className="flex justify-between">
+                        <span className="text-[#65727A]">Store:</span>
+                        <span className="text-[#10212B] truncate max-w-[180px]">{customer.storeName}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-[#65727A]">Principal:</span>
+                      <span className="font-600 text-[#10212B]">{formatPHP(fin.principal)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#65727A]">Charge:</span>
+                      <span className="text-[#10212B]">{fin.chargePercent}% ({formatPHP(fin.chargeAmount)})</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#65727A]">Plan:</span>
+                      <span className="font-600 text-[#10212B]">{fin.plan}mo · {paidInstallments}/{fin.installmentCount} paid</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#65727A]">Weekly Due:</span>
+                      <span className="font-700 text-[#1E7D3B]">{formatPHP(fin.weeklyInstallment)}</span>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-[#E4E8E6]">
+                      <span className="font-700 text-[#10212B]">Total Repayable:</span>
+                      <span className="font-800 text-sm text-[#0D2B45]">{formatPHP(fin.totalRepayable)}</span>
+                    </div>
+                  </div>
+
+                  {(role === 'supervisor' || role === 'admin') && fin.status === 'pending' && (
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => rejectFinancing(fin.id)}
+                        className="flex-1 py-2 border border-red-200 text-red-600 text-xs font-600 rounded-xl hover:bg-red-50 transition-all cursor-pointer"
+                      >
+                        Reject
+                      </button>
+                      <button
+                        onClick={() => approveFinancing(fin.id)}
+                        className="flex-1 py-2 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
+                      >
+                        Approve
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {financing.length === 0 && (
+              <div className="text-center py-12 text-[#65727A] text-sm">No financing records found</div>
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full">
               <thead>
                 <tr className="text-[11px] font-700 text-[#65727A] uppercase tracking-wider border-b border-[#F7F8F6] bg-[#F7F8F6]">

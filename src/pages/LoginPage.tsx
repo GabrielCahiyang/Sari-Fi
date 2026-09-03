@@ -22,11 +22,11 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-full bg-[#F7F8F6] flex flex-col items-center justify-center p-6 relative">
+    <div className="min-h-full bg-[#F7F8F6] flex flex-col items-center justify-center p-4 sm:p-6 relative">
       {/* Back to home */}
       <button
         onClick={() => navigate('home')}
-        className="absolute top-6 left-6 flex items-center gap-2 text-sm text-[#65727A] hover:text-[#0D2B45] transition-colors cursor-pointer"
+        className="sm:absolute top-4 left-4 sm:top-6 sm:left-6 self-start mb-4 sm:mb-0 flex items-center gap-2 text-xs sm:text-sm text-[#65727A] hover:text-[#0D2B45] transition-colors cursor-pointer"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />

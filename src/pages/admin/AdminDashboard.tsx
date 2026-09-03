@@ -35,76 +35,76 @@ export function AdminDashboard() {
     <InternalLayout title="Admin Dashboard">
       <div className="space-y-5">
         {/* Primary KPI Bento */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-[#0D2B45] rounded-2xl p-5 relative overflow-hidden">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-[#0D2B45] rounded-2xl p-3.5 sm:p-5 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-            <div className="text-white/60 text-xs font-600 uppercase tracking-wider">Total Sales</div>
-            <div className="text-white font-800 text-2xl mt-2">{formatPHP(totalSales)}</div>
-            <div className="text-[#7DBE4C] text-xs mt-1">Purchase payments</div>
+            <div className="text-white/60 text-[11px] sm:text-xs font-600 uppercase tracking-wider">Total Sales</div>
+            <div className="text-white font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(totalSales)}</div>
+            <div className="text-[#7DBE4C] text-[11px] mt-1">Purchase payments</div>
           </div>
-          <div className="bg-[#1E7D3B] rounded-2xl p-5">
-            <div className="text-white/70 text-xs font-600 uppercase tracking-wider">Active Financing</div>
-            <div className="text-white font-800 text-2xl mt-2">{formatPHP(Math.round(totalActive))}</div>
-            <div className="text-white/60 text-xs mt-1">{activeFinancing.length} accounts</div>
+          <div className="bg-[#1E7D3B] rounded-2xl p-3.5 sm:p-5">
+            <div className="text-white/70 text-[11px] sm:text-xs font-600 uppercase tracking-wider">Active Financing</div>
+            <div className="text-white font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(Math.round(totalActive))}</div>
+            <div className="text-white/60 text-[11px] mt-1">{activeFinancing.length} accounts</div>
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-5">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Collected (All)</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-2">{formatPHP(collected)}</div>
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-5">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Collected (All)</div>
+            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(collected)}</div>
           </div>
-          <div className={`rounded-2xl p-5 border ${overdue > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-[#E4E8E6]'}`}>
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Overdue Amount</div>
-            <div className={`font-800 text-2xl mt-2 ${overdue > 0 ? 'text-red-600' : 'text-[#10212B]'}`}>{formatPHP(Math.round(overdue))}</div>
+          <div className={`rounded-2xl p-3.5 sm:p-5 border ${overdue > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-[#E4E8E6]'}`}>
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Overdue Amount</div>
+            <div className={`font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate ${overdue > 0 ? 'text-red-600' : 'text-[#10212B]'}`}>{formatPHP(Math.round(overdue))}</div>
           </div>
         </div>
 
         {/* Secondary Bento */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Orders Today</div>
-            <div className="text-[#0D2B45] font-800 text-2xl mt-1">{state.orders.length}</div>
-            <button onClick={() => navigate('admin/orders')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline">View →</button>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-4">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Orders Today</div>
+            <div className="text-[#0D2B45] font-800 text-xl sm:text-2xl mt-1">{state.orders.length}</div>
+            <button onClick={() => navigate('admin/orders')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline cursor-pointer">View →</button>
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Customers</div>
-            <div className="text-[#0D2B45] font-800 text-2xl mt-1">{state.customers.length}</div>
-            <button onClick={() => navigate('admin/customers')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline">View →</button>
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-4">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Customers</div>
+            <div className="text-[#0D2B45] font-800 text-xl sm:text-2xl mt-1">{state.customers.length}</div>
+            <button onClick={() => navigate('admin/customers')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline cursor-pointer">View →</button>
           </div>
-          <div className={`rounded-2xl p-4 border ${lowStock > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}>
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Low / Out of Stock</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-1">{lowStock}</div>
-            <button onClick={() => navigate('admin/inventory')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline">View →</button>
+          <div className={`rounded-2xl p-3.5 sm:p-4 border ${lowStock > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}>
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Low / Out of Stock</div>
+            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1">{lowStock}</div>
+            <button onClick={() => navigate('admin/inventory')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline cursor-pointer">View →</button>
           </div>
-          <div className={`rounded-2xl p-4 border ${pendingFinancing > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}>
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Pending Financing</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-1">{pendingFinancing}</div>
-            <button onClick={() => navigate('admin/financing')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline">Review →</button>
+          <div className={`rounded-2xl p-3.5 sm:p-4 border ${pendingFinancing > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}>
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Pending Financing</div>
+            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1">{pendingFinancing}</div>
+            <button onClick={() => navigate('admin/financing')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline cursor-pointer">Review →</button>
           </div>
         </div>
 
         <div className="grid grid-cols-12 gap-5">
           {/* Recent Orders */}
-          <div className="col-span-12 lg:col-span-7 bg-white rounded-2xl border border-[#E4E8E6] p-5">
+          <div className="col-span-12 lg:col-span-7 bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="font-700 text-sm text-[#10212B]">Recent Orders</div>
-              <button onClick={() => navigate('admin/orders')} className="text-xs text-[#1E7D3B] font-600 hover:underline">View all →</button>
+              <button onClick={() => navigate('admin/orders')} className="text-xs text-[#1E7D3B] font-600 hover:underline cursor-pointer">View all →</button>
             </div>
             <div className="space-y-2">
               {recentOrders.map(order => {
                 const customer = getCustomer(order.customerId);
                 const orderItems = Array.isArray(order.items) ? order.items : order.items ? Object.values(order.items) : [];
                 return (
-                  <div key={order.id} className="flex items-center justify-between py-2.5 border-b border-[#F7F8F6] last:border-0">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-[#F7F8F6] rounded-xl flex items-center justify-center text-[11px] font-700 text-[#65727A]">
+                  <div key={order.id} className="flex items-center justify-between py-2.5 border-b border-[#F7F8F6] last:border-0 gap-2">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-8 h-8 bg-[#F7F8F6] rounded-xl flex items-center justify-center text-[11px] font-700 text-[#65727A] shrink-0">
                         {orderItems.length}
                       </div>
-                      <div>
-                        <div className="text-sm font-600 text-[#10212B]">{order.orderNo}</div>
-                        <div className="text-[11px] text-[#65727A]">{customer?.fullName}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-600 text-[#10212B] truncate">{order.orderNo}</div>
+                        <div className="text-[11px] text-[#65727A] truncate">{customer?.fullName}</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-700 text-sm text-[#10212B]">{formatPHP(order.total)}</span>
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                      <span className="font-700 text-xs sm:text-sm text-[#10212B]">{formatPHP(order.total)}</span>
                       <OrderStatusBadge status={order.status} />
                     </div>
                   </div>

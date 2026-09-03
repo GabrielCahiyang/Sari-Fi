@@ -15,12 +15,12 @@ export function OrdersPage() {
 
   return (
     <CustomerLayout>
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-800 text-[#0D2B45]">My Orders</h1>
+      <div className="max-w-4xl mx-auto p-3.5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-800 text-[#0D2B45]">My Orders</h1>
           <button
             onClick={() => navigate('customer/shop')}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1E7D3B] text-white font-600 text-sm rounded-xl hover:bg-[#22913f] transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-[#1E7D3B] text-white font-600 text-sm rounded-xl hover:bg-[#22913f] transition-all cursor-pointer self-start sm:self-auto shadow-sm shadow-[#1E7D3B]/20"
           >
             + New Order
           </button>
@@ -31,14 +31,14 @@ export function OrdersPage() {
             <div className="text-3xl mb-3">📦</div>
             <div className="font-700 text-[#10212B] mb-1">No orders yet</div>
             <div className="text-sm text-[#65727A] mb-4">Start shopping to place your first order.</div>
-            <button onClick={() => navigate('customer/shop')} className="text-sm text-[#1E7D3B] font-600 hover:underline">Browse Shop →</button>
+            <button onClick={() => navigate('customer/shop')} className="text-sm text-[#1E7D3B] font-600 hover:underline cursor-pointer">Browse Shop →</button>
           </div>
         ) : (
           <div className="space-y-4">
             {orders.map(order => {
               const canCancel = order.status === 'pending_payment' || order.status === 'pending_financing';
               return (
-                <div key={order.id} className="bg-white rounded-2xl border border-[#E4E8E6] p-5">
+                <div key={order.id} className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5">
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div>
                       <div className="font-800 text-base text-[#10212B]">{order.orderNo}</div>
@@ -68,7 +68,7 @@ export function OrdersPage() {
                     );
                   })()}
 
-                  <div className="border-t border-[#F7F8F6] pt-3 flex items-center justify-between">
+                  <div className="border-t border-[#F7F8F6] pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                     <div className="flex items-center gap-3">
                       <div>
                         <span className="text-xs text-[#65727A]">Total: </span>

@@ -421,31 +421,122 @@ export function CustomersManagementPage() {
 
         {/* Table & Controls */}
         <div className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden">
-          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#E4E8E6]">
-            <div>
-              <h2 className="font-800 text-base text-[#10212B]">Customer Accounts</h2>
-              <p className="text-xs text-[#65727A] mt-0.5">Approved store owners and verified retail buyers</p>
-            </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search account, name, store…"
-                className="px-3.5 py-2 border border-[#E4E8E6] rounded-xl text-xs focus:outline-none focus:border-[#1E7D3B] w-full sm:w-64"
-              />
-              {canCreate && (
-                <button
-                  onClick={handleOpenCreate}
-                  className="px-4 py-2 bg-[#1E7D3B] hover:bg-[#22913f] text-white text-xs font-700 rounded-xl transition-all shadow-sm shadow-[#1E7D3B]/20 whitespace-nowrap cursor-pointer"
-                >
-                  + Create Customer
-                </button>
-              )}
+          <div className="p-5 border-b border-[#E4E8E6]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-700 text-[#10212B]">Customers ({customers.length})</div>
+                <p className="text-xs text-[#65727A]">Borrower accounts registered in Firebase</p>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search account, name, store…"
+                  className="px-3.5 py-2 border border-[#E4E8E6] rounded-xl text-xs focus:outline-none focus:border-[#1E7D3B] w-full sm:w-64"
+                />
+                {canCreate && (
+                  <button
+                    onClick={handleOpenCreate}
+                    className="px-4 py-2 bg-[#1E7D3B] hover:bg-[#22913f] text-white text-xs font-700 rounded-xl transition-all shadow-sm shadow-[#1E7D3B]/20 whitespace-nowrap cursor-pointer shrink-0"
+                  >
+                    + Create Customer
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-[#F7F8F6]">
+            {customers.map(cust => {
+              const usedPct = cust.creditLimit > 0 ? (cust.usedCredit / cust.creditLimit) * 100 : 0;
+              return (
+                <div key={cust.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-mono font-700 text-xs text-[#0D2B45]">{cust.accountNo}</div>
+                      <div className="font-700 text-sm text-[#10212B]">{cust.fullName}</div>
+                      <div className="text-xs text-[#65727A]">{cust.storeName}</div>
+                      {cust.password && (
+                        <span className="text-[10px] text-[#65727A]/70 flex items-center gap-1 mt-0.5">
+                          <span>PW:</span>
+                          <span className="font-mono">••••••••</span>
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      {cust.status === 'suspended'
+                        ? <Badge variant="red" size="sm">Suspended</Badge>
+                        : usedPct >= 90
+                        ? <Badge variant="orange" size="sm">Near Limit</Badge>
+                        : <Badge variant="green" size="sm">Good</Badge>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-[#F7F8F6] p-2.5 rounded-xl">
+                    <div>
+                      <span className="text-[#65727A] block text-[10px]">Phone</span>
+                      <span className="font-600 text-[#10212B]">{cust.phone || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[#65727A] block text-[10px]">Email</span>
+                      <span className="font-600 text-[#10212B] truncate block">{cust.loginEmail || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[#65727A] block text-[10px]">Credit Limit</span>
+                      <span className="font-700 text-[#0D2B45]">{formatPHP(cust.creditLimit)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[#65727A] block text-[10px]">Used ({usedPct.toFixed(0)}%)</span>
+                      <span className="font-700 text-[#10212B]">{formatPHP(cust.usedCredit)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center flex-wrap gap-2 pt-1 border-t border-[#F7F8F6]">
+                    {canCreate && (
+                      <button
+                        onClick={() => handleOpenEdit(cust)}
+                        className="px-2.5 py-1.5 bg-[#F7F8F6] hover:bg-[#E4E8E6] text-[#1E7D3B] text-xs font-600 rounded-lg cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setHistoryCustomer(cust)}
+                      className="px-2.5 py-1.5 bg-[#F7F8F6] hover:bg-[#E4E8E6] text-[#65727A] text-xs font-600 rounded-lg cursor-pointer"
+                    >
+                      History
+                    </button>
+                    {canCreate && (
+                      <>
+                        <button
+                          onClick={() => { setSelectedCustomer(cust); setNewLimit(String(cust.creditLimit)); }}
+                          className="px-2.5 py-1.5 bg-[#F7F8F6] hover:bg-[#E4E8E6] text-[#1E7D3B] text-xs font-600 rounded-lg cursor-pointer"
+                        >
+                          Adjust Limit
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(cust)}
+                          className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-600 rounded-lg cursor-pointer ml-auto"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {customers.length === 0 && (
+              <div className="p-8 text-center text-xs text-[#65727A]">
+                No customers registered yet. Click "+ Create Customer" to register an account.
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full text-xs">
               <thead className="bg-[#F7F8F6] border-b border-[#E4E8E6] text-[#65727A] font-600">
                 <tr>
@@ -545,7 +636,7 @@ export function CustomersManagementPage() {
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Create Customer Account" size="lg">
         <form onSubmit={handleFormSubmit} className="space-y-4" noValidate>
           <div className="text-xs font-700 text-[#65727A] uppercase tracking-wider mb-3">Personal Information</div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="text-xs font-600 text-[#65727A]">
                 Full Name <span className="text-red-500">*</span>
@@ -645,7 +736,7 @@ export function CustomersManagementPage() {
           {isStoreOwner && (
             <div className="space-y-3 bg-[#F7F8F6] p-4 rounded-xl border border-[#E4E8E6] animate-fade-in">
               <div className="text-xs font-700 text-[#10212B] uppercase tracking-wider">Store Information</div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="text-xs font-600 text-[#65727A]">
                     Store Name <span className="text-red-500">*</span>
@@ -718,7 +809,7 @@ export function CustomersManagementPage() {
           )}
 
           <div className="text-xs font-700 text-[#65727A] uppercase tracking-wider pt-2 mb-3">Account Credentials & Financing</div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="text-xs font-600 text-[#65727A]">
                 Login Email (Username) <span className="text-red-500">*</span>
@@ -804,7 +895,7 @@ export function CustomersManagementPage() {
       >
         <form onSubmit={handleSaveEdit} className="space-y-4" noValidate>
           <div className="text-xs font-700 text-[#65727A] uppercase tracking-wider mb-2">Personal Information</div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="text-xs font-600 text-[#65727A]">
                 Full Name <span className="text-red-500">*</span>
@@ -899,7 +990,7 @@ export function CustomersManagementPage() {
           {editFormData.isStoreOwner && (
             <div className="space-y-3 bg-[#F7F8F6] p-4 rounded-xl border border-[#E4E8E6]">
               <div className="text-xs font-700 text-[#10212B] uppercase tracking-wider">Store Information</div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="text-xs font-600 text-[#65727A]">
                     Store Name <span className="text-red-500">*</span>
@@ -970,7 +1061,7 @@ export function CustomersManagementPage() {
           <div className="text-xs font-700 text-[#65727A] uppercase tracking-wider pt-2 mb-2">
             Credentials & Account Settings
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="text-xs font-600 text-[#65727A]">
                 Login Email (Username) <span className="text-red-500">*</span>

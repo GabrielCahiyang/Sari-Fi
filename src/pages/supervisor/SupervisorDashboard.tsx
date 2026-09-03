@@ -28,35 +28,39 @@ export function SupervisorDashboard() {
     <InternalLayout title="Supervisor Dashboard">
       <div className="space-y-5">
         {/* Bento KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className={`rounded-2xl p-5 border ${pendingFinancing.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}>
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Pending Financing</div>
-            <div className="text-[#10212B] font-800 text-3xl mt-2">{pendingFinancing.length}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className={`rounded-2xl p-3.5 sm:p-5 border ${pendingFinancing.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}>
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Pending Financing</div>
+            <div className="text-[#10212B] font-800 text-2xl sm:text-3xl mt-1 sm:mt-2">{pendingFinancing.length}</div>
             {pendingFinancing.length > 0 && <div className="text-xs text-amber-600 mt-1">Requires review</div>}
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-5">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Outstanding</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-2">{formatPHP(Math.round(totalOutstanding))}</div>
-            <div className="text-xs text-[#65727A] mt-1">{activeFinancing.length} active accounts</div>
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-5">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Outstanding</div>
+            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(Math.round(totalOutstanding))}</div>
+            <div className="text-xs text-[#65727A] mt-1">{activeFinancing.length} accounts</div>
           </div>
-          <div className={`rounded-2xl p-5 border ${overdueAccounts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-[#E4E8E6]'}`}>
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Overdue</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-2">{formatPHP(Math.round(totalOverdue))}</div>
-            <div className="text-xs text-red-500 mt-1">{overdueAccounts.length} overdue accounts</div>
+          <div className={`rounded-2xl p-3.5 sm:p-5 border ${overdueAccounts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-[#E4E8E6]'}`}>
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Overdue</div>
+            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(Math.round(totalOverdue))}</div>
+            <div className="text-xs text-red-500 mt-1">{overdueAccounts.length} overdue</div>
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-5">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Orders Today</div>
-            <div className="text-[#0D2B45] font-800 text-3xl mt-2">{todayOrders.length}</div>
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-5">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Orders Today</div>
+            <div className="text-[#0D2B45] font-800 text-2xl sm:text-3xl mt-1 sm:mt-2">{todayOrders.length}</div>
           </div>
         </div>
 
         <div className="grid grid-cols-12 gap-5">
           {/* Financing Approval Queue */}
-          <div className="col-span-12 lg:col-span-8 bg-white rounded-2xl border border-[#E4E8E6] p-5">
+          <div className="col-span-12 lg:col-span-8 bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5">
             <div className="flex items-center justify-between mb-4">
-              <div className="font-700 text-sm text-[#10212B]">Financing Approval Queue</div>
-              <button onClick={() => navigate('supervisor/financing')} className="text-xs text-[#1E7D3B] font-600 hover:underline">View all →</button>
+              <div>
+                <h2 className="font-800 text-base text-[#10212B]">Financing Approval Queue</h2>
+                <p className="text-xs text-[#65727A]">Customer requests awaiting credit approval</p>
+              </div>
+              <button onClick={() => navigate('supervisor/financing')} className="text-xs text-[#1E7D3B] font-600 hover:underline cursor-pointer">View all →</button>
             </div>
+
             {pendingFinancing.length === 0 ? (
               <div className="text-center py-8 text-[#65727A] text-sm">No pending financing requests</div>
             ) : (
@@ -72,19 +76,19 @@ export function SupervisorDashboard() {
                         </div>
                         <FinancingStatusBadge status={fin.status} />
                       </div>
-                      <div className="grid grid-cols-4 gap-3 mb-3 text-xs">
-                        <div><div className="text-[#65727A]">Principal</div><div className="font-700 text-[#10212B]">{formatPHP(fin.principal)}</div></div>
-                        <div><div className="text-[#65727A]">Charge ({fin.chargePercent}%)</div><div className="font-700 text-[#10212B]">{formatPHP(fin.chargeAmount)}</div></div>
-                        <div><div className="text-[#65727A]">Total Repayable</div><div className="font-700 text-[#10212B]">{formatPHP(fin.totalRepayable)}</div></div>
-                        <div><div className="text-[#65727A]">Plan</div><div className="font-700 text-[#10212B]">{fin.plan}mo · {fin.installmentCount}×{formatPHP(fin.weeklyInstallment)}</div></div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-3 text-xs bg-[#F7F8F6] p-3 rounded-xl">
+                        <div><div className="text-[#65727A] text-[10px]">Principal</div><div className="font-700 text-[#10212B]">{formatPHP(fin.principal)}</div></div>
+                        <div><div className="text-[#65727A] text-[10px]">Charge ({fin.chargePercent}%)</div><div className="font-700 text-[#10212B]">{formatPHP(fin.chargeAmount)}</div></div>
+                        <div><div className="text-[#65727A] text-[10px]">Total Repayable</div><div className="font-700 text-[#10212B]">{formatPHP(fin.totalRepayable)}</div></div>
+                        <div><div className="text-[#65727A] text-[10px]">Plan</div><div className="font-700 text-[#10212B]">{fin.plan}mo · {fin.installmentCount}×{formatPHP(fin.weeklyInstallment)}</div></div>
                       </div>
                       <div className="text-xs text-[#65727A] mb-3">
                         Customer standing: <span className={`font-600 ${customer?.status === 'active' ? 'text-[#1E7D3B]' : 'text-red-500'}`}>{customer?.status === 'active' ? 'Good Standing' : 'Suspended'}</span>
                         · Available Credit: <span className="font-600 text-[#10212B]">{formatPHP((customer?.creditLimit || 0) - (customer?.usedCredit || 0))}</span>
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => rejectFinancing(fin.id)} className="px-4 py-2 border border-red-200 text-red-600 text-sm font-600 rounded-xl hover:bg-red-50 transition-all">Reject</button>
-                        <button onClick={() => approveFinancing(fin.id)} className="px-4 py-2 bg-[#1E7D3B] text-white text-sm font-600 rounded-xl hover:bg-[#22913f] transition-all">Approve</button>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button onClick={() => rejectFinancing(fin.id)} className="flex-1 py-2 border border-red-200 text-red-600 text-sm font-600 rounded-xl hover:bg-red-50 transition-all cursor-pointer">Reject</button>
+                        <button onClick={() => approveFinancing(fin.id)} className="flex-1 py-2 bg-[#1E7D3B] text-white text-sm font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20">Approve</button>
                       </div>
                     </div>
                   );

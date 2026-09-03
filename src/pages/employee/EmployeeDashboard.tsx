@@ -20,30 +20,30 @@ export function EmployeeDashboard() {
     <InternalLayout title="Employee Dashboard">
       <div className="space-y-5">
         {/* KPI Bento */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-5">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Orders Today</div>
-            <div className="text-[#0D2B45] font-800 text-3xl mt-2">{todayOrders.length}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-5">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Orders Today</div>
+            <div className="text-[#0D2B45] font-800 text-2xl sm:text-3xl mt-1 sm:mt-2">{todayOrders.length}</div>
           </div>
-          <div className="bg-[#FFF8E1] border border-[#FFC107]/30 rounded-2xl p-5">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Cash Awaiting</div>
-            <div className="text-[#10212B] font-800 text-3xl mt-2">{pendingCash.length}</div>
+          <div className="bg-[#FFF8E1] border border-[#FFC107]/30 rounded-2xl p-3.5 sm:p-5">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Cash Awaiting</div>
+            <div className="text-[#10212B] font-800 text-2xl sm:text-3xl mt-1 sm:mt-2">{pendingCash.length}</div>
             <div className="text-xs text-amber-600 mt-1">Needs confirmation</div>
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-5">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Ready to Deliver</div>
-            <div className="text-[#0D2B45] font-800 text-3xl mt-2">{readyOrders.length}</div>
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-5">
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Ready to Deliver</div>
+            <div className="text-[#0D2B45] font-800 text-2xl sm:text-3xl mt-1 sm:mt-2">{readyOrders.length}</div>
           </div>
-          <div className={`rounded-2xl border p-5 ${lowStock.length > 0 || outOfStock.length > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-[#E4E8E6]'}`}>
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Low / Out of Stock</div>
-            <div className="text-[#0D2B45] font-800 text-3xl mt-2">{lowStock.length + outOfStock.length}</div>
+          <div className={`rounded-2xl border p-3.5 sm:p-5 ${lowStock.length > 0 || outOfStock.length > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-[#E4E8E6]'}`}>
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Low / Out of Stock</div>
+            <div className="text-[#0D2B45] font-800 text-2xl sm:text-3xl mt-1 sm:mt-2">{lowStock.length + outOfStock.length}</div>
             <div className="text-xs text-red-500 mt-1">{outOfStock.length} out of stock</div>
           </div>
         </div>
 
         <div className="grid grid-cols-12 gap-5">
           {/* Cash Awaiting Confirmation */}
-          <div className="col-span-12 lg:col-span-7 bg-white rounded-2xl border border-[#E4E8E6] p-5">
+          <div className="col-span-12 lg:col-span-7 bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="font-700 text-sm text-[#10212B]">Cash Payments — Needs Confirmation</div>
               {pendingCash.length > 0 && <span className="text-xs bg-[#FFC107] text-[#0D2B45] font-700 px-2 py-0.5 rounded-full">{pendingCash.length}</span>}
@@ -55,7 +55,7 @@ export function EmployeeDashboard() {
                 {pendingCash.map(pay => {
                   const customer = getCustomer(pay.customerId);
                   return (
-                    <div key={pay.id} className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                    <div key={pay.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                       <div>
                         <div className="font-600 text-sm text-[#10212B]">{customer?.fullName || 'Unknown'}</div>
                         <div className="text-xs text-[#65727A]">{pay.paymentNo} · {formatPHP(pay.amount)} Cash</div>
@@ -63,7 +63,7 @@ export function EmployeeDashboard() {
                       </div>
                       <button
                         onClick={() => confirmCash(pay.id)}
-                        className="px-4 py-2 bg-[#1E7D3B] text-white text-sm font-600 rounded-xl hover:bg-[#22913f] transition-all"
+                        className="px-4 py-2 bg-[#1E7D3B] text-white text-sm font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer self-start sm:self-auto shadow-sm shadow-[#1E7D3B]/20"
                       >
                         Confirm Cash Received
                       </button>

@@ -70,25 +70,87 @@ export function PaymentsManagementPage() {
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+          <div className="relative flex-1 min-w-[200px]">
             <svg className="absolute left-3.5 top-3.5 w-4 h-4 text-[#65727A]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by payment no or customer…" className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]" />
           </div>
-          <select value={filter} onChange={e => setFilter(e.target.value as any)} className="px-4 py-2.5 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none">
-            <option value="all">All Methods</option>
-            <option value="cash">Cash</option>
-            <option value="gcash">GCash</option>
-          </select>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className="px-4 py-2.5 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none">
-            <option value="all">All Statuses</option>
-            <option value="paid">Paid</option>
-            <option value="pending">Pending</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <select value={filter} onChange={e => setFilter(e.target.value as any)} className="px-3.5 py-2.5 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none flex-1 sm:flex-initial">
+              <option value="all">All Methods</option>
+              <option value="cash">Cash</option>
+              <option value="gcash">GCash</option>
+            </select>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className="px-3.5 py-2.5 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none flex-1 sm:flex-initial">
+              <option value="all">All Statuses</option>
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-[#F7F8F6]">
+            {payments.map(pay => {
+              const customer = getCustomer(pay.customerId);
+              return (
+                <div key={pay.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-700 text-sm text-[#10212B]">{pay.paymentNo}</div>
+                      <div className="text-xs text-[#65727A]">
+                        {new Date(pay.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                    </div>
+                    <Badge variant={pay.status === 'paid' ? 'green' : 'yellow'} size="sm">
+                      {pay.status === 'paid' ? 'Paid' : 'Pending'}
+                    </Badge>
+                  </div>
+
+                  <div className="bg-[#F7F8F6] p-3 rounded-xl space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-[#65727A]">Customer:</span>
+                      <span className="font-600 text-[#10212B] truncate max-w-[180px]">{customer?.fullName || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#65727A]">Type:</span>
+                      <span className="capitalize text-[#10212B]">{pay.type.replace(/_/g, ' ')}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#65727A]">Method:</span>
+                      <span className={`text-[10px] font-700 px-2 py-0.5 rounded-md border ${pay.method === 'gcash' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-[#65727A] border-[#E4E8E6]'}`}>
+                        {pay.method.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#65727A]">Confirmed By:</span>
+                      <span className="text-[#10212B]">{pay.confirmedBy || (pay.method === 'gcash' ? 'Auto (GCash)' : '—')}</span>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-[#E4E8E6]">
+                      <span className="font-700 text-[#10212B]">Amount:</span>
+                      <span className="font-800 text-sm text-[#0D2B45]">{formatPHP(pay.amount)}</span>
+                    </div>
+                  </div>
+
+                  {pay.status === 'pending' && pay.method === 'cash' && (
+                    <button
+                      onClick={() => handleConfirmCash(pay.id, pay.orderId)}
+                      className="w-full py-2 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
+                    >
+                      Confirm Cash
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {payments.length === 0 && (
+              <div className="text-center py-12 text-[#65727A] text-sm">No payments found</div>
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full">
               <thead>
                 <tr className="text-[11px] font-700 text-[#65727A] uppercase tracking-wider border-b border-[#F7F8F6] bg-[#F7F8F6]">

@@ -295,7 +295,7 @@ export function EmployeesPage() {
   return (
     <InternalLayout title="Employees">
       <div className="space-y-5">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {['admin', 'supervisor', 'employee'].map(role => (
             <div key={role} className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
               <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider capitalize">{role}s</div>
@@ -305,20 +305,93 @@ export function EmployeesPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden">
-          <div className="p-5 flex items-center justify-between border-b border-[#E4E8E6]">
+          <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E4E8E6]">
             <div>
               <h2 className="font-800 text-base text-[#10212B]">Staff Members</h2>
               <p className="text-xs text-[#65727A] mt-0.5">Manage permissions, login credentials, and roles</p>
             </div>
             <button
               onClick={handleOpenAdd}
-              className="px-4 py-2 bg-[#1E7D3B] hover:bg-[#22913f] text-white text-xs font-700 rounded-xl transition-all shadow-sm shadow-[#1E7D3B]/20 cursor-pointer"
+              className="px-4 py-2 bg-[#1E7D3B] hover:bg-[#22913f] text-white text-xs font-700 rounded-xl transition-all shadow-sm shadow-[#1E7D3B]/20 cursor-pointer self-start sm:self-auto"
             >
               + Create Staff
             </button>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-[#F7F8F6]">
+            {state.employees.map(emp => (
+              <div key={emp.id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-[#0D2B45] rounded-xl flex items-center justify-center text-white font-700 text-sm shrink-0">
+                      {emp.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="font-700 text-sm text-[#10212B]">{emp.name}</div>
+                      <div className="text-xs text-[#65727A]">{emp.email}</div>
+                      {emp.password && (
+                        <span className="text-[10px] text-[#65727A]/70 flex items-center gap-1 mt-0.5">
+                          <span>PW:</span>
+                          <span className="font-mono">••••••••</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant={roleColor[emp.role] || 'gray'} className="capitalize" size="sm">
+                      {emp.role}
+                    </Badge>
+                    <Badge variant={emp.status === 'active' ? 'green' : 'gray'} size="sm">
+                      {emp.status}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="text-xs text-[#65727A] bg-[#F7F8F6] px-3 py-2 rounded-xl flex justify-between">
+                  <span>Phone:</span>
+                  <span className="font-600 text-[#10212B]">{emp.phone || '—'}</span>
+                </div>
+
+                <div className="flex items-center flex-wrap gap-2 pt-1 border-t border-[#F7F8F6]">
+                  <button
+                    onClick={() => handleOpenEdit(emp)}
+                    className="px-2.5 py-1.5 bg-[#F7F8F6] hover:bg-[#E4E8E6] text-[#1E7D3B] text-xs font-600 rounded-lg cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setHistoryEmployee(emp)}
+                    className="px-2.5 py-1.5 bg-[#F7F8F6] hover:bg-[#E4E8E6] text-[#65727A] text-xs font-600 rounded-lg cursor-pointer"
+                  >
+                    History
+                  </button>
+                  <button
+                    onClick={() => toggleStatus(emp)}
+                    className={`px-2.5 py-1.5 bg-[#F7F8F6] hover:bg-[#E4E8E6] text-xs font-600 rounded-lg cursor-pointer ${
+                      emp.status === 'active' ? 'text-amber-600' : 'text-[#1E7D3B]'
+                    }`}
+                  >
+                    {emp.status === 'active' ? 'Disable' : 'Enable'}
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm(emp)}
+                    className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-600 rounded-lg cursor-pointer ml-auto"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+            {state.employees.length === 0 && (
+              <div className="p-8 text-center text-xs text-[#65727A]">
+                No staff registered yet. Click "+ Create Staff" to add one.
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="overflow-x-auto hidden md:block">
             <table className="w-full text-xs">
               <thead className="bg-[#F7F8F6] border-b border-[#E4E8E6] text-[#65727A] font-600">
                 <tr>
@@ -436,7 +509,7 @@ export function EmployeesPage() {
       {/* Add Staff Modal */}
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Create Staff Account" size="md">
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="col-span-2">
               <label className="text-xs font-600 text-[#65727A]">
                 Full Name <span className="text-red-500">*</span>
@@ -546,7 +619,7 @@ export function EmployeesPage() {
         size="md"
       >
         <form onSubmit={handleSaveEdit} className="space-y-4" noValidate>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="col-span-2">
               <label className="text-xs font-600 text-[#65727A]">
                 Full Name <span className="text-red-500">*</span>
