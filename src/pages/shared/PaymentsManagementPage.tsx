@@ -52,21 +52,72 @@ export function PaymentsManagementPage() {
     <InternalLayout title="Payments">
       <div className="space-y-5">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-[#1E7D3B] rounded-2xl p-4">
-            <div className="text-white/70 text-xs font-600 uppercase tracking-wider">Total Collected</div>
-            <div className="text-white font-800 text-2xl mt-1">{formatPHP(totalPaid)}</div>
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Total Collected</span>
+              <span className="w-8 h-8 rounded-xl bg-emerald-50 text-[#1E7D3B] flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="text-[#10212B] font-800 text-2xl mt-1">{formatPHP(totalPaid)}</div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">All settled payments</div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Cash Collected</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-1">{formatPHP(cashTotal)}</div>
+
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Cash Collected</span>
+              <span className="w-8 h-8 rounded-xl bg-slate-100 text-[#0D2B45] flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="text-[#10212B] font-800 text-2xl mt-1">{formatPHP(cashTotal)}</div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">Confirmed physical cash</div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">GCash Collected</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-1">{formatPHP(gcashTotal)}</div>
+
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">GCash Collected</span>
+              <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="text-[#10212B] font-800 text-2xl mt-1">{formatPHP(gcashTotal)}</div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">Digital e-wallet settlements</div>
+            </div>
           </div>
-          <div className="bg-[#FFF8E1] rounded-2xl border border-[#FFC107]/30 p-4">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Pending Confirmation</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-1">{formatPHP(totalPending)}</div>
+
+          <div className={`rounded-2xl p-4 border shadow-xs flex flex-col justify-between ${
+            totalPending > 0 ? 'bg-amber-50/40 border-amber-200' : 'bg-white border-[#E4E8E6]'
+          }`}>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Pending Confirmation</span>
+              <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                totalPending > 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-[#65727A]'
+              }`}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className={`font-800 text-2xl mt-1 ${totalPending > 0 ? 'text-amber-700' : 'text-[#10212B]'}`}>
+                {formatPHP(totalPending)}
+              </div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">
+                {totalPending > 0 ? 'Awaiting staff confirmation' : 'No pending payments'}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -95,7 +146,11 @@ export function PaymentsManagementPage() {
             {payments.map(pay => {
               const customer = getCustomer(pay.customerId);
               return (
-                <div key={pay.id} className="p-4 space-y-3">
+                <div
+                  key={pay.id}
+                  data-tour-target={pay.id === 'pay_tour_001' ? '6' : undefined}
+                  className="p-4 space-y-3"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="font-700 text-sm text-[#10212B]">{pay.paymentNo}</div>
@@ -168,7 +223,11 @@ export function PaymentsManagementPage() {
                 {payments.map(pay => {
                   const customer = getCustomer(pay.customerId);
                   return (
-                    <tr key={pay.id} className="hover:bg-[#F7F8F6]/50 transition-colors">
+                    <tr
+                      key={pay.id}
+                      data-tour-target={pay.id === 'pay_tour_001' ? '6' : undefined}
+                      className="hover:bg-[#F7F8F6]/50 transition-colors"
+                    >
                       <td className="px-5 py-3">
                         <div className="font-700 text-sm text-[#10212B]">{pay.paymentNo}</div>
                         <div className="text-[11px] text-[#65727A]">{new Date(pay.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</div>

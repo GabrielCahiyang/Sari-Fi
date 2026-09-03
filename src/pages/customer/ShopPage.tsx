@@ -1,14 +1,18 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
-
-const CATEGORIES = ['All', 'Beverages', 'Snacks', 'Instant Noodles', 'Canned Goods', 'Condiments', 'Household', 'Personal Care'];
 
 export function ShopPage() {
   const { state, dispatch, navigate, formatPHP } = useApp();
   const [category, setCategory] = useState('All');
   const [search, setSearch] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+  const availableCategories = useMemo(() => {
+    return Array.from(
+      new Set(['All', ...state.categories.map(c => c.name), ...state.products.map(p => p.category).filter(Boolean)])
+    );
+  }, [state.categories, state.products]);
 
   const products = state.products.filter(p => p.status === 'active' && p.stock > 0);
   const filtered = products.filter(p =>
@@ -63,7 +67,7 @@ export function ShopPage() {
 
         {/* Categories */}
         <div className="flex gap-2 overflow-x-auto pb-2 mb-4 sm:mb-6 no-scrollbar">
-          {CATEGORIES.map(cat => (
+          {availableCategories.map(cat => (
             <button
               key={cat}
               onClick={() => setCategory(cat)}
@@ -87,10 +91,20 @@ export function ShopPage() {
             {filtered.map(product => {
               const cartItem = inCart(product.id);
               const qty = getQty(product.id);
+              const supplierName = state.suppliers.find(s => s.id === product.supplierId)?.name || 'Wholesale Partner';
               return (
-                <div key={product.id} className="bg-white rounded-2xl border border-[#E4E8E6] p-3 sm:p-4 flex flex-col hover:border-[#1E7D3B]/30 hover:shadow-sm transition-all">
-                  {/* Category chip */}
-                  <div className="text-[10px] font-700 text-[#65727A] uppercase tracking-wider mb-1.5 truncate">{product.category}</div>
+                <div
+                  key={product.id}
+                  data-tour-target={product.id === 'prod_tour_coke' ? '1' : undefined}
+                  className="bg-white rounded-2xl border border-[#E4E8E6] p-3 sm:p-4 flex flex-col hover:border-[#1E7D3B]/30 hover:shadow-sm transition-all"
+                >
+                  {/* Category & Supplier chips */}
+                  <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                    <span className="text-[10px] font-700 text-[#65727A] uppercase tracking-wider truncate">{product.category}</span>
+                    <span className="text-[9px] font-700 text-[#1E7D3B] bg-[#E8F5E9] px-1.5 py-0.5 rounded truncate max-w-[110px]" title={`Supplied by ${supplierName}`}>
+                      {supplierName}
+                    </span>
+                  </div>
 
                   {/* Product name */}
                   <div className="font-700 text-xs sm:text-sm text-[#10212B] leading-tight mb-1 flex-1 line-clamp-2">{product.name}</div>

@@ -1,16 +1,45 @@
 import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
 import { OrderStatusBadge } from '../../components/ui/Badge';
+import { saveRecord } from '../../services/firebase/rtdbService';
 import type { OrderItem } from '../../types';
 
 export function OrdersPage() {
-  const { state, navigate, getCurrentCustomer, getCustomerOrders, dispatch, showToast, formatPHP } = useApp();
+  const { state, navigate, getCurrentCustomer, getCustomerOrders, dispatch, showToast, formatPHP, logAudit } = useApp();
   const customer = getCurrentCustomer();
   const orders = getCustomerOrders(customer?.id || '').sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const cancelOrder = (orderId: string) => {
     dispatch({ type: 'UPDATE_ORDER_STATUS', orderId, status: 'cancelled' });
     showToast('success', 'Order cancelled successfully.');
+  };
+
+  const handleConfirmReceived = async (orderId: string) => {
+    const target = state.orders.find(o => o.id === orderId);
+    if (!target) return;
+
+    const updated = {
+      ...target,
+      status: 'completed' as const,
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      await saveRecord('orders', updated);
+    } catch (e) {
+      console.warn('Failed to sync to RTDB:', e);
+    }
+
+    dispatch({ type: 'UPDATE_ORDER_STATUS', orderId, status: 'completed' });
+    await logAudit({
+      category: 'order',
+      action: 'order.receive',
+      summary: `Store Owner ${customer?.fullName || 'Customer'} confirmed delivery receipt of order ${target.orderNo}`,
+      targetType: 'order',
+      targetId: orderId,
+      targetLabel: target.orderNo,
+    });
+    showToast('success', `Order ${target.orderNo} confirmed received and marked completed!`);
   };
 
   return (
@@ -38,7 +67,11 @@ export function OrdersPage() {
             {orders.map(order => {
               const canCancel = order.status === 'pending_payment' || order.status === 'pending_financing';
               return (
-                <div key={order.id} className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5">
+                <div
+                  key={order.id}
+                  data-tour-target={order.id === 'ord_tour_001' ? '4' : undefined}
+                  className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5"
+                >
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div>
                       <div className="font-800 text-base text-[#10212B]">{order.orderNo}</div>
@@ -80,7 +113,23 @@ export function OrdersPage() {
                          order.paymentType.toUpperCase()}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {order.status === 'delivered' && (
+                        <button
+                          onClick={() => handleConfirmReceived(order.id)}
+                          className="px-3.5 py-1.5 bg-[#1E7D3B] hover:bg-[#165f2c] text-white text-xs font-700 rounded-xl transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Confirm Order Received</span>
+                        </button>
+                      )}
+                      {order.status === 'out_for_delivery' && (
+                        <div className="text-xs text-blue-700 font-600 bg-blue-50 px-2.5 py-1 rounded-xl border border-blue-200 flex items-center gap-1">
+                          <span>🚚 Out for Delivery</span>
+                        </div>
+                      )}
                       {order.paymentType === 'cash' && order.paymentStatus === 'pending' && (
                         <div className="text-xs text-amber-600 font-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
                           Awaiting Cash Confirmation

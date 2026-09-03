@@ -314,10 +314,10 @@ export function deriveAudit(action: AnyAction, prev: AppState, next: AppState): 
     category: d.category,
     action: d.action,
     summary: d.summary,
-    targetType: d.targetType,
-    targetId: d.targetId,
-    targetLabel: d.targetLabel,
-    amount: d.amount,
+    ...(d.targetType ? { targetType: d.targetType } : {}),
+    ...(d.targetId ? { targetId: d.targetId } : {}),
+    ...(d.targetLabel ? { targetLabel: d.targetLabel } : {}),
+    ...(d.amount !== undefined ? { amount: d.amount } : {}),
   };
 }
 
@@ -340,6 +340,7 @@ export const ROLE_META: Record<AuditActorRole, { label: string; variant: 'green'
   employee:   { label: 'Employee',   variant: 'green' },
   supervisor: { label: 'Supervisor', variant: 'orange' },
   admin:      { label: 'Admin',      variant: 'navy' },
+  supplier:   { label: 'Supplier',   variant: 'navy' },
   system:     { label: 'System',     variant: 'gray' },
 };
 

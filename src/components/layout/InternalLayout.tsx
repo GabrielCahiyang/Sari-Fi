@@ -28,15 +28,10 @@ const iconMap: Record<string, React.ReactNode> = {
 function buildNav(role: string): { sections: { label?: string; items: NavItem[] }[] } {
   const ops: NavItem[] = [
     { label: 'Customers', page: `${role}/customers`, icon: iconMap.customers },
+    { label: 'Suppliers', page: `${role}/suppliers`, icon: iconMap.suppliers },
     { label: 'Orders', page: `${role}/orders`, icon: iconMap.orders },
     { label: 'Payments', page: `${role}/payments`, icon: iconMap.payments },
     { label: 'Financing', page: `${role}/financing`, icon: iconMap.financing },
-  ];
-  const inv: NavItem[] = [
-    { label: 'Products', page: `${role}/products`, icon: iconMap.products },
-    { label: 'Inventory', page: `${role}/inventory`, icon: iconMap.inventory },
-    { label: 'Restock', page: `${role}/restock`, icon: iconMap.restock },
-    { label: 'Suppliers', page: `${role}/suppliers`, icon: iconMap.suppliers },
   ];
   const mgmt: NavItem[] = [
     { label: 'Employees', page: `${role}/employees`, icon: iconMap.employees },
@@ -56,9 +51,6 @@ function buildNav(role: string): { sections: { label?: string; items: NavItem[] 
         { label: 'Orders', page: 'employee/orders', icon: iconMap.orders },
         { label: 'Payments', page: 'employee/payments', icon: iconMap.payments },
       ]},
-      { label: 'Inventory', items: [
-        { label: 'Inventory', page: 'employee/inventory', icon: iconMap.inventory },
-      ]},
     ]};
   }
   if (role === 'supervisor') {
@@ -67,8 +59,7 @@ function buildNav(role: string): { sections: { label?: string; items: NavItem[] 
         { label: 'Dashboard', page: 'supervisor/dashboard', icon: iconMap.dashboard },
         { label: 'Point of Sale', page: 'supervisor/pos', icon: iconMap.pos },
       ] },
-      { label: 'Operations', items: ops.map(o => ({ ...o, page: o.page.replace(`${role}/`, 'supervisor/') })) },
-      { label: 'Inventory', items: inv.filter(i => i.label !== 'Suppliers').map(o => ({ ...o, page: o.page.replace(`${role}/`, 'supervisor/') })) },
+      { label: 'Operations', items: ops.filter(o => o.label !== 'Suppliers').map(o => ({ ...o, page: o.page.replace(`${role}/`, 'supervisor/') })) },
       { label: 'Oversight', items: [
         { label: 'Audit Trail', page: 'supervisor/audit', icon: iconMap.audit },
       ]},
@@ -77,7 +68,6 @@ function buildNav(role: string): { sections: { label?: string; items: NavItem[] 
   return { sections: [
     { items: [{ label: 'Dashboard', page: 'admin/dashboard', icon: iconMap.dashboard }] },
     { label: 'Operations', items: ops },
-    { label: 'Inventory', items: inv },
     { label: 'Management', items: mgmt },
   ]};
 }
@@ -98,7 +88,7 @@ export function InternalLayout({ children, title }: InternalLayoutProps) {
   const pendingFinancingCount = state.financing.filter(f => f.status === 'pending').length;
 
   return (
-    <div className="flex h-full bg-[#F7F8F6] relative overflow-hidden">
+    <div className="flex h-screen w-full bg-[#F7F8F6] relative overflow-hidden">
       {/* Mobile Backdrop */}
       {mobileDrawerOpen && (
         <div
@@ -230,9 +220,8 @@ export function InternalLayout({ children, title }: InternalLayoutProps) {
             {(role === 'supervisor' || role === 'admin') && pendingFinancingCount > 0 && (
               <button
                 onClick={() => navigate(`${role}/financing`)}
-                className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-600 text-amber-800 bg-amber-50 ring-1 ring-amber-500/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg hover:bg-amber-100 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-700 text-amber-800 bg-amber-50 ring-1 ring-amber-500/20 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg hover:bg-amber-100 transition-colors cursor-pointer"
               >
-                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full shrink-0 animate-pulse" />
                 <span className="hidden sm:inline">{pendingFinancingCount} Pending Financing</span>
                 <span className="sm:hidden">{pendingFinancingCount} Pending</span>
               </button>

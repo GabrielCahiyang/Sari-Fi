@@ -7,7 +7,13 @@ export const USERS: (AuthUser & { password: string })[] = [
   { id: 'u4', name: 'Employee Jay', email: 'jay@sarifi.ph', password: 'emp123', role: 'employee', employeeId: 'e4' },
   { id: 'u5', name: 'Employee Mia', email: 'mia@sarifi.ph', password: 'emp123', role: 'employee', employeeId: 'e5' },
   { id: 'u6', name: 'Employee Rex', email: 'rex@sarifi.ph', password: 'emp123', role: 'employee', employeeId: 'e6' },
-  // Customers
+  // Suppliers
+  { id: 's1', name: 'ABC Distributor (Rico)', email: 'abc@supplier.ph', password: 'supplier123', role: 'supplier', supplierId: 'sup1' },
+  { id: 's2', name: 'Metro Food Supply (Grace)', email: 'metro@supplier.ph', password: 'supplier123', role: 'supplier', supplierId: 'sup2' },
+  { id: 's3', name: 'QuickStore Wholesale (Jerry)', email: 'quickstore@supplier.ph', password: 'supplier123', role: 'supplier', supplierId: 'sup3' },
+  { id: 's4', name: 'FreshLine Traders (Elena)', email: 'freshline@supplier.ph', password: 'supplier123', role: 'supplier', supplierId: 'sup4' },
+  { id: 's5', name: 'Nationwide Goods (Carlo)', email: 'nationwide@supplier.ph', password: 'supplier123', role: 'supplier', supplierId: 'sup5' },
+  // Customers (Store Owners)
   { id: 'c1', name: 'Maria Santos', email: 'maria@store.ph', password: 'maria123', role: 'customer', customerId: 'cust1' },
   { id: 'c2', name: 'Jose Reyes', email: 'jose@store.ph', password: 'jose123', role: 'customer', customerId: 'cust2' },
   { id: 'c3', name: 'Ana Cruz', email: 'ana@store.ph', password: 'ana123', role: 'customer', customerId: 'cust3' },
@@ -87,11 +93,11 @@ export const EMPLOYEES: Employee[] = [
 ];
 
 export const SUPPLIERS: Supplier[] = [
-  { id: 'sup1', name: 'ABC Distributor', contact: 'Rico Santos', phone: '028881234', email: 'rico@abcdist.ph', address: 'Divisoria, Manila', categories: ['Beverages', 'Snacks', 'Canned Goods'], status: 'active' },
-  { id: 'sup2', name: 'Metro Food Supply', contact: 'Grace Dela Cruz', phone: '028882345', email: 'grace@metrofood.ph', address: 'Binondo, Manila', categories: ['Instant Noodles', 'Condiments', 'Canned Goods'], status: 'active' },
-  { id: 'sup3', name: 'QuickStore Wholesale', contact: 'Jerry Ong', phone: '028883456', email: 'jerry@quickstore.ph', address: 'Quiapo, Manila', categories: ['Household', 'Personal Care'], status: 'active' },
-  { id: 'sup4', name: 'FreshLine Traders', contact: 'Elena Reyes', phone: '028884567', email: 'elena@freshline.ph', address: 'Pasay City', categories: ['Beverages', 'Snacks'], status: 'active' },
-  { id: 'sup5', name: 'Nationwide Goods Inc.', contact: 'Carlo Bautista', phone: '028885678', email: 'carlo@nationwide.ph', address: 'Makati City', categories: ['All Categories'], status: 'active' },
+  { id: 'sup1', name: 'ABC Distributor', contact: 'Rico Santos', phone: '028881234', email: 'rico@abcdist.ph', address: 'Divisoria, Manila', categories: ['Beverages', 'Snacks', 'Canned Goods'], status: 'active', loginEmail: 'abc@supplier.ph', password: 'supplier123' },
+  { id: 'sup2', name: 'Metro Food Supply', contact: 'Grace Dela Cruz', phone: '028882345', email: 'grace@metrofood.ph', address: 'Binondo, Manila', categories: ['Instant Noodles', 'Condiments', 'Canned Goods'], status: 'active', loginEmail: 'metro@supplier.ph', password: 'supplier123' },
+  { id: 'sup3', name: 'QuickStore Wholesale', contact: 'Jerry Ong', phone: '028883456', email: 'jerry@quickstore.ph', address: 'Quiapo, Manila', categories: ['Household', 'Personal Care'], status: 'active', loginEmail: 'quickstore@supplier.ph', password: 'supplier123' },
+  { id: 'sup4', name: 'FreshLine Traders', contact: 'Elena Reyes', phone: '028884567', email: 'elena@freshline.ph', address: 'Pasay City', categories: ['Beverages', 'Snacks'], status: 'active', loginEmail: 'freshline@supplier.ph', password: 'supplier123' },
+  { id: 'sup5', name: 'Nationwide Goods Inc.', contact: 'Carlo Bautista', phone: '028885678', email: 'carlo@nationwide.ph', address: 'Makati City', categories: ['All Categories'], status: 'active', loginEmail: 'nationwide@supplier.ph', password: 'supplier123' },
 ];
 
 export const PRODUCTS: Product[] = [

@@ -115,21 +115,80 @@ export function FinancingManagementPage() {
       <div className="space-y-5">
         {/* Bento summary */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className={`rounded-2xl p-4 border ${pendingCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}>
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Pending</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-1">{pendingCount}</div>
+          <div className={`rounded-2xl p-4 border shadow-xs flex flex-col justify-between ${
+            pendingCount > 0 ? 'bg-amber-50/40 border-amber-200' : 'bg-white border-[#E4E8E6]'
+          }`}>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Pending Review</span>
+              <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                pendingCount > 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-[#65727A]'
+              }`}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className={`font-800 text-2xl mt-1 ${pendingCount > 0 ? 'text-amber-700' : 'text-[#10212B]'}`}>
+                {pendingCount}
+              </div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">
+                {pendingCount > 0 ? 'Requires supervisor decision' : 'No pending loans'}
+              </div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Active</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-1">{activeCount}</div>
+
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Active Loans</span>
+              <span className="w-8 h-8 rounded-xl bg-emerald-50 text-[#1E7D3B] flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="text-[#1E7D3B] font-800 text-2xl mt-1">{activeCount}</div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">Currently in repayment</div>
+            </div>
           </div>
-          <div className={`rounded-2xl p-4 border ${overdueCount > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-[#E4E8E6]'}`}>
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Overdue</div>
-            <div className="text-[#10212B] font-800 text-2xl mt-1">{overdueCount}</div>
+
+          <div className={`rounded-2xl p-4 border shadow-xs flex flex-col justify-between ${
+            overdueCount > 0 ? 'bg-red-50/40 border-red-200' : 'bg-white border-[#E4E8E6]'
+          }`}>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Overdue</span>
+              <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                overdueCount > 0 ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-[#65727A]'
+              }`}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className={`font-800 text-2xl mt-1 ${overdueCount > 0 ? 'text-red-600' : 'text-[#10212B]'}`}>
+                {overdueCount}
+              </div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">
+                {overdueCount > 0 ? 'Accounts past due date' : 'Zero overdue accounts'}
+              </div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Total Outstanding</div>
-            <div className="text-[#10212B] font-800 text-xl mt-1">{formatPHP(Math.round(totalActive))}</div>
+
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Total Outstanding</span>
+              <span className="w-8 h-8 rounded-xl bg-slate-100 text-[#0D2B45] flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="text-[#0D2B45] font-800 text-2xl mt-1">{formatPHP(Math.round(totalActive))}</div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">Principal + finance charges</div>
+            </div>
           </div>
         </div>
 
@@ -150,7 +209,11 @@ export function FinancingManagementPage() {
               const customer = getCustomer(fin.customerId);
               const paidInstallments = fin.schedule ? fin.schedule.filter(s => s.status === 'paid').length : 0;
               return (
-                <div key={fin.id} className="p-4 space-y-3">
+                <div
+                  key={fin.id}
+                  data-tour-target={fin.id === 'fin_tour_001' ? '2' : undefined}
+                  className="p-4 space-y-3"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="font-700 text-sm text-[#10212B]">{fin.financingNo}</div>
@@ -239,7 +302,11 @@ export function FinancingManagementPage() {
                   const customer = getCustomer(fin.customerId);
                   const paidInstallments = fin.schedule ? fin.schedule.filter(s => s.status === 'paid').length : 0;
                   return (
-                    <tr key={fin.id} className="hover:bg-[#F7F8F6]/50 transition-colors">
+                    <tr
+                      key={fin.id}
+                      data-tour-target={fin.id === 'fin_tour_001' ? '2' : undefined}
+                      className="hover:bg-[#F7F8F6]/50 transition-colors"
+                    >
                       <td className="px-5 py-3">
                         <div className="font-700 text-sm text-[#10212B]">{fin.financingNo}</div>
                         <div className="text-[11px] text-[#65727A]">{new Date(fin.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</div>

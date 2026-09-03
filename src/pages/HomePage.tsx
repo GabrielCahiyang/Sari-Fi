@@ -1,7 +1,17 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import { motion, AnimatePresence, useScroll, useSpring, useTransform, type Variants } from 'motion/react';
 import logo from '../imports/image-1.png';
 import { useApp } from '../context/AppContext';
+import { useTour } from '../context/TourContext';
+
+interface BenefitItem {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  color: string;
+  textMuted: string;
+  iconColor: string;
+}
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1759860002165-f059bfcee759?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzYXJpLXNhcmklMjBzdG9yZSUyMHBoaWxpcHBpbmVzJTIwZ3JvY2VyeSUyMG1hcmtldHxlbnwxfHx8fDE3ODgzNzI1NTF8MA&ixlib=rb-4.1.0&q=80&w=1080';
 const STORE_IMAGE = 'https://images.unsplash.com/photo-1759774289306-36f0cdb59bc1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwyfHxzYXJpLXNhcmklMjBzdG9yZSUyMHBoaWxpcHBpbmVzJTIwZ3JvY2VyeSUyMG1hcmtldHxlbnwxfHx8fDE3ODgzNzI1NTF8MA&ixlib=rb-4.1.0&q=80&w=1080';
@@ -25,80 +35,87 @@ const STEPS = [
   },
 ];
 
-const BENEFITS = [
-  {
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    title: 'Revolving Credit',
-    description: 'As you repay, your available credit restores automatically. One approval, ongoing access.',
-    color: 'bg-[#1E7D3B] text-white',
-    textMuted: 'text-white/80',
-    iconColor: 'text-white',
-  },
-  {
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
-    ),
-    title: 'Wholesale Prices',
-    description: 'Access 30+ product lines at wholesale prices — direct to your store, no middleman.',
-    color: 'bg-white border border-[#E4E8E6]',
-    textMuted: 'text-[#65727A]',
-    iconColor: 'text-[#1E7D3B]',
-  },
-  {
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-      </svg>
-    ),
-    title: 'Flexible Payment',
-    description: 'Pay in full, use Sari-Fi financing, or split your payment between credit and cash or GCash.',
-    color: 'bg-white border border-[#E4E8E6]',
-    textMuted: 'text-[#65727A]',
-    iconColor: 'text-[#1E7D3B]',
-  },
-  {
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-      </svg>
-    ),
-    title: 'Credit Growth',
-    description: 'Each completed financing cycle can increase your limit by ₱1,000 — up to ₱20,000.',
-    color: 'bg-[#0D2B45] text-white',
-    textMuted: 'text-white/80',
-    iconColor: 'text-[#7DBE4C]',
-  },
-  {
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    ),
-    title: 'Weekly Installments',
-    description: 'Choose a 1-month or 2-month plan with equal weekly installments that fit your cash flow.',
-    color: 'bg-[#FFF9E6] border border-[#FFD54F]/40',
-    textMuted: 'text-[#65727A]',
-    iconColor: 'text-[#B8860B]',
-  },
-  {
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-      </svg>
-    ),
-    title: 'GCash Ready',
-    description: 'Pay installments or orders via GCash — instant confirmation, no queuing at the counter.',
-    color: 'bg-white border border-[#E4E8E6]',
-    textMuted: 'text-[#65727A]',
-    iconColor: 'text-[#1E7D3B]',
-  },
-];
+function getBenefits(settings: any, productsCount: number): BenefitItem[] {
+  const limitInc = settings?.limitIncreaseAmount || 1000;
+  const maxLimit = settings?.maxAutomaticLimit || 20000;
+  const plan1Weeks = settings?.plan1Installments || 4;
+  const plan2Weeks = settings?.plan2Installments || 8;
+
+  return [
+    {
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      title: 'Revolving Credit',
+      description: 'As you repay, your available credit restores automatically. One approval, ongoing access.',
+      color: 'bg-[#1E7D3B] text-white',
+      textMuted: 'text-white/80',
+      iconColor: 'text-white',
+    },
+    {
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      ),
+      title: 'Wholesale Prices',
+      description: `Access ${productsCount || 30}+ product lines at wholesale prices — direct to your store, no middleman.`,
+      color: 'bg-white border border-[#E4E8E6]',
+      textMuted: 'text-[#65727A]',
+      iconColor: 'text-[#1E7D3B]',
+    },
+    {
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      ),
+      title: 'Flexible Payment',
+      description: 'Pay in full, use Sari-Fi financing, or split your payment between credit and cash or GCash.',
+      color: 'bg-white border border-[#E4E8E6]',
+      textMuted: 'text-[#65727A]',
+      iconColor: 'text-[#1E7D3B]',
+    },
+    {
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+      ),
+      title: 'Credit Growth',
+      description: `Each completed financing cycle can increase your limit by ${peso(limitInc)} — up to ${peso(maxLimit)}.`,
+      color: 'bg-[#0D2B45] text-white',
+      textMuted: 'text-white/80',
+      iconColor: 'text-[#7DBE4C]',
+    },
+    {
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      title: 'Weekly Installments',
+      description: `Choose a 1-month (${plan1Weeks} wks) or 2-month (${plan2Weeks} wks) plan with equal weekly installments that fit your cash flow.`,
+      color: 'bg-[#FFF9E6] border border-[#FFD54F]/40',
+      textMuted: 'text-[#65727A]',
+      iconColor: 'text-[#B8860B]',
+    },
+    {
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      ),
+      title: 'GCash Ready',
+      description: 'Pay installments or orders via GCash — instant confirmation, no queuing at the counter.',
+      color: 'bg-white border border-[#E4E8E6]',
+      textMuted: 'text-[#65727A]',
+      iconColor: 'text-[#1E7D3B]',
+    },
+  ];
+}
 
 const REQUIREMENTS = [
   'Registered or established sari-sari store',
@@ -107,7 +124,6 @@ const REQUIREMENTS = [
   'At least 6 months in active operation',
 ];
 
-const LIMIT = 5000;
 const peso = (n: number) => `₱${Math.round(n).toLocaleString('en-PH')}`;
 
 const fadeInUp: Variants = {
@@ -131,35 +147,78 @@ const staggerContainer: Variants = {
 };
 
 export function HomePage() {
-  const { navigate } = useApp();
+  const { navigate, state } = useApp();
+  const { startTour } = useTour();
+  const settings = state.settings;
+  const LIMIT = settings?.startingCreditLimit || 5000;
+  const MAX_LIMIT = settings?.maxAutomaticLimit || 20000;
+  const LIMIT_INC = settings?.limitIncreaseAmount || 1000;
+  const CHARGE_PCT = settings?.financingCharge ?? 2;
+  const PLAN1_WEEKS = settings?.plan1Installments || 4;
+  const PLAN2_WEEKS = settings?.plan2Installments || 8;
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
 
-  // Scroll Progress Bar
-  const { scrollYProgress, scrollY } = useScroll();
-  const scaleX = useSpring(scrollYProgress, { stiffness: 300, damping: 30, restDelta: 0.001 });
+  // Dynamic Scroll Progress Tracking
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const doc = document.documentElement;
+      const body = document.body;
+      const winScroll = window.pageYOffset || doc.scrollTop || body.scrollTop || 0;
+      const scrollHeight = Math.max(
+        doc.scrollHeight,
+        body.scrollHeight,
+        doc.offsetHeight,
+        body.offsetHeight
+      ) - window.innerHeight;
+
+      if (scrollHeight > 0) {
+        const scrolled = Math.min(1, Math.max(0, winScroll / scrollHeight));
+        setScrollProgress(scrolled);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, []);
+
+  const { scrollY } = useScroll();
   const heroParallaxY = useTransform(scrollY, [0, 600], [0, 120]);
 
   // Revolving credit demo
-  const [used, setUsed] = useState(3500);
-  const availPct = Math.round(((LIMIT - used) / LIMIT) * 100);
+  const [used, setUsed] = useState(Math.min(3500, Math.round(LIMIT * 0.7)));
+  const availPct = Math.max(0, Math.round(((LIMIT - used) / LIMIT) * 100));
 
   // Financing calculator
-  const [principal, setPrincipal] = useState(5000);
+  const [principal, setPrincipal] = useState(Math.min(5000, LIMIT));
   const [planMonths, setPlanMonths] = useState<1 | 2>(2);
+  const weeks = planMonths === 1 ? PLAN1_WEEKS : PLAN2_WEEKS;
   const [paidWeeks, setPaidWeeks] = useState(2);
-  const weeks = planMonths * 4;
   const paid = Math.min(paidWeeks, weeks);
-  const charge = principal * 0.2;
+  const charge = Math.round(principal * (CHARGE_PCT / 100));
   const total = principal + charge;
-  const perWeek = total / weeks;
+  const perWeek = Math.round((total / weeks) * 100) / 100;
+  const benefits = useMemo(() => getBenefits(settings, state.products.length), [settings, state.products.length]);
 
   return (
     <div className="min-h-full bg-[#F7F8F6] font-sans overflow-x-hidden selection:bg-[#1E7D3B] selection:text-white">
       {/* ── Scroll Progress Bar ── */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#1E7D3B] via-[#7DBE4C] to-[#FFC107] origin-left z-50 pointer-events-none shadow-sm shadow-[#1E7D3B]/40"
-        style={{ scaleX }}
+        className="fixed top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#1E7D3B] via-[#7DBE4C] to-[#FFC107] z-50 pointer-events-none shadow-md shadow-[#1E7D3B]/40"
+        style={{
+          transformOrigin: '0% 50%',
+        }}
+        animate={{ scaleX: scrollProgress }}
+        transition={{ type: 'spring', stiffness: 400, damping: 40, mass: 0.15 }}
       />
 
       {/* ── Sticky Navbar ── */}
@@ -186,6 +245,26 @@ export function HomePage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={startTour}
+              className="flex items-center gap-1.5 text-xs font-800 uppercase tracking-wider text-[#1E7D3B] hover:text-[#165f2c] bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200/80 px-3 py-2 rounded-xl transition-all cursor-pointer shadow-2xs"
+            >
+              <svg className="w-4 h-4 text-[#1E7D3B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Walkthrough</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('supplier/login')}
+              className="hidden sm:block text-xs font-700 uppercase tracking-wider text-[#0D2B45] hover:text-[#1E7D3B] transition-colors px-3 py-2 cursor-pointer"
+            >
+              Supplier Portal
+            </motion.button>
             <motion.button
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.95 }}
@@ -249,11 +328,42 @@ export function HomePage() {
                 <button
                   onClick={() => {
                     setMenuOpen(false);
+                    startTour();
+                  }}
+                  className="py-2 text-left font-800 text-[#1E7D3B] flex items-center gap-2 hover:underline transition-colors cursor-pointer"
+                >
+                  <svg className="w-4 h-4 text-[#1E7D3B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>System Walkthrough</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    navigate('supplier/login');
+                  }}
+                  className="py-2 text-left font-700 text-[#0D2B45] hover:text-[#1E7D3B] transition-colors cursor-pointer"
+                >
+                  Supplier Portal
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
                     navigate('login');
                   }}
                   className="py-2 text-left text-[#65727A] hover:text-[#0D2B45] transition-colors cursor-pointer"
                 >
                   Staff Portal
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    navigate('customer/login');
+                  }}
+                  className="py-2 text-left font-700 text-[#1E7D3B] hover:underline transition-colors cursor-pointer"
+                >
+                  Customer Login →
                 </button>
               </div>
             </motion.div>
@@ -336,10 +446,10 @@ export function HomePage() {
               className="grid grid-cols-2 md:grid-cols-4 gap-6"
             >
               {[
-                { value: '₱5,000', label: 'Starting Credit' },
-                { value: '30+', label: 'Product Lines' },
-                { value: '20%', label: 'Finance Charge' },
-                { value: '₱20,000', label: 'Max Credit Limit' },
+                { value: peso(LIMIT), label: 'Starting Credit' },
+                { value: `${state.products.length || 30}+`, label: 'Product Lines' },
+                { value: `${CHARGE_PCT}%`, label: 'Finance Charge' },
+                { value: peso(MAX_LIMIT), label: 'Max Credit Limit' },
               ].map(stat => (
                 <motion.div
                   key={stat.label}
@@ -563,7 +673,7 @@ export function HomePage() {
             viewport={{ once: true, margin: '-50px' }}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
           >
-            {BENEFITS.map(b => (
+            {benefits.map(b => (
               <motion.div
                 key={b.title}
                 variants={fadeInUp}
@@ -644,11 +754,15 @@ export function HomePage() {
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               />
             </div>
-            <div className="absolute top-4 left-4 sm:top-5 sm:-left-5 bg-white rounded-2xl p-3.5 sm:p-4 shadow-xl border border-[#E4E8E6]">
+            <motion.div
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute top-4 left-4 sm:top-5 sm:-left-5 bg-white rounded-2xl p-3.5 sm:p-4 shadow-xl border border-[#E4E8E6]"
+            >
               <div className="text-xs text-[#65727A] mb-0.5">Starting limit</div>
-              <div className="text-[#0D2B45] font-800 text-lg sm:text-xl">₱5,000</div>
-              <div className="text-xs text-[#7DBE4C] font-600 mt-1">↑ Grows with every cycle</div>
-            </div>
+              <div className="text-[#0D2B45] font-800 text-lg sm:text-xl">{peso(LIMIT)}</div>
+              <div className="text-xs text-[#7DBE4C] font-600 mt-1">↑ Grows +{peso(LIMIT_INC)} each cycle</div>
+            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -686,16 +800,16 @@ export function HomePage() {
                   </div>
                   <input
                     type="range"
-                    min={1000}
-                    max={LIMIT}
+                    min={500}
+                    max={Math.max(LIMIT, 10000)}
                     step={500}
                     value={principal}
                     onChange={e => setPrincipal(Number(e.target.value))}
                     className="w-full accent-[#7DBE4C] cursor-pointer"
                   />
                   <div className="flex justify-between text-[10px] text-white/40 mt-1 tnum">
-                    <span>₱1,000</span>
-                    <span>{peso(LIMIT)}</span>
+                    <span>₱500</span>
+                    <span>{peso(Math.max(LIMIT, 10000))}</span>
                   </div>
                 </div>
 
@@ -703,6 +817,7 @@ export function HomePage() {
                 <div className="flex rounded-xl bg-white/10 p-1 shrink-0">
                   {([1, 2] as const).map(m => {
                     const selected = planMonths === m;
+                    const wks = m === 1 ? PLAN1_WEEKS : PLAN2_WEEKS;
                     return (
                       <button
                         key={m}
@@ -718,7 +833,7 @@ export function HomePage() {
                             transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                           />
                         )}
-                        <span className="relative z-10">{m}-Month</span>
+                        <span className="relative z-10">{m}-Month ({wks} wks)</span>
                       </button>
                     );
                   })}
@@ -730,8 +845,8 @@ export function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 { label: 'Principal', value: peso(principal), sub: 'Amount borrowed' },
-                { label: 'Finance Charge (20%)', value: peso(charge), sub: 'One-time, applied upfront' },
-                { label: 'Total Repayable', value: peso(total), sub: `${weeks} weeks × ${peso(perWeek)}` },
+                { label: `Finance Charge (${CHARGE_PCT}%)`, value: peso(charge), sub: 'Applied to principal' },
+                { label: 'Total Repayable', value: peso(total), sub: `${weeks} weekly payments × ${peso(perWeek)}` },
               ].map(card => (
                 <motion.div
                   key={card.label}
@@ -821,22 +936,16 @@ export function HomePage() {
             <div className="flex flex-col gap-3 text-sm">
               <span className="text-xs font-700 text-white/30 uppercase tracking-widest">Platform</span>
               <button
-                onClick={() => navigate('customer/login')}
-                className="text-white/60 hover:text-white transition-colors text-left cursor-pointer"
-              >
-                Customer Portal
-              </button>
-              <button
                 onClick={() => navigate('login')}
                 className="text-white/60 hover:text-white transition-colors text-left cursor-pointer"
               >
-                Staff Portal
+                Sign In to Portal
               </button>
               <button
-                onClick={() => navigate('customer/login')}
+                onClick={() => navigate('supplier/login')}
                 className="text-white/60 hover:text-white transition-colors text-left cursor-pointer"
               >
-                Apply for Financing
+                Supplier Partner Portal
               </button>
             </div>
             <div className="flex flex-col gap-3 text-sm">

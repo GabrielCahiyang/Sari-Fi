@@ -296,10 +296,55 @@ export function EmployeesPage() {
     <InternalLayout title="Employees">
       <div className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          {['admin', 'supervisor', 'employee'].map(role => (
-            <div key={role} className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
-              <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider capitalize">{role}s</div>
-              <div className="text-[#0D2B45] font-800 text-2xl mt-1">{state.employees.filter(e => e.role === role).length}</div>
+          {[
+            {
+              role: 'admin',
+              label: 'Administrators',
+              sub: 'Full system privileges & settings',
+              iconBg: 'bg-slate-100 text-[#0D2B45]',
+              icon: (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              ),
+            },
+            {
+              role: 'supervisor',
+              label: 'Supervisors',
+              sub: 'Financing review & operations',
+              iconBg: 'bg-amber-50 text-amber-700',
+              icon: (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              ),
+            },
+            {
+              role: 'employee',
+              label: 'Cashiers & Staff',
+              sub: 'Frontline POS order desk',
+              iconBg: 'bg-emerald-50 text-[#1E7D3B]',
+              icon: (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              ),
+            },
+          ].map(r => (
+            <div key={r.role} className="bg-white rounded-2xl border border-[#E4E8E6] p-4 shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">{r.label}</span>
+                <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${r.iconBg}`}>
+                  {r.icon}
+                </span>
+              </div>
+              <div>
+                <div className="text-[#0D2B45] font-800 text-2xl mt-1">
+                  {state.employees.filter(e => e.role === r.role).length}
+                </div>
+                <div className="text-[#65727A] text-[11px] mt-0.5">{r.sub}</div>
+              </div>
             </div>
           ))}
         </div>

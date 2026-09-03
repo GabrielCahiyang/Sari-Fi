@@ -72,17 +72,30 @@ export function FinancingPage() {
       paidAt: new Date().toISOString(),
     };
 
+    const allPaidAfterThis = targetFin.schedule.every(s => s.weekNo === payWeekNo || s.status === 'paid');
+    const limitInc = state.settings?.limitIncreaseAmount || 0;
+    const maxLim = state.settings?.maxAutomaticLimit || 20000;
+    const shouldGrowInstallment = allPaidAfterThis && customer.creditLimit < maxLim && limitInc > 0;
+    const newLimitInstallment = shouldGrowInstallment ? Math.min(maxLim, customer.creditLimit + limitInc) : customer.creditLimit;
+
     try {
       await saveRecord('financing', updatedFinancing);
       await saveRecord('payments', newPayment);
       const newUsed = Math.max(0, customer.usedCredit - principalPerInstallment);
-      await updateRecord('customers', customer.id, { usedCredit: newUsed });
+      await updateRecord('customers', customer.id, {
+        usedCredit: newUsed,
+        ...(shouldGrowInstallment ? { creditLimit: newLimitInstallment } : {})
+      });
     } catch (err: any) {
       console.error('Failed to save installment payment to RTDB:', err);
     }
 
     dispatch({ type: 'PAY_INSTALLMENT', financingId: selectedFin, weekNo: payWeekNo, method: payMethod });
-    showToast('success', `Installment #${payWeekNo} paid successfully via ${payMethod === 'gcash' ? 'GCash' : 'Cash'}. Credit restored.`);
+    if (shouldGrowInstallment) {
+      showToast('success', `Installment #${payWeekNo} paid! Financing complete & credit limit grew by ₱${limitInc.toLocaleString()} to ₱${newLimitInstallment.toLocaleString()}! 🎉`);
+    } else {
+      showToast('success', `Installment #${payWeekNo} paid successfully via ${payMethod === 'gcash' ? 'GCash' : 'Cash'}. Credit restored.`);
+    }
     setPayWeekNo(null);
     setSelectedFin(null);
   };
@@ -132,17 +145,29 @@ export function FinancingPage() {
       paidAt: new Date().toISOString(),
     };
 
+    const limitInc = state.settings?.limitIncreaseAmount || 0;
+    const maxLim = state.settings?.maxAutomaticLimit || 20000;
+    const shouldGrowFull = customer.creditLimit < maxLim && limitInc > 0;
+    const newLimitFull = shouldGrowFull ? Math.min(maxLim, customer.creditLimit + limitInc) : customer.creditLimit;
+
     try {
       await saveRecord('financing', updatedFinancing);
       await saveRecord('payments', newPayment);
       const newUsed = Math.max(0, customer.usedCredit - remainingPrincipal);
-      await updateRecord('customers', customer.id, { usedCredit: newUsed });
+      await updateRecord('customers', customer.id, {
+        usedCredit: newUsed,
+        ...(shouldGrowFull ? { creditLimit: newLimitFull } : {})
+      });
     } catch (err: any) {
       console.error('Failed to save full settlement to RTDB:', err);
     }
 
     dispatch({ type: 'PAY_FULL_BALANCE', financingId: selectedFin, method: payMethod });
-    showToast('success', 'Full balance settled! Credit fully restored and financing completed.');
+    if (shouldGrowFull) {
+      showToast('success', `Full balance settled! Credit limit grew by ₱${limitInc.toLocaleString()} to ₱${newLimitFull.toLocaleString()}! 🎉`);
+    } else {
+      showToast('success', 'Full balance settled! Credit fully restored and financing completed.');
+    }
     setPayFull(false);
     setSelectedFin(null);
   };
@@ -189,7 +214,11 @@ export function FinancingPage() {
               const remaining = Math.round(fin.totalRepayable - (fin.paidPrincipal / fin.principal * fin.totalRepayable));
               const nextDue = fin.schedule.find(s => s.status === 'due' || s.status === 'overdue');
               return (
-                <div key={fin.id} className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden">
+                <div
+                  key={fin.id}
+                  data-tour-target={fin.id === 'fin_tour_001' ? '5' : undefined}
+                  className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden"
+                >
                   <div className="p-4 sm:p-5">
                     <div className="flex items-start justify-between mb-4">
                       <div>

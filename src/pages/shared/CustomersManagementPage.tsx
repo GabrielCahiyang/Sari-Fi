@@ -66,7 +66,6 @@ export function CustomersManagementPage() {
     yearsOperating: '',
     notes: '',
     status: 'active' as 'active' | 'suspended',
-    isStoreOwner: false,
   });
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
   const [showEditPass, setShowEditPass] = useState(false);
@@ -144,12 +143,10 @@ export function CustomersManagementPage() {
       newErrors.creditLimit = 'Valid credit limit (₱) is required';
     }
 
-    if (isStoreOwner) {
-      if (!formData.storeName.trim()) newErrors.storeName = 'Store name is required';
-      if (!formData.storeAddress.trim()) newErrors.storeAddress = 'Store address is required';
-      if (!formData.yearsOperating.trim() || isNaN(Number(formData.yearsOperating)) || Number(formData.yearsOperating) < 0) {
-        newErrors.yearsOperating = 'Valid years operating is required';
-      }
+    if (!formData.storeName.trim()) newErrors.storeName = 'Sari-sari store name is required';
+    if (!formData.storeAddress.trim()) newErrors.storeAddress = 'Store address is required';
+    if (!formData.yearsOperating.trim() || isNaN(Number(formData.yearsOperating)) || Number(formData.yearsOperating) < 0) {
+      newErrors.yearsOperating = 'Valid years operating is required';
     }
 
     setErrors(newErrors);
@@ -159,7 +156,7 @@ export function CustomersManagementPage() {
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateCustomerForm()) {
-      showToast('error', 'Please fill in all required text boxes.');
+      showToast('error', 'Please fill in all required sari-sari store details.');
       return;
     }
 
@@ -171,10 +168,10 @@ export function CustomersManagementPage() {
       phone: formData.phone.trim(),
       email: formData.email.trim(),
       address: formData.address.trim(),
-      storeName: isStoreOwner ? (formData.storeName.trim() || 'Sari-Sari Store') : 'Individual Buyer',
-      storeAddress: isStoreOwner ? formData.storeAddress.trim() : '',
-      yearsOperating: isStoreOwner ? parseInt(formData.yearsOperating) || 0 : 0,
-      notes: isStoreOwner ? formData.notes.trim() : '',
+      storeName: formData.storeName.trim() || 'Sari-Sari Store',
+      storeAddress: formData.storeAddress.trim(),
+      yearsOperating: parseInt(formData.yearsOperating) || 0,
+      notes: formData.notes.trim(),
       loginEmail: formData.loginEmail.trim().toLowerCase(),
       password: formData.password.trim(),
       status: 'active',
@@ -216,7 +213,6 @@ export function CustomersManagementPage() {
       showToast('success', `Customer account for ${pendingCustomer.fullName} created!`);
       setShowCreate(false);
       setPendingCustomer(null);
-      setIsStoreOwner(false);
     } catch (err: any) {
       showToast('error', 'Failed to save customer: ' + err.message);
     } finally {
@@ -228,7 +224,6 @@ export function CustomersManagementPage() {
   // Edit Customer Handlers
   const handleOpenEdit = (cust: Customer) => {
     setEditingCustomer(cust);
-    const isOwner = !!(cust.storeName && cust.storeName !== 'Individual Buyer');
     setEditFormData({
       fullName: cust.fullName,
       phone: cust.phone || '',
@@ -237,12 +232,11 @@ export function CustomersManagementPage() {
       loginEmail: cust.loginEmail,
       password: cust.password || '',
       creditLimit: String(cust.creditLimit || 5000),
-      storeName: isOwner ? cust.storeName : '',
+      storeName: cust.storeName || '',
       storeAddress: cust.storeAddress || '',
       yearsOperating: String(cust.yearsOperating || ''),
       notes: cust.notes || '',
       status: cust.status,
-      isStoreOwner: isOwner,
     });
     setEditErrors({});
     setShowEditPass(false);
@@ -283,12 +277,10 @@ export function CustomersManagementPage() {
       errs.creditLimit = 'Valid credit limit (₱) is required';
     }
 
-    if (editFormData.isStoreOwner) {
-      if (!editFormData.storeName.trim()) errs.storeName = 'Store name is required';
-      if (!editFormData.storeAddress.trim()) errs.storeAddress = 'Store address is required';
-      if (!editFormData.yearsOperating.trim() || isNaN(Number(editFormData.yearsOperating)) || Number(editFormData.yearsOperating) < 0) {
-        errs.yearsOperating = 'Valid years operating is required';
-      }
+    if (!editFormData.storeName.trim()) errs.storeName = 'Sari-sari store name is required';
+    if (!editFormData.storeAddress.trim()) errs.storeAddress = 'Store address is required';
+    if (!editFormData.yearsOperating.trim() || isNaN(Number(editFormData.yearsOperating)) || Number(editFormData.yearsOperating) < 0) {
+      errs.yearsOperating = 'Valid years operating is required';
     }
 
     setEditErrors(errs);
@@ -312,10 +304,10 @@ export function CustomersManagementPage() {
       loginEmail: editFormData.loginEmail.trim().toLowerCase(),
       password: editFormData.password.trim(),
       creditLimit: parseInt(editFormData.creditLimit) || editingCustomer.creditLimit,
-      storeName: editFormData.isStoreOwner ? (editFormData.storeName.trim() || 'Sari-Sari Store') : 'Individual Buyer',
-      storeAddress: editFormData.isStoreOwner ? editFormData.storeAddress.trim() : '',
-      yearsOperating: editFormData.isStoreOwner ? parseInt(editFormData.yearsOperating) || 0 : 0,
-      notes: editFormData.isStoreOwner ? editFormData.notes.trim() : '',
+      storeName: editFormData.storeName.trim() || editingCustomer.storeName,
+      storeAddress: editFormData.storeAddress.trim(),
+      yearsOperating: parseInt(editFormData.yearsOperating) || 0,
+      notes: editFormData.notes.trim(),
       status: editFormData.status,
     };
 
@@ -401,21 +393,64 @@ export function CustomersManagementPage() {
       <div className="space-y-5">
         {/* KPI Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Total Accounts</div>
-            <div className="text-[#0D2B45] font-800 text-2xl mt-1">{state.customers.length}</div>
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Total Accounts</span>
+              <span className="w-8 h-8 rounded-xl bg-slate-100 text-[#0D2B45] flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="text-[#0D2B45] font-800 text-2xl mt-1">{state.customers.length}</div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">Registered sari-sari stores</div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Active Lines</div>
-            <div className="text-[#1E7D3B] font-800 text-2xl mt-1">{state.customers.filter(c => c.usedCredit > 0).length}</div>
+
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Active Lines</span>
+              <span className="w-8 h-8 rounded-xl bg-emerald-50 text-[#1E7D3B] flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="text-[#1E7D3B] font-800 text-2xl mt-1">{state.customers.filter(c => c.usedCredit > 0).length}</div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">Currently utilizing credit</div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Total Credit Extended</div>
-            <div className="text-[#0D2B45] font-800 text-2xl mt-1">{formatPHP(state.customers.reduce((s, c) => s + c.creditLimit, 0))}</div>
+
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Credit Extended</span>
+              <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="text-[#10212B] font-800 text-2xl mt-1">{formatPHP(state.customers.reduce((s, c) => s + c.creditLimit, 0))}</div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">Total credit ceiling allocated</div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4">
-            <div className="text-[#65727A] text-xs font-600 uppercase tracking-wider">Outstanding Balance</div>
-            <div className="text-amber-600 font-800 text-2xl mt-1">{formatPHP(state.customers.reduce((s, c) => s + c.usedCredit, 0))}</div>
+
+          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Outstanding Balance</span>
+              <span className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="text-amber-700 font-800 text-2xl mt-1">{formatPHP(state.customers.reduce((s, c) => s + c.usedCredit, 0))}</div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">Active credit drawn</div>
+            </div>
           </div>
         </div>
 
@@ -714,99 +749,82 @@ export function CustomersManagementPage() {
             </div>
           </div>
 
-          {/* Store Owner Checkbox */}
-          <div className="pt-3 pb-2 border-t border-[#E4E8E6]">
-            <label className="flex items-center gap-3 cursor-pointer select-none bg-[#F7F8F6] p-3 rounded-xl hover:bg-[#ecefed] transition-colors">
-              <input
-                type="checkbox"
-                checked={isStoreOwner}
-                onChange={e => setIsStoreOwner(e.target.checked)}
-                className="w-4 h-4 rounded text-[#1E7D3B] focus:ring-[#1E7D3B] border-[#E4E8E6] accent-[#1E7D3B] cursor-pointer"
-              />
+          {/* Sari-Sari Store Information */}
+          <div className="space-y-3 bg-[#F7F8F6] p-4 rounded-xl border border-[#E4E8E6]">
+            <div className="text-xs font-700 text-[#10212B] uppercase tracking-wider">
+              Sari-Sari Store Information <span className="text-red-500">*</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <span className="text-sm font-700 text-[#10212B]">Register as Store Owner</span>
-                <p className="text-[11px] text-[#65727A]">
-                  Default account is a regular buyer. Check this to reveal sari-sari store details.
-                </p>
+                <label className="text-xs font-600 text-[#65727A]">
+                  Store Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.storeName}
+                  onChange={e => {
+                    setFormData({ ...formData, storeName: e.target.value });
+                    if (errors.storeName) setErrors({ ...errors, storeName: '' });
+                  }}
+                  placeholder="e.g. Aling Nena Tindahan"
+                  className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
+                    errors.storeName ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
+                  }`}
+                />
+                {errors.storeName && <span className="text-[11px] text-red-500 font-500 mt-1 block">{errors.storeName}</span>}
               </div>
-            </label>
-          </div>
 
-          {/* Store Information (Only visible if isStoreOwner is checked) */}
-          {isStoreOwner && (
-            <div className="space-y-3 bg-[#F7F8F6] p-4 rounded-xl border border-[#E4E8E6] animate-fade-in">
-              <div className="text-xs font-700 text-[#10212B] uppercase tracking-wider">Store Information</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="text-xs font-600 text-[#65727A]">
-                    Store Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.storeName}
-                    onChange={e => {
-                      setFormData({ ...formData, storeName: e.target.value });
-                      if (errors.storeName) setErrors({ ...errors, storeName: '' });
-                    }}
-                    placeholder="e.g. Aling Nena Tindahan"
-                    className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
-                      errors.storeName ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
-                    }`}
-                  />
-                  {errors.storeName && <span className="text-[11px] text-red-500 font-500 mt-1 block">{errors.storeName}</span>}
-                </div>
+              <div>
+                <label className="text-xs font-600 text-[#65727A]">
+                  Store Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.storeAddress}
+                  onChange={e => {
+                    setFormData({ ...formData, storeAddress: e.target.value });
+                    if (errors.storeAddress) setErrors({ ...errors, storeAddress: '' });
+                  }}
+                  placeholder="e.g. Purok 4, Brgy. San Jose"
+                  className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
+                    errors.storeAddress ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
+                  }`}
+                />
+                {errors.storeAddress && <span className="text-[11px] text-red-500 font-500 mt-1 block">{errors.storeAddress}</span>}
+              </div>
 
-                <div>
-                  <label className="text-xs font-600 text-[#65727A]">
-                    Store Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.storeAddress}
-                    onChange={e => {
-                      setFormData({ ...formData, storeAddress: e.target.value });
-                      if (errors.storeAddress) setErrors({ ...errors, storeAddress: '' });
-                    }}
-                    placeholder="Barangay, City, Province"
-                    className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
-                      errors.storeAddress ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
-                    }`}
-                  />
-                  {errors.storeAddress && <span className="text-[11px] text-red-500 font-500 mt-1 block">{errors.storeAddress}</span>}
-                </div>
+              <div>
+                <label className="text-xs font-600 text-[#65727A]">
+                  Years Operating <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.yearsOperating}
+                  onChange={e => {
+                    setFormData({ ...formData, yearsOperating: e.target.value });
+                    if (errors.yearsOperating) setErrors({ ...errors, yearsOperating: '' });
+                  }}
+                  placeholder="e.g. 3"
+                  min="0"
+                  className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
+                    errors.yearsOperating ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
+                  }`}
+                />
+                {errors.yearsOperating && <span className="text-[11px] text-red-500 font-500 mt-1 block">{errors.yearsOperating}</span>}
+              </div>
 
-                <div>
-                  <label className="text-xs font-600 text-[#65727A]">
-                    Years Operating <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.yearsOperating}
-                    onChange={e => {
-                      setFormData({ ...formData, yearsOperating: e.target.value });
-                      if (errors.yearsOperating) setErrors({ ...errors, yearsOperating: '' });
-                    }}
-                    placeholder="0"
-                    className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
-                      errors.yearsOperating ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
-                    }`}
-                  />
-                  {errors.yearsOperating && <span className="text-[11px] text-red-500 font-500 mt-1 block">{errors.yearsOperating}</span>}
-                </div>
-
-                <div>
-                  <label className="text-xs font-600 text-[#65727A]">Notes / Landmarks</label>
-                  <input
-                    type="text"
-                    value={formData.notes}
-                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Near barangay hall, etc."
-                    className="mt-1 w-full px-3 py-2 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:border-[#1E7D3B]"
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-600 text-[#65727A]">Notes / Landmarks</label>
+                <input
+                  type="text"
+                  value={formData.notes}
+                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Near barangay hall, etc."
+                  className="mt-1 w-full px-3 py-2 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:border-[#1E7D3B]"
+                />
               </div>
             </div>
-          )}
+          </div>
 
           <div className="text-xs font-700 text-[#65727A] uppercase tracking-wider pt-2 mb-3">Account Credentials & Financing</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -969,94 +987,77 @@ export function CustomersManagementPage() {
             </div>
           </div>
 
-          {/* Store Owner Toggle in Edit */}
-          <div className="pt-2 pb-1 border-t border-[#E4E8E6]">
-            <label className="flex items-center gap-3 cursor-pointer select-none bg-[#F7F8F6] p-3 rounded-xl hover:bg-[#ecefed] transition-colors">
-              <input
-                type="checkbox"
-                checked={editFormData.isStoreOwner}
-                onChange={e => setEditFormData({ ...editFormData, isStoreOwner: e.target.checked })}
-                className="w-4 h-4 rounded text-[#1E7D3B] focus:ring-[#1E7D3B] border-[#E4E8E6] accent-[#1E7D3B] cursor-pointer"
-              />
+          {/* Sari-Sari Store Information */}
+          <div className="space-y-3 bg-[#F7F8F6] p-4 rounded-xl border border-[#E4E8E6]">
+            <div className="text-xs font-700 text-[#10212B] uppercase tracking-wider">
+              Sari-Sari Store Information <span className="text-red-500">*</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <span className="text-sm font-700 text-[#10212B]">Store Owner Account</span>
-                <p className="text-[11px] text-[#65727A]">
-                  Check to enable and edit sari-sari store details for this account.
-                </p>
+                <label className="text-xs font-600 text-[#65727A]">
+                  Store Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.storeName}
+                  onChange={e => {
+                    setEditFormData({ ...editFormData, storeName: e.target.value });
+                    if (editErrors.storeName) setEditErrors({ ...editErrors, storeName: '' });
+                  }}
+                  className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
+                    editErrors.storeName ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
+                  }`}
+                />
+                {editErrors.storeName && <span className="text-[11px] text-red-500 font-500 mt-1 block">{editErrors.storeName}</span>}
               </div>
-            </label>
-          </div>
 
-          {editFormData.isStoreOwner && (
-            <div className="space-y-3 bg-[#F7F8F6] p-4 rounded-xl border border-[#E4E8E6]">
-              <div className="text-xs font-700 text-[#10212B] uppercase tracking-wider">Store Information</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="text-xs font-600 text-[#65727A]">
-                    Store Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editFormData.storeName}
-                    onChange={e => {
-                      setEditFormData({ ...editFormData, storeName: e.target.value });
-                      if (editErrors.storeName) setEditErrors({ ...editErrors, storeName: '' });
-                    }}
-                    className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
-                      editErrors.storeName ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
-                    }`}
-                  />
-                  {editErrors.storeName && <span className="text-[11px] text-red-500 font-500 mt-1 block">{editErrors.storeName}</span>}
-                </div>
+              <div>
+                <label className="text-xs font-600 text-[#65727A]">
+                  Store Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.storeAddress}
+                  onChange={e => {
+                    setEditFormData({ ...editFormData, storeAddress: e.target.value });
+                    if (editErrors.storeAddress) setEditErrors({ ...editErrors, storeAddress: '' });
+                  }}
+                  className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
+                    editErrors.storeAddress ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
+                  }`}
+                />
+                {editErrors.storeAddress && <span className="text-[11px] text-red-500 font-500 mt-1 block">{editErrors.storeAddress}</span>}
+              </div>
 
-                <div>
-                  <label className="text-xs font-600 text-[#65727A]">
-                    Store Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editFormData.storeAddress}
-                    onChange={e => {
-                      setEditFormData({ ...editFormData, storeAddress: e.target.value });
-                      if (editErrors.storeAddress) setEditErrors({ ...editErrors, storeAddress: '' });
-                    }}
-                    className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
-                      editErrors.storeAddress ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
-                    }`}
-                  />
-                  {editErrors.storeAddress && <span className="text-[11px] text-red-500 font-500 mt-1 block">{editErrors.storeAddress}</span>}
-                </div>
+              <div>
+                <label className="text-xs font-600 text-[#65727A]">
+                  Years Operating <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={editFormData.yearsOperating}
+                  onChange={e => {
+                    setEditFormData({ ...editFormData, yearsOperating: e.target.value });
+                    if (editErrors.yearsOperating) setEditErrors({ ...editErrors, yearsOperating: '' });
+                  }}
+                  className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
+                    editErrors.yearsOperating ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
+                  }`}
+                />
+                {editErrors.yearsOperating && <span className="text-[11px] text-red-500 font-500 mt-1 block">{editErrors.yearsOperating}</span>}
+              </div>
 
-                <div>
-                  <label className="text-xs font-600 text-[#65727A]">
-                    Years Operating <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={editFormData.yearsOperating}
-                    onChange={e => {
-                      setEditFormData({ ...editFormData, yearsOperating: e.target.value });
-                      if (editErrors.yearsOperating) setEditErrors({ ...editErrors, yearsOperating: '' });
-                    }}
-                    className={`mt-1 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none transition-all ${
-                      editErrors.yearsOperating ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
-                    }`}
-                  />
-                  {editErrors.yearsOperating && <span className="text-[11px] text-red-500 font-500 mt-1 block">{editErrors.yearsOperating}</span>}
-                </div>
-
-                <div>
-                  <label className="text-xs font-600 text-[#65727A]">Notes / Landmarks</label>
-                  <input
-                    type="text"
-                    value={editFormData.notes}
-                    onChange={e => setEditFormData({ ...editFormData, notes: e.target.value })}
-                    className="mt-1 w-full px-3 py-2 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:border-[#1E7D3B]"
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-600 text-[#65727A]">Notes / Landmarks</label>
+                <input
+                  type="text"
+                  value={editFormData.notes}
+                  onChange={e => setEditFormData({ ...editFormData, notes: e.target.value })}
+                  className="mt-1 w-full px-3 py-2 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:border-[#1E7D3B]"
+                />
               </div>
             </div>
-          )}
+          </div>
 
           <div className="text-xs font-700 text-[#65727A] uppercase tracking-wider pt-2 mb-2">
             Credentials & Account Settings

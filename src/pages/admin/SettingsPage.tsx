@@ -23,10 +23,12 @@ export function SettingsPage() {
       await logAudit({
         category: 'settings',
         action: 'settings.update',
-        summary: 'Updated system financing & credit limits settings',
+        summary: `Updated system financing & credit limits (Finance charge: ${settings.financingCharge}%, Starting limit: ₱${settings.startingCreditLimit.toLocaleString()}, Growth: ₱${settings.limitIncreaseAmount.toLocaleString()})`,
         targetType: 'settings',
+        targetId: 'system_settings',
+        targetLabel: 'System Settings',
       });
-      showToast('success', 'Settings saved successfully.');
+      showToast('success', 'Settings saved successfully and applied across system.');
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err: any) {

@@ -1,3 +1,4 @@
+import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { OrderStatusBadge } from '../../components/ui/Badge';
@@ -14,19 +15,20 @@ export function AdminDashboard() {
 
   const recentOrders = state.orders.slice(0, 6);
   const pendingFinancing = state.financing.filter(f => f.status === 'pending').length;
-  const lowStock = state.products.filter(p => p.stock <= p.reorderLevel).length;
-  const cashPending = state.payments.filter(p => p.status === 'pending' && p.method === 'cash').length;
-
+  
   // Top products by total value
   const topProducts = state.products
     .map(p => ({ ...p, revenue: p.sellingPrice * (120 - p.stock) }))
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
 
-  const paymentMethodBreakdown = {
-    cash: state.payments.filter(p => p.method === 'cash' && p.status === 'paid').reduce((s, p) => s + p.amount, 0),
-    gcash: state.payments.filter(p => p.method === 'gcash' && p.status === 'paid').reduce((s, p) => s + p.amount, 0),
-  };
+  const paymentMethodBreakdown = state.payments
+    .filter(p => p.status === 'paid')
+    .reduce((acc, p) => {
+      acc[p.method] = (acc[p.method] || 0) + p.amount;
+      return acc;
+    }, { cash: 0, gcash: 0 } as Record<string, number>);
+
   const totalBreakdown = paymentMethodBreakdown.cash + paymentMethodBreakdown.gcash;
   const cashPercent = totalBreakdown ? Math.round(paymentMethodBreakdown.cash / totalBreakdown * 100) : 0;
   const gcashPercent = 100 - cashPercent;
@@ -36,49 +38,127 @@ export function AdminDashboard() {
       <div className="space-y-5">
         {/* Primary KPI Bento */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-[#0D2B45] rounded-2xl p-3.5 sm:p-5 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-            <div className="text-white/60 text-[11px] sm:text-xs font-600 uppercase tracking-wider">Total Sales</div>
-            <div className="text-white font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(totalSales)}</div>
-            <div className="text-[#7DBE4C] text-[11px] mt-1">Purchase payments</div>
-          </div>
-          <div className="bg-[#1E7D3B] rounded-2xl p-3.5 sm:p-5">
-            <div className="text-white/70 text-[11px] sm:text-xs font-600 uppercase tracking-wider">Active Financing</div>
-            <div className="text-white font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(Math.round(totalActive))}</div>
-            <div className="text-white/60 text-[11px] mt-1">{activeFinancing.length} accounts</div>
-          </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-5">
-            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Collected (All)</div>
-            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(collected)}</div>
-          </div>
-          <div className={`rounded-2xl p-3.5 sm:p-5 border ${overdue > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-[#E4E8E6]'}`}>
-            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Overdue Amount</div>
-            <div className={`font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate ${overdue > 0 ? 'text-red-600' : 'text-[#10212B]'}`}>{formatPHP(Math.round(overdue))}</div>
-          </div>
+          <motion.div
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5 shadow-xs flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Total Sales</span>
+              <span className="w-8 h-8 rounded-xl bg-emerald-50 text-[#1E7D3B] flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="font-800 text-xl sm:text-2xl mt-1 text-[#10212B] truncate">{formatPHP(totalSales)}</div>
+              <div className="text-emerald-700 font-600 text-[11px] mt-1">Purchase orders settled</div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5 shadow-xs flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Active Financing</span>
+              <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="font-800 text-xl sm:text-2xl mt-1 text-[#10212B] truncate">{formatPHP(Math.round(totalActive))}</div>
+              <div className="text-[#65727A] text-[11px] mt-1">{activeFinancing.length} active credit accounts</div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5 shadow-xs flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Collected (All)</span>
+              <span className="w-8 h-8 rounded-xl bg-slate-100 text-[#0D2B45] flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 truncate">{formatPHP(collected)}</div>
+              <div className="text-[#65727A] text-[11px] mt-1">Total revenue processed</div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className={`rounded-2xl p-4 sm:p-5 border shadow-xs flex flex-col justify-between ${
+              overdue > 0 ? 'bg-red-50/40 border-red-200' : 'bg-white border-[#E4E8E6]'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] sm:text-xs font-700 uppercase tracking-wider text-[#65727A]">Overdue Amount</span>
+              <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${overdue > 0 ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-[#65727A]'}`}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </span>
+            </div>
+            <div>
+              <div className={`font-800 text-xl sm:text-2xl mt-1 truncate ${overdue > 0 ? 'text-red-600' : 'text-[#10212B]'}`}>
+                {formatPHP(Math.round(overdue))}
+              </div>
+              <div className={`text-[11px] mt-1 ${overdue > 0 ? 'text-red-600 font-600' : 'text-[#65727A]'}`}>
+                {overdue > 0 ? 'Past due installments' : 'No overdue accounts'}
+              </div>
+            </div>
+          </motion.div>
         </div>
 
         {/* Secondary Bento */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-4">
+          <motion.div
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-4 shadow-xs"
+          >
             <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Orders Today</div>
             <div className="text-[#0D2B45] font-800 text-xl sm:text-2xl mt-1">{state.orders.length}</div>
             <button onClick={() => navigate('admin/orders')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline cursor-pointer">View →</button>
-          </div>
-          <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-4">
+          </motion.div>
+          <motion.div
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-4 shadow-xs"
+          >
             <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Customers</div>
             <div className="text-[#0D2B45] font-800 text-xl sm:text-2xl mt-1">{state.customers.length}</div>
             <button onClick={() => navigate('admin/customers')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline cursor-pointer">View →</button>
-          </div>
-          <div className={`rounded-2xl p-3.5 sm:p-4 border ${lowStock > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}>
-            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Low / Out of Stock</div>
-            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1">{lowStock}</div>
-            <button onClick={() => navigate('admin/inventory')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline cursor-pointer">View →</button>
-          </div>
-          <div className={`rounded-2xl p-3.5 sm:p-4 border ${pendingFinancing > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}>
+          </motion.div>
+          <motion.div
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-4 shadow-xs"
+          >
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Wholesale Suppliers</div>
+            <div className="text-[#0D2B45] font-800 text-xl sm:text-2xl mt-1">{state.suppliers.length}</div>
+            <button onClick={() => navigate('admin/suppliers')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline cursor-pointer">View →</button>
+          </motion.div>
+          <motion.div
+            whileHover={{ y: -2 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className={`rounded-2xl p-3.5 sm:p-4 border shadow-xs ${pendingFinancing > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}
+          >
             <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Pending Financing</div>
             <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1">{pendingFinancing}</div>
             <button onClick={() => navigate('admin/financing')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline cursor-pointer">Review →</button>
-          </div>
+          </motion.div>
         </div>
 
         <div className="grid grid-cols-12 gap-5">

@@ -67,11 +67,29 @@ export function subscribeToNodeObject<T>(
 }
 
 /**
+ * Recursively removes keys with undefined values so Firebase RTDB set/update never throws
+ */
+export function cleanUndefined<T>(value: T): T {
+  if (value === undefined) return null as unknown as T;
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    return value.map(cleanUndefined) as unknown as T;
+  }
+  const cleaned: Record<string, any> = {};
+  for (const [k, v] of Object.entries(value as Record<string, any>)) {
+    if (v !== undefined) {
+      cleaned[k] = cleanUndefined(v);
+    }
+  }
+  return cleaned as T;
+}
+
+/**
  * Save or overwrite a record by its `id`
  */
 export async function saveRecord<T extends { id: string }>(nodePath: string, item: T): Promise<void> {
   const itemRef = ref(database, `${nodePath}/${item.id}`);
-  await set(itemRef, item);
+  await set(itemRef, cleanUndefined(item));
 }
 
 /**
@@ -79,7 +97,7 @@ export async function saveRecord<T extends { id: string }>(nodePath: string, ite
  */
 export async function updateRecord(nodePath: string, id: string, updates: Record<string, any>): Promise<void> {
   const itemRef = ref(database, `${nodePath}/${id}`);
-  await update(itemRef, updates);
+  await update(itemRef, cleanUndefined(updates));
 }
 
 /**
@@ -90,12 +108,27 @@ export async function deleteRecord(nodePath: string, id: string): Promise<void> 
   await remove(itemRef);
 }
 
+/** Read one record directly when a workflow needs a durable pre-change snapshot. */
+export async function getRecord<T>(nodePath: string, id: string): Promise<T | null> {
+  const snapshot = await get(ref(database, `${nodePath}/${id}`));
+  return snapshot.exists() ? snapshot.val() as T : null;
+}
+
+/**
+ * Apply a multi-location RTDB update atomically from the database root.
+ * A null value removes that path, which makes this useful for all-or-nothing
+ * cleanup of temporary workflows such as the guided product tour.
+ */
+export async function updateRootPaths(paths: Record<string, unknown>): Promise<void> {
+  await update(ref(database), cleanUndefined(paths));
+}
+
 /**
  * Save System Settings
  */
 export async function saveSettings(settings: SystemSettings): Promise<void> {
   const settingsRef = ref(database, 'settings');
-  await set(settingsRef, settings);
+  await set(settingsRef, cleanUndefined(settings));
 }
 
 /**
@@ -104,7 +137,7 @@ export async function saveSettings(settings: SystemSettings): Promise<void> {
 export async function logAuditEntry(entry: AuditEntry): Promise<void> {
   try {
     const logRef = ref(database, `auditLog/${entry.id}`);
-    await set(logRef, entry);
+    await set(logRef, cleanUndefined(entry));
   } catch (err) {
     console.error('Failed to log audit entry to RTDB:', err);
   }

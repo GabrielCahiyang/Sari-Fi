@@ -8,6 +8,7 @@ import {
 import { ref, get, set } from 'firebase/database';
 import { auth, database } from '../../firebase';
 import type { AuthUser, UserRole } from '../../types';
+import { USERS } from '../../data/seed';
 
 export interface UserProfile {
   id: string;
@@ -16,6 +17,7 @@ export interface UserProfile {
   role: UserRole;
   employeeId?: string;
   customerId?: string;
+  supplierId?: string;
   createdAt: string;
 }
 
@@ -181,11 +183,59 @@ export async function loginWithEmail(email: string, password: string): Promise<A
         }
       }
     }
+
+    // Check /suppliers directly
+    const supSnap = await get(ref(database, 'suppliers'));
+    if (supSnap.exists()) {
+      const supData = supSnap.val();
+      for (const sid of Object.keys(supData)) {
+        const s = supData[sid];
+        if (
+          s &&
+          (s.loginEmail || s.email) &&
+          (s.loginEmail || s.email).trim().toLowerCase() === cleanEmail &&
+          s.password &&
+          String(s.password).trim() === cleanPassword
+        ) {
+          const authUser: AuthUser = {
+            id: s.id || sid,
+            name: s.name || 'Supplier Partner',
+            email: s.loginEmail || s.email,
+            role: 'supplier',
+            supplierId: s.id || sid,
+          };
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(RTDB_SESSION_KEY, JSON.stringify(authUser));
+          }
+          return authUser;
+        }
+      }
+    }
   } catch (rtdbUserErr) {
     console.warn('RTDB credentials lookup error:', rtdbUserErr);
   }
 
-  // 4. Firebase Authentication
+  // 4. Check local / seeded USERS directly
+  const seedMatch = USERS.find(
+    u => u.email.trim().toLowerCase() === cleanEmail && String(u.password).trim() === cleanPassword
+  );
+  if (seedMatch) {
+    const authUser: AuthUser = {
+      id: seedMatch.id,
+      name: seedMatch.name,
+      email: seedMatch.email,
+      role: seedMatch.role,
+      customerId: seedMatch.customerId,
+      employeeId: seedMatch.employeeId,
+      supplierId: seedMatch.supplierId,
+    };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(RTDB_SESSION_KEY, JSON.stringify(authUser));
+    }
+    return authUser;
+  }
+
+  // 5. Firebase Authentication
   try {
     const credential = await signInWithEmailAndPassword(auth, email, password);
     const uid = credential.user.uid;
@@ -279,6 +329,7 @@ export function subscribeToAuth(callback: (authUser: AuthUser | null) => void): 
         role: profile.role,
         employeeId: profile.employeeId,
         customerId: profile.customerId,
+        supplierId: profile.supplierId,
       });
     } else {
       const role: UserRole = firebaseUser.email?.includes('admin') ? 'admin' : 'employee';

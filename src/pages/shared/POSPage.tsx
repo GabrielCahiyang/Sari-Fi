@@ -6,12 +6,17 @@ import { Badge } from '../../components/ui/Badge';
 import type { Order, Financing, Payment, InstallmentSchedule, Customer } from '../../types';
 import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
 
-const CATEGORIES = ['All', 'Beverages', 'Snacks', 'Instant Noodles', 'Canned Goods', 'Condiments', 'Household', 'Personal Care'];
 type Mode = 'cash' | 'gcash' | 'financing' | 'split';
 
 export function POSPage() {
   const { state, dispatch, showToast, formatPHP } = useApp();
   const staffName = state.currentUser?.name || 'Staff';
+
+  const availableCategories = useMemo(() => {
+    return Array.from(
+      new Set(['All', ...state.categories.map(c => c.name), ...state.products.map(p => p.category).filter(Boolean)])
+    );
+  }, [state.categories, state.products]);
 
   // POS keeps its own ticket state, fully separate from the customer-facing cart.
   const [lines, setLines] = useState<Record<string, number>>({});
@@ -258,7 +263,7 @@ export function POSPage() {
               />
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              {CATEGORIES.map(cat => (
+              {availableCategories.map(cat => (
                 <button
                   key={cat}
                   onClick={() => setCategory(cat)}
@@ -337,7 +342,7 @@ export function POSPage() {
             ) : (
               <button onClick={() => setPickerOpen(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-white/25 text-white/80 hover:bg-white/5 hover:text-white text-sm font-600 transition-colors">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                Select customer account
+                Select Sari-Sari Store
               </button>
             )}
           </div>
@@ -388,17 +393,17 @@ export function POSPage() {
               disabled={items.length === 0}
               className="w-full py-3 bg-[#1E7D3B] text-white font-700 text-sm rounded-xl hover:bg-[#22913f] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {customer ? 'Charge to account →' : 'Select customer to continue'}
+              {customer ? 'Charge to store account →' : 'Select sari-sari store to continue'}
             </button>
           </div>
         </div>
       </div>
 
       {/* ---------- Customer picker ---------- */}
-      <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} title="Charge order to account" size="md">
+      <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} title="Select Sari-Sari Store Account" size="md">
         <div className="relative mb-4">
           <svg className="absolute left-3.5 top-3.5 w-4 h-4 text-[#65727A]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-          <input autoFocus value={custQuery} onChange={e => setCustQuery(e.target.value)} placeholder="Search name, store, or account no.…" className="w-full pl-10 pr-4 py-3 bg-[#F7F8F6] border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:border-[#1E7D3B]" />
+          <input autoFocus value={custQuery} onChange={e => setCustQuery(e.target.value)} placeholder="Search store name, owner, or account no.…" className="w-full pl-10 pr-4 py-3 bg-[#F7F8F6] border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:border-[#1E7D3B]" />
         </div>
         <div className="max-h-[50vh] overflow-y-auto -mx-1 px-1 space-y-1.5">
           {customerResults.map((c: Customer) => {

@@ -15,8 +15,9 @@ import {
   loginWithEmail, logoutUser, subscribeToAuth
 } from '../services/firebase/authService';
 
-type Action =
+type Action = (
   | { type: 'LOGIN'; user: AuthUser }
+  | { type: 'LOGIN_AND_NAVIGATE'; user: AuthUser; page: string }
   | { type: 'SET_CURRENT_USER'; user: AuthUser | null }
   | { type: 'LOGOUT' }
   | { type: 'NAVIGATE'; page: string }
@@ -60,7 +61,8 @@ type Action =
   | { type: 'SYNC_AUDIT'; auditLog: AuditEntry[] }
   | { type: 'SYNC_CATEGORIES'; categories: ProductCategory[] }
   | { type: 'ADD_CATEGORY'; category: ProductCategory }
-  | { type: 'DELETE_CATEGORY'; categoryId: string };
+  | { type: 'DELETE_CATEGORY'; categoryId: string }
+) & { meta?: { suppressAudit?: boolean } };
 
 export const DEFAULT_CATEGORIES: ProductCategory[] = [
   { id: 'cat_beverages', name: 'Beverages' },
@@ -100,16 +102,21 @@ function coreReducer(state: AppState, action: Action): AppState {
       const page = role === 'customer' ? 'customer/dashboard'
         : role === 'employee' ? 'employee/dashboard'
         : role === 'supervisor' ? 'supervisor/dashboard'
+        : role === 'supplier' ? 'supplier/dashboard'
         : 'admin/dashboard';
       return { ...state, currentUser: action.user, currentPage: page };
     }
+    case 'LOGIN_AND_NAVIGATE': {
+      return { ...state, currentUser: action.user, currentPage: action.page };
+    }
     case 'SET_CURRENT_USER': {
       let page = state.currentPage;
-      if (action.user && (state.currentPage === 'home' || state.currentPage === 'login' || state.currentPage === 'customer/login')) {
+      if (action.user && (state.currentPage === 'home' || state.currentPage === 'login' || state.currentPage === 'customer/login' || state.currentPage === 'supplier/login')) {
         const role = action.user.role;
         page = role === 'customer' ? 'customer/dashboard'
           : role === 'employee' ? 'employee/dashboard'
           : role === 'supervisor' ? 'supervisor/dashboard'
+          : role === 'supplier' ? 'supplier/dashboard'
           : 'admin/dashboard';
       }
       return { ...state, currentUser: action.user, currentPage: page };
@@ -241,12 +248,16 @@ function coreReducer(state: AppState, action: Action): AppState {
           : f
       );
 
-      // INVARIANT: Paying an installment decreases usedCredit by the principal portion EXACTLY ONCE
-      const updatedCustomers = state.customers.map(c =>
-        c.id === fin.customerId
-          ? { ...c, usedCredit: Math.max(0, c.usedCredit - principalPerInstallment) }
-          : c
-      );
+      // INVARIANT: Paying an installment decreases usedCredit. If cycle completed, increase creditLimit according to settings
+      const limitInc = state.settings?.limitIncreaseAmount || 0;
+      const maxLim = state.settings?.maxAutomaticLimit || 20000;
+      const updatedCustomers = state.customers.map(c => {
+        if (c.id !== fin.customerId) return c;
+        const newUsed = Math.max(0, c.usedCredit - principalPerInstallment);
+        const shouldGrow = allPaid && c.creditLimit < maxLim && limitInc > 0;
+        const newLimit = shouldGrow ? Math.min(maxLim, c.creditLimit + limitInc) : c.creditLimit;
+        return { ...c, usedCredit: newUsed, creditLimit: newLimit };
+      });
 
       const payMap = new Map<string, Payment>();
       const newPayment: Payment = {
@@ -285,12 +296,16 @@ function coreReducer(state: AppState, action: Action): AppState {
           : f
       );
 
-      // INVARIANT: Full settlement releases remaining principal from usedCredit EXACTLY ONCE
-      const updatedCustomers = state.customers.map(c =>
-        c.id === fin.customerId
-          ? { ...c, usedCredit: Math.max(0, c.usedCredit - remainingPrincipal) }
-          : c
-      );
+      // INVARIANT: Full settlement releases remaining principal and increases creditLimit according to settings
+      const limitInc = state.settings?.limitIncreaseAmount || 0;
+      const maxLim = state.settings?.maxAutomaticLimit || 20000;
+      const updatedCustomers = state.customers.map(c => {
+        if (c.id !== fin.customerId) return c;
+        const newUsed = Math.max(0, c.usedCredit - remainingPrincipal);
+        const shouldGrow = c.creditLimit < maxLim && limitInc > 0;
+        const newLimit = shouldGrow ? Math.min(maxLim, c.creditLimit + limitInc) : c.creditLimit;
+        return { ...c, usedCredit: newUsed, creditLimit: newLimit };
+      });
 
       const payMap = new Map<string, Payment>();
       const newPayment: Payment = {
@@ -369,14 +384,32 @@ function coreReducer(state: AppState, action: Action): AppState {
       return { ...state, suppliers: state.suppliers.filter(s => s.id !== action.supplierId) };
     case 'ADD_RESTOCK': {
       if (state.restockOrders.some(r => r.id === action.restock.id)) return state;
-      return { ...state, restockOrders: [action.restock, ...state.restockOrders] };
+      let updatedProducts = state.products;
+      if (action.restock.status === 'received') {
+        const items = (Array.isArray(action.restock.items)
+          ? action.restock.items
+          : Object.values(action.restock.items || {})) as RestockItem[];
+        updatedProducts = state.products.map(p => {
+          const item = items.find(i => i.productId === p.id);
+          if (item) return { ...p, stock: p.stock + item.quantity };
+          return p;
+        });
+      }
+      return {
+        ...state,
+        restockOrders: [action.restock, ...state.restockOrders],
+        products: updatedProducts,
+      };
     }
     case 'UPDATE_RESTOCK_STATUS': {
       const restock = state.restockOrders.find(r => r.id === action.restockId);
       let updatedProducts = state.products;
-      if (action.status === 'received' && restock) {
+      if (action.status === 'received' && restock && restock.status !== 'received') {
+        const items = (Array.isArray(restock.items)
+          ? restock.items
+          : Object.values(restock.items || {})) as RestockItem[];
         updatedProducts = state.products.map(p => {
-          const item = restock.items.find(i => i.productId === p.id);
+          const item = items.find(i => i.productId === p.id);
           if (item) return { ...p, stock: p.stock + item.quantity };
           return p;
         });
@@ -528,6 +561,10 @@ function shouldLogAudit(actionName: string, targetKey: string): boolean {
 function reducer(state: AppState, action: Action): AppState {
   const next = coreReducer(state, action);
   if (next === state) return state;
+
+  // Guided demonstrations exercise the real reducers and RTDB paths, but
+  // intentionally remain ephemeral and must not pollute the permanent ledger.
+  if (action.meta?.suppressAudit) return next;
   
   // Skip audit generation on passive background sync actions
   if (action.type.startsWith('SYNC_') || action.type === 'SET_CURRENT_USER') {
@@ -718,10 +755,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       category: data.category,
       action: data.action,
       summary: data.summary,
-      targetType: data.targetType,
-      targetId: data.targetId,
-      targetLabel: data.targetLabel,
-      amount: data.amount,
+      ...(data.targetType ? { targetType: data.targetType } : {}),
+      ...(data.targetId ? { targetId: data.targetId } : {}),
+      ...(data.targetLabel ? { targetLabel: data.targetLabel } : {}),
+      ...(data.amount !== undefined ? { amount: data.amount } : {}),
     };
 
     try {

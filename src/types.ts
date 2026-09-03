@@ -1,4 +1,4 @@
-export type UserRole = 'customer' | 'employee' | 'supervisor' | 'admin';
+export type UserRole = 'customer' | 'employee' | 'supervisor' | 'admin' | 'supplier';
 
 export interface AuthUser {
   id: string;
@@ -7,6 +7,7 @@ export interface AuthUser {
   role: UserRole;
   customerId?: string;
   employeeId?: string;
+  supplierId?: string;
 }
 
 export interface Customer {
@@ -48,6 +49,12 @@ export interface Supplier {
   address: string;
   categories: string[];
   status: 'active' | 'inactive';
+  loginEmail?: string;
+  password?: string;
+  bankName?: string;
+  bankAccountNo?: string;
+  gcashNumber?: string;
+  commissionRate?: number;
 }
 
 export interface ProductCategory {
@@ -91,6 +98,7 @@ export interface OrderItem {
   productName: string;
   quantity: number;
   price: number;
+  supplierId?: string;
 }
 
 export interface Order {

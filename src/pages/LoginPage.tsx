@@ -1,96 +1,169 @@
 import { useState } from 'react';
+import { motion } from 'motion/react';
 import logo from '../imports/image-1.png';
 import { useApp } from '../context/AppContext';
 
 export function LoginPage() {
   const { login, navigate, showToast } = useApp();
-  const [email, setEmail] = useState('admin@sarifi.ph');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
+
     const ok = await login(email.trim(), password);
     setLoading(false);
+
     if (!ok) {
-      showToast('error', 'Invalid credentials. Please verify your email and password.');
+      setError('Invalid staff credentials. Please verify your email and password.');
+      showToast('error', 'Login failed. Please verify your credentials.');
     } else {
-      showToast('success', 'Admin signed in successfully.');
+      showToast('success', 'Staff signed in successfully.');
     }
   };
 
   return (
-    <div className="min-h-full bg-[#F7F8F6] flex flex-col items-center justify-center p-4 sm:p-6 relative">
-      {/* Back to home */}
-      <button
+    <div className="min-h-screen bg-[#F7F8F6] flex flex-col justify-center items-center p-4 sm:p-6 font-sans relative overflow-hidden">
+      {/* Ambient background glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] bg-[#0D2B45]/5 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Back to Home button */}
+      <motion.button
+        whileHover={{ x: -4 }}
+        whileTap={{ scale: 0.96 }}
         onClick={() => navigate('home')}
-        className="sm:absolute top-4 left-4 sm:top-6 sm:left-6 self-start mb-4 sm:mb-0 flex items-center gap-2 text-xs sm:text-sm text-[#65727A] hover:text-[#0D2B45] transition-colors cursor-pointer"
+        className="sm:absolute top-6 left-6 self-start mb-4 sm:mb-0 flex items-center gap-2 text-xs sm:text-sm font-700 text-[#65727A] hover:text-[#0D2B45] transition-colors cursor-pointer z-10"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
-        Back to Home
-      </button>
+        Back to Sari-Fi Home
+      </motion.button>
 
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="mb-8">
-          <img src={logo} alt="Sari-Fi" className="h-12 object-contain" />
-          <div className="text-[10px] text-[#65727A] font-600 uppercase tracking-widest mt-2">Staff Portal</div>
+      {/* Main Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+        className="w-full max-w-md bg-white rounded-3xl border border-[#E4E8E6] shadow-xl shadow-[#0D2B45]/5 p-6 sm:p-8 relative z-10 overflow-hidden"
+      >
+        {/* Accent line at top of card */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#0D2B45] via-[#1a3d5c] to-[#0D2B45]" />
+
+        {/* Brand Header */}
+        <div className="text-center mb-6 pt-2">
+          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-[#0D2B45] mb-3 shadow-xs">
+            <img src={logo} alt="Sari-Fi" className="h-8 object-contain brightness-0 invert" />
+          </div>
+
+          <div className="flex justify-center mb-2">
+            <span className="px-3 py-1 rounded-full text-[10px] font-700 uppercase tracking-widest bg-slate-100 text-[#0D2B45] border border-slate-200">
+              Staff Portal
+            </span>
+          </div>
+
+          <h1 className="text-2xl font-800 text-[#10212B] tracking-tight">
+            Staff Portal Sign In
+          </h1>
+          <p className="text-xs sm:text-sm text-[#65727A] mt-1.5 max-w-xs mx-auto">
+            Access internal operations for Admins, Supervisors, and Cashiers.
+          </p>
         </div>
 
-        <h1 className="text-2xl font-800 text-[#10212B] mb-1">Staff Sign In</h1>
-        <p className="text-sm text-[#65727A] mb-7">Access the internal operations portal.</p>
+        {/* Error Alert */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 font-600 flex items-center gap-2.5"
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{error}</span>
+          </motion.div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="text-xs font-700 text-[#65727A] uppercase tracking-wider">Email</label>
+            <label className="block text-xs font-700 text-[#0D2B45] mb-1.5 uppercase tracking-wider">
+              Staff Email
+            </label>
             <input
               type="email"
+              required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              required
-              placeholder="staff@sarifi.ph"
-              className="mt-1.5 w-full px-4 py-3 bg-white border border-[#E4E8E6] rounded-xl text-sm text-[#10212B] placeholder-[#C5CBD0] focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B] transition-all"
+              placeholder="e.g. admin@sarifi.ph"
+              className="w-full px-4 py-3 bg-[#F7F8F6] border border-[#E4E8E6] rounded-xl text-sm text-[#10212B] placeholder-[#C5CBD0] focus:outline-none focus:ring-2 focus:ring-[#0D2B45]/30 focus:border-[#0D2B45] transition-all"
             />
           </div>
+
           <div>
-            <label className="text-xs font-700 text-[#65727A] uppercase tracking-wider">Password</label>
-            <div className="relative mt-1.5">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-700 text-[#0D2B45] uppercase tracking-wider">
+                Password
+              </label>
+            </div>
+            <div className="relative">
               <input
                 type={showPass ? 'text' : 'password'}
+                required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                required
                 placeholder="••••••••"
-                className="w-full px-4 py-3 bg-white border border-[#E4E8E6] rounded-xl text-sm text-[#10212B] placeholder-[#C5CBD0] focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B] transition-all pr-10"
+                className="w-full px-4 py-3 bg-[#F7F8F6] border border-[#E4E8E6] rounded-xl text-sm text-[#10212B] placeholder-[#C5CBD0] focus:outline-none focus:ring-2 focus:ring-[#0D2B45]/30 focus:border-[#0D2B45] transition-all pr-11"
               />
-              <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-3.5 text-[#65727A] hover:text-[#10212B]">
-                {showPass
-                  ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                  : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                }
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                className="absolute right-3.5 top-3.5 text-[#65727A] hover:text-[#0D2B45] cursor-pointer p-0.5"
+                aria-label={showPass ? 'Hide password' : 'Show password'}
+              >
+                {showPass ? (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
               </button>
             </div>
           </div>
-          <button
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#0D2B45] hover:bg-[#1a3d5c] text-white font-700 rounded-xl transition-all text-sm disabled:opacity-60 cursor-pointer shadow-md shadow-[#0D2B45]/20"
+            className="w-full py-3.5 bg-[#0D2B45] hover:bg-[#153e61] text-white font-700 rounded-xl transition-all text-sm disabled:opacity-60 cursor-pointer shadow-md shadow-[#0D2B45]/20 mt-2"
           >
             {loading ? 'Signing in…' : 'Sign In to Staff Portal'}
-          </button>
+          </motion.button>
         </form>
 
-        <div className="mt-6 text-center">
-          <button onClick={() => navigate('customer/login')} className="text-sm group cursor-pointer">
-            <span className="text-[#65727A]">Are you a customer? </span>
-            <span className="font-700 text-[#1E7D3B] group-hover:underline">Sign in to Customer Portal →</span>
+        {/* Link to Supplier Portal */}
+        <div className="mt-6 pt-5 border-t border-[#E4E8E6] text-center">
+          <button
+            type="button"
+            onClick={() => navigate('supplier/login')}
+            className="text-xs text-[#65727A] hover:text-[#0D2B45] transition-colors cursor-pointer group"
+          >
+            <span>Not staff? </span>
+            <span className="font-700 text-[#0D2B45] group-hover:underline">
+              Sign in as Supplier Partner →
+            </span>
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

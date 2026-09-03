@@ -1,8 +1,17 @@
 import { AppProvider, useApp } from './context/AppContext';
+import { TourProvider } from './context/TourContext';
 import { Toast } from './components/ui/Toast';
+import { GuidedTourBar } from './components/GuidedTourBar';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { CustomerLoginPage } from './pages/customer/CustomerLoginPage';
+import { SupplierLoginPage } from './pages/supplier/SupplierLoginPage';
+import { SupplierDashboard } from './pages/supplier/SupplierDashboard';
+import { SupplierProductsPage } from './pages/supplier/SupplierProductsPage';
+import { SupplierInventoryPage } from './pages/supplier/SupplierInventoryPage';
+import { SupplierRestockPage } from './pages/supplier/SupplierRestockPage';
+import { SupplierOrdersPage } from './pages/supplier/SupplierOrdersPage';
+import { SupplierAccountPage } from './pages/supplier/SupplierAccountPage';
 import { CustomerDashboard } from './pages/customer/CustomerDashboard';
 import { ShopPage } from './pages/customer/ShopPage';
 import { CartPage } from './pages/customer/CartPage';
@@ -35,6 +44,15 @@ function AppRouter() {
   if (page === 'home') return <HomePage />;
   if (page === 'login') return <LoginPage />;
   if (page === 'customer/login') return <CustomerLoginPage />;
+  if (page === 'supplier/login') return <SupplierLoginPage />;
+
+  // Supplier routes
+  if (page === 'supplier/dashboard') return <SupplierDashboard />;
+  if (page === 'supplier/products') return <SupplierProductsPage />;
+  if (page === 'supplier/inventory') return <SupplierInventoryPage />;
+  if (page === 'supplier/restock') return <SupplierRestockPage />;
+  if (page === 'supplier/orders') return <SupplierOrdersPage />;
+  if (page === 'supplier/account') return <SupplierAccountPage />;
 
   // Customer routes
   if (page === 'customer/dashboard') return <CustomerDashboard />;
@@ -72,10 +90,7 @@ function AppRouter() {
   if (page === 'admin/payments') return <PaymentsManagementPage />;
   if (page === 'admin/financing') return <FinancingManagementPage />;
   if (page === 'admin/customers') return <CustomersManagementPage />;
-  if (page === 'admin/products') return <ProductsPage />;
-  if (page === 'admin/inventory') return <InventoryManagementPage />;
-  if (page === 'admin/restock') return <RestockPage />;
-  if (page === 'admin/suppliers') return <SuppliersPage />;
+  if (page === 'admin/suppliers' || page === 'admin/products' || page === 'admin/inventory' || page === 'admin/restock') return <SuppliersPage />;
   if (page === 'admin/employees') return <EmployeesPage />;
   if (page === 'admin/reports') return <ReportsPage />;
   if (page === 'admin/audit') return <AuditTrailPage />;
@@ -87,10 +102,13 @@ function AppRouter() {
 export default function App() {
   return (
     <AppProvider>
-      <div className="h-full">
-        <AppRouter />
-        <Toast />
-      </div>
+      <TourProvider>
+        <div className="h-full">
+          <AppRouter />
+          <Toast />
+          <GuidedTourBar />
+        </div>
+      </TourProvider>
     </AppProvider>
   );
 }

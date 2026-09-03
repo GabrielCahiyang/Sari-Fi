@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface ModalProps {
   open: boolean;
@@ -19,33 +20,50 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     return () => { document.body.style.overflow = ''; };
   }, [open]);
 
-  if (!open || !mounted) return null;
+  if (!mounted) return null;
 
   const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2.5 sm:p-4 md:p-6 overflow-y-auto" onClick={onClose}>
-      <div className="fixed inset-0 bg-[#0D2B45]/50 backdrop-blur-xs" />
-      <div
-        className={`relative w-full ${widths[size]} max-h-[92vh] flex flex-col bg-white rounded-2xl shadow-2xl ring-1 ring-black/10 my-auto z-10 overflow-hidden`}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#E4E8E6] shrink-0">
-          <h2 className="text-sm sm:text-base font-700 text-[#10212B] tracking-tight truncate pr-2">{title}</h2>
-          <button
-            type="button"
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2.5 sm:p-4 md:p-6 overflow-y-auto">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-[#0D2B45]/50 backdrop-blur-xs cursor-pointer"
             onClick={onClose}
-            className="text-[#65727A] hover:text-[#10212B] transition-colors p-2 rounded-xl hover:bg-[#F7F8F6] cursor-pointer shrink-0"
-            aria-label="Close dialog"
+          />
+          {/* Modal Container */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 14 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 14 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 26 }}
+            className={`relative w-full ${widths[size]} max-h-[92vh] flex flex-col bg-white rounded-2xl shadow-2xl ring-1 ring-black/10 my-auto z-10 overflow-hidden`}
+            onClick={e => e.stopPropagation()}
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#E4E8E6] shrink-0">
+              <h2 className="text-sm sm:text-base font-700 text-[#10212B] tracking-tight truncate pr-2">{title}</h2>
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-[#65727A] hover:text-[#10212B] transition-colors p-2 rounded-xl hover:bg-[#F7F8F6] cursor-pointer shrink-0"
+                aria-label="Close dialog"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-4 sm:px-6 py-4 sm:py-5 overflow-y-auto overflow-x-hidden">{children}</div>
+          </motion.div>
         </div>
-        <div className="px-4 sm:px-6 py-4 sm:py-5 overflow-y-auto overflow-x-hidden">{children}</div>
-      </div>
-    </div>,
+      )}
+    </AnimatePresence>,
     document.body
   );
 }
