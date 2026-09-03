@@ -12,7 +12,7 @@ export function CartPage() {
   })).filter(i => i.product);
 
   const total = items.reduce((s, i) => s + (i.product!.sellingPrice * i.quantity), 0);
-  const hasSingleSupplier = new Set(items.map(item => item.product!.supplierId)).size === 1;
+  const supplierCount = new Set(items.map(item => item.product!.supplierId).filter(Boolean)).size;
 
   const updateQty = (productId: string, quantity: number) => {
     if (quantity <= 0) dispatch({ type: 'CART_REMOVE', productId });
@@ -132,14 +132,13 @@ export function CartPage() {
 
               <button
                 onClick={() => navigate('customer/checkout')}
-                disabled={!hasSingleSupplier}
-                className="w-full py-3 bg-[#1E7D3B] text-white font-700 text-sm rounded-xl hover:bg-[#22913f] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-[#1E7D3B] text-white font-700 text-sm rounded-xl hover:bg-[#22913f] transition-all"
               >
                 Proceed to Checkout
               </button>
-              {!hasSingleSupplier && (
-                <p className="mt-2 text-xs text-amber-700 text-center">
-                  One supplier per order. Remove items from other suppliers to continue.
+              {supplierCount > 1 && (
+                <p className="mt-2 text-xs text-[#65727A] text-center">
+                  One checkout · {supplierCount} supplier fulfillment orders
                 </p>
               )}
             </div>

@@ -23,15 +23,25 @@ export function PaymentsManagementPage() {
     // Defensive guard / Idempotency: cannot confirm an already paid payment
     if (!p || p.status === 'paid') return;
 
+    const isFinancingRepayment = p.type === 'installment' || p.type === 'full_settlement';
+    if (isFinancingRepayment && state.currentUser?.role !== 'supervisor') {
+      showToast('error', 'Only a supervisor can confirm cash financing repayments.');
+      return;
+    }
+
     const confirmedBy = state.currentUser?.name || 'Staff';
     try {
-      await settleOrderPayment(paymentId, confirmedBy);
+      await settleOrderPayment(paymentId, confirmedBy, state.currentUser?.role);
       // Single authoritative audit created by reducer deriveAudit
       dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId, confirmedBy });
       const order = orderId ? state.orders.find(item => item.id === orderId) : undefined;
-      showToast('success', order?.paymentType === 'split'
-        ? 'Cash confirmed. The order will process when financing is also approved.'
-        : 'Cash confirmed. The order is now processing.');
+      showToast('success', p.type === 'installment'
+        ? 'Cash installment confirmed. The repayment schedule and available credit are updated.'
+        : p.type === 'full_settlement'
+          ? 'Cash settlement confirmed. Financing is complete and credit is restored.'
+          : order?.paymentType === 'split'
+            ? 'Cash confirmed. The order will process when financing is also approved.'
+            : 'Cash confirmed. The order is now processing.');
     } catch (err: any) {
       showToast('error', 'Failed to confirm cash: ' + err.message);
     }
@@ -109,7 +119,7 @@ export function PaymentsManagementPage() {
                 {formatPHP(totalPending)}
               </div>
               <div className="text-[#65727A] text-[11px] mt-0.5">
-                {totalPending > 0 ? 'Awaiting staff confirmation' : 'No pending payments'}
+                {totalPending > 0 ? 'Awaiting confirmation' : 'No pending payments'}
               </div>
             </div>
           </div>
@@ -140,6 +150,8 @@ export function PaymentsManagementPage() {
           <div className="md:hidden divide-y divide-[#F7F8F6]">
             {payments.map(pay => {
               const customer = getCustomer(pay.customerId);
+              const supervisorRequired = pay.type === 'installment' || pay.type === 'full_settlement';
+              const canConfirm = !supervisorRequired || state.currentUser?.role === 'supervisor';
               return (
                 <div
                   key={pay.id}
@@ -186,9 +198,10 @@ export function PaymentsManagementPage() {
                   {pay.status === 'pending' && pay.method === 'cash' && (
                     <button
                       onClick={() => handleConfirmCash(pay.id, pay.orderId)}
-                      className="w-full py-2 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
+                      disabled={!canConfirm}
+                      className="w-full py-2 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20 disabled:bg-[#E4E8E6] disabled:text-[#65727A] disabled:shadow-none disabled:cursor-not-allowed"
                     >
-                      Confirm Cash
+                      {canConfirm ? 'Confirm Cash' : 'Supervisor Approval Required'}
                     </button>
                   )}
                 </div>
@@ -217,6 +230,8 @@ export function PaymentsManagementPage() {
               <tbody className="divide-y divide-[#F7F8F6]">
                 {payments.map(pay => {
                   const customer = getCustomer(pay.customerId);
+                  const supervisorRequired = pay.type === 'installment' || pay.type === 'full_settlement';
+                  const canConfirm = !supervisorRequired || state.currentUser?.role === 'supervisor';
                   return (
                     <tr
                       key={pay.id}
@@ -245,9 +260,10 @@ export function PaymentsManagementPage() {
                         {pay.status === 'pending' && pay.method === 'cash' && (
                           <button
                             onClick={() => handleConfirmCash(pay.id, pay.orderId)}
-                            className="px-3 py-1.5 bg-[#1E7D3B] text-white text-xs font-600 rounded-lg hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20"
+                            disabled={!canConfirm}
+                            className="px-3 py-1.5 bg-[#1E7D3B] text-white text-xs font-600 rounded-lg hover:bg-[#22913f] transition-all cursor-pointer shadow-sm shadow-[#1E7D3B]/20 disabled:bg-[#E4E8E6] disabled:text-[#65727A] disabled:shadow-none disabled:cursor-not-allowed"
                           >
-                            Confirm Cash
+                            {canConfirm ? 'Confirm Cash' : 'Supervisor Required'}
                           </button>
                         )}
                       </td>

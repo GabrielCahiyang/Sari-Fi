@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { SupplierLayout } from '../../components/layout/SupplierLayout';
 import { useApp } from '../../context/AppContext';
-import { updateRecord, saveRecord } from '../../services/firebase/rtdbService';
-import type { Product, RestockOrder, RestockItem } from '../../types';
+import { updateRootPaths } from '../../services/firebase/rtdbService';
+import type { RestockOrder, RestockItem } from '../../types';
 
 export function SupplierRestockPage() {
   const { state, dispatch, formatPHP, showToast } = useApp();
@@ -70,7 +70,24 @@ export function SupplierRestockPage() {
   }, [addQty, myProducts]);
 
   const handleCommitResupply = async () => {
-    const entries = Object.entries(addQty).filter(([_, val]) => parseInt(val, 10) > 0);
+    if (submitting) return;
+    if (supplier.status !== 'active') {
+      showToast('error', 'This supplier account is inactive and cannot replenish inventory.');
+      return;
+    }
+    const invalidQuantity = Object.values(addQty).find(val => {
+      if (!val) return false;
+      const parsed = Number(val);
+      return !/^\d+$/.test(val) || !Number.isSafeInteger(parsed) || parsed < 0 || parsed > 1_000_000;
+    });
+    if (invalidQuantity !== undefined) {
+      showToast('error', 'Replenishment quantities must be whole numbers between 0 and 1,000,000.');
+      return;
+    }
+    const entries = Object.entries(addQty).filter(([prodId, val]) => {
+      const product = myProducts.find(p => p.id === prodId);
+      return !!product && product.status === 'active' && Number(val) > 0;
+    });
     if (entries.length === 0) {
       showToast('error', 'Please enter replenishment quantities for at least one item.');
       return;
@@ -79,6 +96,7 @@ export function SupplierRestockPage() {
     setSubmitting(true);
     try {
       const restockItems: RestockItem[] = [];
+      const paths: Record<string, unknown> = {};
 
       for (const [prodId, qtyStr] of entries) {
         const added = parseInt(qtyStr, 10);
@@ -86,10 +104,7 @@ export function SupplierRestockPage() {
         if (!prod) continue;
 
         const newStock = prod.stock + added;
-        await updateRecord('products', prodId, { stock: newStock });
-
-        const updatedProd: Product = { ...prod, stock: newStock };
-        dispatch({ type: 'UPDATE_PRODUCT', product: updatedProd });
+        paths[`products/${prodId}/stock`] = newStock;
 
         restockItems.push({
           productId: prod.id,
@@ -112,7 +127,8 @@ export function SupplierRestockPage() {
         receivedAt: new Date().toISOString(),
       };
 
-      await saveRecord('restockOrders', restockOrder);
+      paths[`restockOrders/${restockOrder.id}`] = restockOrder;
+      await updateRootPaths(paths);
       dispatch({ type: 'ADD_RESTOCK', restock: restockOrder });
 
       showToast('success', `Restock confirmed! Added ${totalAddedUnits} units across ${entries.length} items.`);

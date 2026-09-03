@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import logo from '../assets/sarifi-logo.png';
 import { useApp } from '../context/AppContext';
+import { isValidEmail } from '../utils/validation';
 
 export function LoginPage() {
   const { login, navigate, showToast } = useApp();
@@ -14,9 +15,22 @@ export function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
+      const message = 'Enter both your staff email and password.';
+      setError(message);
+      showToast('error', message);
+      return;
+    }
+    if (!isValidEmail(cleanEmail)) {
+      const message = 'Enter a valid staff email address.';
+      setError(message);
+      showToast('error', message);
+      return;
+    }
     setLoading(true);
 
-    const ok = await login(email.trim(), password);
+    const ok = await login(cleanEmail, password);
     setLoading(false);
 
     if (!ok) {

@@ -6,6 +6,7 @@ import { Modal, ConfirmDialog } from '../../components/ui/Modal';
 import { AuditTrail } from '../../components/AuditTrail';
 import type { Customer } from '../../types';
 import { saveRecord, updateRecord, deleteRecord } from '../../services/firebase/rtdbService';
+import { isNonNegativeInteger, isValidEmail, isValidPhone } from '../../utils/validation';
 
 interface CustomerFormData {
   fullName: string;
@@ -117,9 +118,10 @@ export function CustomersManagementPage() {
 
     if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
     if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
+    else if (!isValidPhone(formData.phone)) newErrors.phone = 'Enter a valid phone number (7–15 digits)';
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!formData.email.includes('@')) {
+    } else if (!isValidEmail(formData.email)) {
       newErrors.email = 'Valid email is required';
     }
 
@@ -127,26 +129,30 @@ export function CustomersManagementPage() {
 
     if (!formData.loginEmail.trim()) {
       newErrors.loginEmail = 'Login email is required';
-    } else if (!formData.loginEmail.includes('@')) {
+    } else if (!isValidEmail(formData.loginEmail)) {
       newErrors.loginEmail = 'Valid login email is required';
-    } else if (state.customers.some(c => c.loginEmail?.toLowerCase() === formData.loginEmail.trim().toLowerCase())) {
-      newErrors.loginEmail = 'An account with this login email already exists';
+    } else if (
+      state.customers.some(c => c.loginEmail?.toLowerCase() === formData.loginEmail.trim().toLowerCase())
+      || state.employees.some(emp => emp.email?.toLowerCase() === formData.loginEmail.trim().toLowerCase())
+      || state.suppliers.some(s => s.loginEmail?.toLowerCase() === formData.loginEmail.trim().toLowerCase())
+    ) {
+      newErrors.loginEmail = 'Another account already uses this login email';
     }
 
     if (!formData.password.trim()) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.trim().length < 4) {
-      newErrors.password = 'Password must be at least 4 characters';
+    } else if (formData.password.trim().length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
-    if (!formData.creditLimit.trim() || isNaN(Number(formData.creditLimit)) || Number(formData.creditLimit) < 0) {
-      newErrors.creditLimit = 'Valid credit limit (₱) is required';
+    if (!isNonNegativeInteger(formData.creditLimit)) {
+      newErrors.creditLimit = 'Credit limit must be a whole peso amount of 0 or more';
     }
 
     if (!formData.storeName.trim()) newErrors.storeName = 'Sari-sari store name is required';
     if (!formData.storeAddress.trim()) newErrors.storeAddress = 'Store address is required';
-    if (!formData.yearsOperating.trim() || isNaN(Number(formData.yearsOperating)) || Number(formData.yearsOperating) < 0) {
-      newErrors.yearsOperating = 'Valid years operating is required';
+    if (!isNonNegativeInteger(formData.yearsOperating) || Number(formData.yearsOperating) > 100) {
+      newErrors.yearsOperating = 'Years operating must be a whole number from 0 to 100';
     }
 
     setErrors(newErrors);
@@ -161,9 +167,13 @@ export function CustomersManagementPage() {
     }
 
     const custId = `cust${Date.now()}`;
+    const nextAccountNumber = state.customers.reduce((max, customer) => {
+      const parsed = Number(customer.accountNo.match(/\d+$/)?.[0] || 0);
+      return Math.max(max, parsed);
+    }, 0) + 1;
     const prepared: Customer = {
       id: custId,
-      accountNo: `SF-${String(state.customers.length + 1).padStart(4, '0')}`,
+      accountNo: `SF-${String(nextAccountNumber).padStart(4, '0')}`,
       fullName: formData.fullName.trim(),
       phone: formData.phone.trim(),
       email: formData.email.trim(),
@@ -172,12 +182,12 @@ export function CustomersManagementPage() {
         ? formData.storeName.trim()
         : `${formData.fullName.trim()}'s Sari-Sari Store`,
       storeAddress: formData.storeAddress.trim() || formData.address.trim(),
-      yearsOperating: parseInt(formData.yearsOperating) || 0,
+      yearsOperating: Number(formData.yearsOperating),
       notes: formData.notes.trim(),
       loginEmail: formData.loginEmail.trim().toLowerCase(),
       password: formData.password.trim(),
       status: 'active',
-      creditLimit: parseInt(formData.creditLimit) || state.settings.startingCreditLimit,
+      creditLimit: Number(formData.creditLimit),
       usedCredit: 0,
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -249,9 +259,10 @@ export function CustomersManagementPage() {
 
     if (!editFormData.fullName.trim()) errs.fullName = 'Full name is required';
     if (!editFormData.phone.trim()) errs.phone = 'Phone number is required';
+    else if (!isValidPhone(editFormData.phone)) errs.phone = 'Enter a valid phone number (7–15 digits)';
     if (!editFormData.email.trim()) {
       errs.email = 'Email is required';
-    } else if (!editFormData.email.includes('@')) {
+    } else if (!isValidEmail(editFormData.email)) {
       errs.email = 'Valid email is required';
     }
 
@@ -259,30 +270,32 @@ export function CustomersManagementPage() {
 
     if (!editFormData.loginEmail.trim()) {
       errs.loginEmail = 'Login email is required';
-    } else if (!editFormData.loginEmail.includes('@')) {
+    } else if (!isValidEmail(editFormData.loginEmail)) {
       errs.loginEmail = 'Valid login email is required';
     } else if (
-      state.customers.some(
-        c => c.id !== editingCustomer?.id && c.loginEmail?.toLowerCase() === editFormData.loginEmail.trim().toLowerCase()
-      )
+      state.customers.some(c => c.id !== editingCustomer?.id && c.loginEmail?.toLowerCase() === editFormData.loginEmail.trim().toLowerCase())
+      || state.employees.some(emp => emp.email?.toLowerCase() === editFormData.loginEmail.trim().toLowerCase())
+      || state.suppliers.some(s => s.loginEmail?.toLowerCase() === editFormData.loginEmail.trim().toLowerCase())
     ) {
       errs.loginEmail = 'Another account already uses this login email';
     }
 
     if (!editFormData.password.trim()) {
       errs.password = 'Password is required';
-    } else if (editFormData.password.trim().length < 4) {
-      errs.password = 'Password must be at least 4 characters';
+    } else if (editFormData.password.trim().length < 6) {
+      errs.password = 'Password must be at least 6 characters';
     }
 
-    if (!editFormData.creditLimit.trim() || isNaN(Number(editFormData.creditLimit)) || Number(editFormData.creditLimit) < 0) {
-      errs.creditLimit = 'Valid credit limit (₱) is required';
+    if (!isNonNegativeInteger(editFormData.creditLimit)) {
+      errs.creditLimit = 'Credit limit must be a whole peso amount of 0 or more';
+    } else if (editingCustomer && Number(editFormData.creditLimit) < editingCustomer.usedCredit) {
+      errs.creditLimit = 'Credit limit cannot be lower than the customer’s used credit';
     }
 
     if (!editFormData.storeName.trim()) errs.storeName = 'Sari-sari store name is required';
     if (!editFormData.storeAddress.trim()) errs.storeAddress = 'Store address is required';
-    if (!editFormData.yearsOperating.trim() || isNaN(Number(editFormData.yearsOperating)) || Number(editFormData.yearsOperating) < 0) {
-      errs.yearsOperating = 'Valid years operating is required';
+    if (!isNonNegativeInteger(editFormData.yearsOperating) || Number(editFormData.yearsOperating) > 100) {
+      errs.yearsOperating = 'Years operating must be a whole number from 0 to 100';
     }
 
     setEditErrors(errs);
@@ -305,10 +318,10 @@ export function CustomersManagementPage() {
       address: editFormData.address.trim(),
       loginEmail: editFormData.loginEmail.trim().toLowerCase(),
       password: editFormData.password.trim(),
-      creditLimit: parseInt(editFormData.creditLimit) || editingCustomer.creditLimit,
+      creditLimit: Number(editFormData.creditLimit),
       storeName: editFormData.storeName.trim() || editingCustomer.storeName,
       storeAddress: editFormData.storeAddress.trim(),
-      yearsOperating: parseInt(editFormData.yearsOperating) || 0,
+      yearsOperating: Number(editFormData.yearsOperating),
       notes: editFormData.notes.trim(),
       status: editFormData.status,
     };
@@ -344,9 +357,16 @@ export function CustomersManagementPage() {
   };
 
   const adjustLimit = async () => {
-    if (!selectedCustomer || !newLimit) return;
-    const limitNum = parseInt(newLimit);
-    if (isNaN(limitNum)) return;
+    if (!selectedCustomer) return;
+    if (!isNonNegativeInteger(newLimit)) {
+      showToast('error', 'Credit limit must be a whole peso amount of 0 or more.');
+      return;
+    }
+    const limitNum = Number(newLimit);
+    if (limitNum < selectedCustomer.usedCredit) {
+      showToast('error', `Credit limit cannot be lower than the customer’s used credit (${formatPHP(selectedCustomer.usedCredit)}).`);
+      return;
+    }
 
     try {
       await updateRecord('customers', selectedCustomer.id, { creditLimit: limitNum });
@@ -861,7 +881,7 @@ export function CustomersManagementPage() {
                     setFormData({ ...formData, password: e.target.value });
                     if (errors.password) setErrors({ ...errors, password: '' });
                   }}
-                  placeholder="At least 4 characters"
+                  placeholder="At least 6 characters"
                   className={`w-full px-3 py-2 pr-10 border rounded-xl text-sm focus:outline-none transition-all ${
                     errors.password ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
                   }`}
@@ -1191,7 +1211,7 @@ export function CustomersManagementPage() {
             </div>
             <div>
               <label className="text-xs font-600 text-[#65727A]">New Credit Limit (₱)</label>
-              <input type="number" value={newLimit} onChange={e => setNewLimit(e.target.value)} className="mt-1 w-full px-3 py-2.5 border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:border-[#1E7D3B]" />
+              <input type="number" min={selectedCustomer.usedCredit} step="1" value={newLimit} onChange={e => setNewLimit(e.target.value)} className="mt-1 w-full px-3 py-2.5 border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:border-[#1E7D3B]" />
             </div>
             <button onClick={adjustLimit} className="w-full py-3 bg-[#1E7D3B] text-white font-700 text-sm rounded-xl hover:bg-[#22913f] transition-all cursor-pointer">Update Limit</button>
           </div>

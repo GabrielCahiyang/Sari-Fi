@@ -4,7 +4,7 @@ import { InternalLayout } from '../../components/layout/InternalLayout';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import type { RestockOrder, RestockItem } from '../../types';
-import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
+import { saveRecord, updateRecord, updateRootPaths } from '../../services/firebase/rtdbService';
 
 export function RestockPage() {
   const { state, dispatch, showToast, formatPHP, logAudit } = useApp();
@@ -122,6 +122,16 @@ export function RestockPage() {
   const handleCreateRestock = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (selectedSupplierId === 'all') {
+      showToast('error', 'Select one supplier before choosing restock items.');
+      return;
+    }
+    const selectedSupplier = getSupplier(selectedSupplierId);
+    if (!selectedSupplier || selectedSupplier.status !== 'active') {
+      showToast('error', 'Select an active supplier for this restock order.');
+      return;
+    }
+
     // Map order lines into items
     const items = Object.entries(orderLines)
       .map(([prodId, qtyStr]) => {
@@ -131,7 +141,7 @@ export function RestockPage() {
       .filter(({ qty }) => !isNaN(qty) && qty > 0)
       .map(({ prodId, qty }) => {
         const p = state.products.find(x => x.id === prodId);
-        if (!p) return null;
+        if (!p || p.status !== 'active' || p.supplierId !== selectedSupplierId) return null;
         return {
           productId: prodId,
           productName: p.name,
@@ -149,10 +159,8 @@ export function RestockPage() {
     setCreating(true);
 
     // Resolve supplier name and ID safely
-    const explicitSupplier = selectedSupplierId !== 'all' ? getSupplier(selectedSupplierId) : undefined;
-    const fallbackSupplier = explicitSupplier || state.suppliers[0];
-    const supplierId = fallbackSupplier?.id || 'sup_general';
-    const supplierName = fallbackSupplier?.name || 'Direct Wholesale Supplier';
+    const supplierId = selectedSupplier.id;
+    const supplierName = selectedSupplier.name;
 
     const totalCost = items.reduce((s, i) => s + i.quantity * i.costPrice, 0);
 
@@ -170,22 +178,17 @@ export function RestockPage() {
     };
 
     try {
-      // 1. Immediately update each product's stock in Firebase RTDB
+      const paths: Record<string, unknown> = {};
       for (const item of items) {
         const prod = state.products.find(p => p.id === item.productId);
         if (prod) {
-          const updated = { ...prod, stock: prod.stock + item.quantity };
-          await saveRecord('products', updated);
+          paths[`products/${prod.id}`] = { ...prod, stock: prod.stock + item.quantity };
         }
       }
+      paths[`restockOrders/${newRestock.id}`] = newRestock;
+      await updateRootPaths(paths);
 
-      // 2. Save restock order to Firebase RTDB
-      await saveRecord('restockOrders', newRestock);
-
-      // 3. Dispatch to local state (ADD_RESTOCK updates both restockOrders and products)
       dispatch({ type: 'ADD_RESTOCK', restock: newRestock });
-
-      // 4. Audit logging
       await logAudit({
         category: 'restock',
         action: 'restock.create',
@@ -216,7 +219,7 @@ export function RestockPage() {
 
   const supplierProducts = state.products.filter(p =>
     p.status === 'active' &&
-    (!selectedSupplierId || selectedSupplierId === 'all' || p.supplierId === selectedSupplierId)
+    selectedSupplierId !== 'all' && p.supplierId === selectedSupplierId
   );
 
   const selectedItemsCount = Object.values(orderLines).filter(v => (parseInt(v, 10) || 0) > 0).length;
@@ -445,11 +448,14 @@ export function RestockPage() {
             <label className="text-xs font-600 text-[#65727A]">Select Supplier</label>
             <select
               value={selectedSupplierId}
-              onChange={e => setSelectedSupplierId(e.target.value)}
+              onChange={e => {
+                setSelectedSupplierId(e.target.value);
+                setOrderLines({});
+              }}
               className="mt-1 w-full px-3 py-2.5 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
             >
-              <option value="all">All Suppliers (Show All Products)</option>
-              {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.contact})</option>)}
+              <option value="all">Choose a supplier…</option>
+              {state.suppliers.filter(s => s.status === 'active').map(s => <option key={s.id} value={s.id}>{s.name} ({s.contact})</option>)}
             </select>
           </div>
 
@@ -523,7 +529,9 @@ export function RestockPage() {
                 );
               })}
               {supplierProducts.length === 0 && (
-                <div className="p-6 text-center text-xs text-[#65727A]">No products mapped to this supplier.</div>
+                <div className="p-6 text-center text-xs text-[#65727A]">
+                  {selectedSupplierId === 'all' ? 'Choose a supplier to load its products.' : 'No active products are mapped to this supplier.'}
+                </div>
               )}
             </div>
           </div>

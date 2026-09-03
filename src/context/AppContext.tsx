@@ -28,6 +28,7 @@ type Action = (
   | { type: 'CART_CLEAR' }
   | { type: 'SET_CHECKOUT_DATA'; data: AppState['checkoutData'] }
   | { type: 'PLACE_ORDER'; order: Order; payment?: Payment; financing?: Financing }
+  | { type: 'ADD_PAYMENT'; payment: Payment }
   | { type: 'UPDATE_ORDER_STATUS'; orderId: string; status: OrderStatus; confirmedBy?: string }
   | { type: 'CANCEL_ORDER'; orderId: string; reason?: string }
   | { type: 'APPROVE_FINANCING'; financingId: string; approvedBy: string }
@@ -168,6 +169,10 @@ function coreReducer(state: AppState, action: Action): AppState {
       // Customer credit is only consumed once approved by a supervisor/admin.
       // Inventory is reserved by createOrderWithReservation and arrives via RTDB sync.
       return { ...state, orders: newOrders, payments: newPayments, financing: newFinancing, cart: [], checkoutData: null };
+    }
+    case 'ADD_PAYMENT': {
+      if (state.payments.some(payment => payment.id === action.payment.id)) return state;
+      return { ...state, payments: [action.payment, ...state.payments] };
     }
     case 'UPDATE_ORDER_STATUS': {
       const target = state.orders.find(o => o.id === action.orderId);
@@ -382,10 +387,13 @@ function coreReducer(state: AppState, action: Action): AppState {
       // Defensive Guard / Idempotency: if payment already marked paid, return state
       if (!payment || payment.status === 'paid') return state;
 
+      const now = new Date().toISOString();
       const updatedPayments = state.payments.map(p =>
-        p.id === action.paymentId ? { ...p, status: 'paid' as const, confirmedBy: action.confirmedBy, paidAt: new Date().toISOString() } : p
+        p.id === action.paymentId ? { ...p, status: 'paid' as const, confirmedBy: action.confirmedBy, paidAt: now } : p
       );
       let updatedOrders = state.orders;
+      let updatedFinancing = state.financing;
+      let updatedCustomers = state.customers;
       if (payment.orderId) {
         const paidPayment = updatedPayments.find(p => p.id === action.paymentId)!;
         updatedOrders = state.orders.map(o =>
@@ -398,12 +406,77 @@ function coreReducer(state: AppState, action: Action): AppState {
                   paidPayment,
                 ], state.financing),
                 confirmedBy: action.confirmedBy,
-                updatedAt: new Date().toISOString(),
+                updatedAt: now,
               }
             : o
         );
       }
-      return { ...state, payments: updatedPayments, orders: updatedOrders };
+
+      if (payment.financingId && (payment.type === 'installment' || payment.type === 'full_settlement')) {
+        const fin = state.financing.find(item => item.id === payment.financingId);
+        if (fin && fin.status !== 'completed') {
+          const remainingPrincipal = Math.max(0, fin.principal - fin.paidPrincipal);
+          let principalReleased = 0;
+          let schedule = fin.schedule;
+
+          if (payment.type === 'installment' && payment.installmentWeekNo) {
+            const installment = fin.schedule.find(entry => entry.weekNo === payment.installmentWeekNo);
+            if (installment && installment.status !== 'paid') {
+              principalReleased = Math.min(remainingPrincipal, fin.principal / fin.installmentCount);
+              const nextUnpaidWeek = fin.schedule
+                .filter(entry => entry.weekNo > payment.installmentWeekNo! && entry.status !== 'paid')
+                .sort((a, b) => a.weekNo - b.weekNo)[0]?.weekNo;
+              schedule = fin.schedule.map(entry => {
+                if (entry.weekNo === payment.installmentWeekNo) {
+                  return { ...entry, status: 'paid' as const, paidAt: now, paidMethod: payment.method };
+                }
+                if (entry.weekNo === nextUnpaidWeek && entry.status === 'upcoming') {
+                  return { ...entry, status: 'due' as const };
+                }
+                return entry;
+              });
+            }
+          } else if (payment.type === 'full_settlement') {
+            principalReleased = remainingPrincipal;
+            schedule = fin.schedule.map(entry => entry.status === 'paid'
+              ? entry
+              : { ...entry, status: 'paid' as const, paidAt: now, paidMethod: payment.method });
+          }
+
+          if (principalReleased > 0) {
+            const completed = schedule.every(entry => entry.status === 'paid');
+            updatedFinancing = state.financing.map(item => item.id === fin.id
+              ? {
+                  ...item,
+                  paidPrincipal: Math.min(item.principal, item.paidPrincipal + principalReleased),
+                  schedule,
+                  status: completed ? 'completed' as const : item.status,
+                }
+              : item);
+            const limitIncrease = state.settings?.limitIncreaseAmount || 0;
+            const maxLimit = state.settings?.maxAutomaticLimit || 20000;
+            updatedCustomers = state.customers.map(customer => {
+              if (customer.id !== fin.customerId) return customer;
+              const shouldGrowLimit = completed && customer.creditLimit < maxLimit && limitIncrease > 0;
+              return {
+                ...customer,
+                usedCredit: Math.max(0, customer.usedCredit - principalReleased),
+                creditLimit: shouldGrowLimit
+                  ? Math.min(maxLimit, customer.creditLimit + limitIncrease)
+                  : customer.creditLimit,
+              };
+            });
+          }
+        }
+      }
+
+      return {
+        ...state,
+        payments: updatedPayments,
+        orders: updatedOrders,
+        financing: updatedFinancing,
+        customers: updatedCustomers,
+      };
     }
     case 'UPDATE_CUSTOMER':
       return { ...state, customers: state.customers.map(c => c.id === action.customer.id ? action.customer : c) };
@@ -445,42 +518,17 @@ function coreReducer(state: AppState, action: Action): AppState {
       return { ...state, suppliers: state.suppliers.filter(s => s.id !== action.supplierId) };
     case 'ADD_RESTOCK': {
       if (state.restockOrders.some(r => r.id === action.restock.id)) return state;
-      let updatedProducts = state.products;
-      if (action.restock.status === 'received') {
-        const items = (Array.isArray(action.restock.items)
-          ? action.restock.items
-          : Object.values(action.restock.items || {})) as RestockItem[];
-        updatedProducts = state.products.map(p => {
-          const item = items.find(i => i.productId === p.id);
-          if (item) return { ...p, stock: p.stock + item.quantity };
-          return p;
-        });
-      }
       return {
         ...state,
         restockOrders: [action.restock, ...state.restockOrders],
-        products: updatedProducts,
       };
     }
     case 'UPDATE_RESTOCK_STATUS': {
-      const restock = state.restockOrders.find(r => r.id === action.restockId);
-      let updatedProducts = state.products;
-      if (action.status === 'received' && restock && restock.status !== 'received') {
-        const items = (Array.isArray(restock.items)
-          ? restock.items
-          : Object.values(restock.items || {})) as RestockItem[];
-        updatedProducts = state.products.map(p => {
-          const item = items.find(i => i.productId === p.id);
-          if (item) return { ...p, stock: p.stock + item.quantity };
-          return p;
-        });
-      }
       return {
         ...state,
         restockOrders: state.restockOrders.map(r =>
           r.id === action.restockId ? { ...r, status: action.status, receivedAt: action.status === 'received' ? new Date().toISOString() : r.receivedAt } : r
         ),
-        products: updatedProducts,
       };
     }
     case 'UPDATE_SETTINGS':

@@ -5,6 +5,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal, ConfirmDialog } from '../../components/ui/Modal';
 import type { Supplier, ProductCategory } from '../../types';
 import { saveRecord, deleteRecord } from '../../services/firebase/rtdbService';
+import { isValidEmail, isValidPhone } from '../../utils/validation';
 
 export function SuppliersPage() {
   const { state, dispatch, showToast, logAudit, navigate } = useApp();
@@ -33,6 +34,23 @@ export function SuppliersPage() {
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [newCategoryInput, setNewCategoryInput] = useState('');
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const clearFormError = (field: string) => {
+    setFormErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const fieldClass = (field: string) =>
+    `mt-1.5 w-full px-3 py-2 bg-white border rounded-xl text-sm focus:outline-none focus:ring-2 ${
+      formErrors[field]
+        ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
+        : 'border-[#E4E8E6] focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]'
+    }`;
 
   // Dynamically collect all categories available across the system
   const availableCategories = useMemo(() => {
@@ -93,6 +111,7 @@ export function SuppliersPage() {
     setStatus('active');
     setSelectedCategories([]);
     setNewCategoryInput('');
+    setFormErrors({});
     setShowAddModal(true);
   };
 
@@ -108,9 +127,11 @@ export function SuppliersPage() {
     setStatus(supplier.status || 'active');
     setSelectedCategories(Array.isArray(supplier.categories) ? [...supplier.categories] : []);
     setNewCategoryInput('');
+    setFormErrors({});
   };
 
   const toggleCategory = (catName: string) => {
+    clearFormError('categories');
     setSelectedCategories(prev =>
       prev.includes(catName) ? prev.filter(c => c !== catName) : [...prev, catName]
     );
@@ -127,8 +148,41 @@ export function SuppliersPage() {
 
   const handleSaveSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      showToast('error', 'Supplier name is required.');
+    const cleanName = name.trim();
+    const cleanContact = contact.trim();
+    const cleanPhone = phone.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanLoginEmail = loginEmail.trim().toLowerCase();
+    const cleanPassword = password.trim();
+    const cleanAddress = address.trim();
+    const errors: Record<string, string> = {};
+
+    if (!cleanName) errors.name = 'Supplier / company name is required';
+    else if (cleanName.length < 2) errors.name = 'Enter at least 2 characters';
+    else if (state.suppliers.some(s => s.id !== editingSupplier?.id && s.name.trim().toLowerCase() === cleanName.toLowerCase())) {
+      errors.name = 'A supplier with this name already exists';
+    }
+    if (!cleanContact) errors.contact = 'Contact person is required';
+    if (!cleanPhone) errors.phone = 'Contact phone is required';
+    else if (!isValidPhone(cleanPhone)) errors.phone = 'Enter a valid phone number (7–15 digits)';
+    if (!cleanEmail) errors.email = 'Business email is required';
+    else if (!isValidEmail(cleanEmail)) errors.email = 'Enter a valid email address';
+    if (!cleanAddress) errors.address = 'Warehouse / office address is required';
+    if (!cleanLoginEmail) errors.loginEmail = 'Portal login email is required';
+    else if (!isValidEmail(cleanLoginEmail)) errors.loginEmail = 'Enter a valid login email';
+    else {
+      const emailTaken = state.suppliers.some(s => s.id !== editingSupplier?.id && s.loginEmail?.trim().toLowerCase() === cleanLoginEmail)
+        || state.employees.some(emp => emp.email?.trim().toLowerCase() === cleanLoginEmail)
+        || state.customers.some(customer => customer.loginEmail?.trim().toLowerCase() === cleanLoginEmail);
+      if (emailTaken) errors.loginEmail = 'This login email is already used by another account';
+    }
+    if (!cleanPassword) errors.password = 'Portal password is required';
+    else if (cleanPassword.length < 6) errors.password = 'Use at least 6 characters';
+    if (selectedCategories.length === 0) errors.categories = 'Select at least one supplied category';
+
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      showToast('error', 'Please resolve the highlighted supplier fields.');
       return;
     }
 
@@ -138,15 +192,15 @@ export function SuppliersPage() {
 
     const supplierData: Supplier = {
       id: supplierId,
-      name: name.trim(),
-      contact: contact.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
-      address: address.trim(),
+      name: cleanName,
+      contact: cleanContact,
+      phone: cleanPhone,
+      email: cleanEmail,
+      address: cleanAddress,
       categories: selectedCategories,
       status,
-      loginEmail: loginEmail.trim().toLowerCase() || email.trim().toLowerCase(),
-      password: password.trim() || 'supplier123',
+      loginEmail: cleanLoginEmail,
+      password: cleanPassword,
     };
 
     try {
@@ -219,15 +273,16 @@ export function SuppliersPage() {
 
   const handleDelete = async (id: string, supplierName: string) => {
     const mappedCount = state.products.filter(p => p.supplierId === id).length;
-    let confirmMsg = `Are you sure you want to delete supplier "${supplierName}"?`;
     if (mappedCount > 0) {
-      confirmMsg += `\n\nNotice: ${mappedCount} product(s) in your inventory are currently mapped to this supplier.`;
+      showToast('error', `Reassign or delete ${mappedCount} mapped product${mappedCount === 1 ? '' : 's'} before removing this supplier.`);
+      return;
     }
 
-    if (!confirm(confirmMsg)) return;
+    if (!confirm(`Are you sure you want to delete supplier "${supplierName}"?`)) return;
 
     try {
       await deleteRecord('suppliers', id);
+      await deleteRecord('users', id);
       dispatch({ type: 'DELETE_SUPPLIER', supplierId: id });
       await logAudit({
         category: 'supplier',
@@ -575,7 +630,7 @@ export function SuppliersPage() {
         title={editingSupplier ? `Edit Supplier: ${editingSupplier.name}` : 'Register New Supplier'}
         size="lg"
       >
-        <form onSubmit={handleSaveSupplier} className="space-y-4">
+        <form onSubmit={handleSaveSupplier} className="space-y-4" noValidate>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="text-xs font-700 text-[#10212B] uppercase tracking-wider">
@@ -585,62 +640,72 @@ export function SuppliersPage() {
                 type="text"
                 required
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={e => { setName(e.target.value); clearFormError('name'); }}
                 placeholder="e.g. ABC Wholesale Distributor"
-                className="mt-1.5 w-full px-3 py-2 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
+                aria-invalid={!!formErrors.name}
+                className={fieldClass('name')}
               />
+              {formErrors.name && <p className="mt-1 text-[11px] font-600 text-red-600">{formErrors.name}</p>}
             </div>
 
             <div>
               <label className="text-xs font-700 text-[#10212B] uppercase tracking-wider">
-                Contact Person
+                Contact Person <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={contact}
-                onChange={e => setContact(e.target.value)}
+                onChange={e => { setContact(e.target.value); clearFormError('contact'); }}
                 placeholder="e.g. Rico Santos (Account Rep)"
-                className="mt-1.5 w-full px-3 py-2 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
+                aria-invalid={!!formErrors.contact}
+                className={fieldClass('contact')}
               />
+              {formErrors.contact && <p className="mt-1 text-[11px] font-600 text-red-600">{formErrors.contact}</p>}
             </div>
 
             <div>
               <label className="text-xs font-700 text-[#10212B] uppercase tracking-wider">
-                Contact Phone
+                Contact Phone <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={phone}
-                onChange={e => setPhone(e.target.value)}
+                onChange={e => { setPhone(e.target.value); clearFormError('phone'); }}
                 placeholder="e.g. 0917-123-4567 or 02-888-1234"
-                className="mt-1.5 w-full px-3 py-2 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
+                aria-invalid={!!formErrors.phone}
+                className={fieldClass('phone')}
               />
+              {formErrors.phone && <p className="mt-1 text-[11px] font-600 text-red-600">{formErrors.phone}</p>}
             </div>
 
             <div>
               <label className="text-xs font-700 text-[#10212B] uppercase tracking-wider">
-                Email Address
+                Email Address <span className="text-red-500">*</span>
               </label>
               <input
                 type="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => { setEmail(e.target.value); clearFormError('email'); }}
                 placeholder="e.g. orders@distributor.ph"
-                className="mt-1.5 w-full px-3 py-2 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
+                aria-invalid={!!formErrors.email}
+                className={fieldClass('email')}
               />
+              {formErrors.email && <p className="mt-1 text-[11px] font-600 text-red-600">{formErrors.email}</p>}
             </div>
 
             <div>
               <label className="text-xs font-700 text-[#10212B] uppercase tracking-wider">
-                Warehouse / Office Address
+                Warehouse / Office Address <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={address}
-                onChange={e => setAddress(e.target.value)}
+                onChange={e => { setAddress(e.target.value); clearFormError('address'); }}
                 placeholder="e.g. Divisoria, Manila"
-                className="mt-1.5 w-full px-3 py-2 bg-white border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
+                aria-invalid={!!formErrors.address}
+                className={fieldClass('address')}
               />
+              {formErrors.address && <p className="mt-1 text-[11px] font-600 text-red-600">{formErrors.address}</p>}
             </div>
 
             <div>
@@ -671,25 +736,29 @@ export function SuppliersPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-700 text-[#10212B]">Portal Login Email</label>
+                <label className="text-xs font-700 text-[#10212B]">Portal Login Email <span className="text-red-500">*</span></label>
                 <input
                   type="email"
                   value={loginEmail}
-                  onChange={e => setLoginEmail(e.target.value)}
+                  onChange={e => { setLoginEmail(e.target.value); clearFormError('loginEmail'); }}
                   placeholder="e.g. partner@supplier.ph"
-                  className="mt-1 w-full px-3 py-2 bg-white border border-[#E4E8E6] rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#1E7D3B]"
+                  aria-invalid={!!formErrors.loginEmail}
+                  className={`${fieldClass('loginEmail')} mt-1 text-xs sm:text-sm`}
                 />
+                {formErrors.loginEmail && <p className="mt-1 text-[11px] font-600 text-red-600">{formErrors.loginEmail}</p>}
               </div>
 
               <div>
-                <label className="text-xs font-700 text-[#10212B]">Portal Password</label>
+                <label className="text-xs font-700 text-[#10212B]">Portal Password <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={e => { setPassword(e.target.value); clearFormError('password'); }}
                   placeholder="supplier123"
-                  className="mt-1 w-full px-3 py-2 bg-white border border-[#E4E8E6] rounded-xl text-xs sm:text-sm font-mono focus:outline-none focus:border-[#1E7D3B]"
+                  aria-invalid={!!formErrors.password}
+                  className={`${fieldClass('password')} mt-1 text-xs sm:text-sm font-mono`}
                 />
+                {formErrors.password && <p className="mt-1 text-[11px] font-600 text-red-600">{formErrors.password}</p>}
               </div>
             </div>
           </div>
@@ -698,7 +767,7 @@ export function SuppliersPage() {
           <div className="pt-2 border-t border-[#F7F8F6]">
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-700 text-[#10212B] uppercase tracking-wider">
-                Select Supplied Categories ({selectedCategories.length} selected)
+                Select Supplied Categories ({selectedCategories.length} selected) <span className="text-red-500">*</span>
               </label>
               {selectedCategories.length > 0 && (
                 <button
@@ -710,6 +779,7 @@ export function SuppliersPage() {
                 </button>
               )}
             </div>
+            {formErrors.categories && <p className="mt-1.5 text-[11px] font-600 text-red-600">{formErrors.categories}</p>}
             <p className="text-xs text-[#65727A] mb-2.5">
               Tap categories from your store catalog provided by this supplier:
             </p>

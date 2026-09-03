@@ -1,13 +1,34 @@
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
 import { OrderStatusBadge } from '../../components/ui/Badge';
 import { cancelOrderFlow, transitionOrderFlow } from '../../services/firebase/rtdbService';
-import type { OrderItem } from '../../types';
+import type { OrderItem, OrderStatus } from '../../types';
+
+type OrderFilter = 'all' | 'pending' | 'processing' | 'delivered' | 'completed' | 'cancelled';
+
+const FILTERS: Array<{ key: OrderFilter; label: string; statuses?: OrderStatus[] }> = [
+  { key: 'all', label: 'All Orders' },
+  { key: 'pending', label: 'Pending', statuses: ['pending_payment', 'pending_financing'] },
+  { key: 'processing', label: 'In Progress', statuses: ['approved', 'processing', 'ready', 'out_for_delivery'] },
+  { key: 'delivered', label: 'Delivered', statuses: ['delivered'] },
+  { key: 'completed', label: 'Completed', statuses: ['completed'] },
+  { key: 'cancelled', label: 'Cancelled', statuses: ['cancelled'] },
+];
 
 export function OrdersPage() {
   const { state, navigate, getCurrentCustomer, getCustomerOrders, dispatch, showToast, formatPHP, logAudit } = useApp();
   const customer = getCurrentCustomer();
   const orders = getCustomerOrders(customer?.id || '').sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const [activeFilter, setActiveFilter] = useState<OrderFilter>('all');
+  const selectedFilter = FILTERS.find(filter => filter.key === activeFilter) || FILTERS[0];
+  const filteredOrders = selectedFilter.statuses
+    ? orders.filter(order => selectedFilter.statuses!.includes(order.status))
+    : orders;
+  const filterCount = (statuses?: OrderStatus[]) => statuses
+    ? orders.filter(order => statuses.includes(order.status)).length
+    : orders.length;
 
   const cancelOrder = async (orderId: string) => {
     const target = state.orders.find(order => order.id === orderId);
@@ -60,6 +81,42 @@ export function OrdersPage() {
           </button>
         </div>
 
+        {orders.length > 0 && (
+          <div className="mb-4 sm:mb-5 overflow-x-auto pb-1 no-scrollbar" aria-label="Filter orders by status">
+            <div className="inline-flex min-w-max items-center gap-1 rounded-xl border border-[#E4E8E6] bg-white p-1 shadow-xs">
+              {FILTERS.map(filter => {
+                const isActive = activeFilter === filter.key;
+                const count = filterCount(filter.statuses);
+                return (
+                  <button
+                    key={filter.key}
+                    type="button"
+                    onClick={() => setActiveFilter(filter.key)}
+                    aria-pressed={isActive}
+                    className={`relative isolate flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-700 transition-colors cursor-pointer ${
+                      isActive ? 'text-white' : 'text-[#65727A] hover:bg-[#F7F8F6] hover:text-[#10212B]'
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.span
+                        layoutId="customer-order-filter"
+                        className="absolute inset-0 -z-10 rounded-lg bg-[#0D2B45] shadow-sm"
+                        transition={{ type: 'spring', stiffness: 430, damping: 34 }}
+                      />
+                    )}
+                    <span>{filter.label}</span>
+                    <span className={`min-w-5 rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${
+                      isActive ? 'bg-white/15 text-white' : 'bg-[#F1F3F2] text-[#65727A]'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {orders.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-[#E4E8E6]">
             <div className="text-3xl mb-3">📦</div>
@@ -67,13 +124,33 @@ export function OrdersPage() {
             <div className="text-sm text-[#65727A] mb-4">Start shopping to place your first order.</div>
             <button onClick={() => navigate('customer/shop')} className="text-sm text-[#1E7D3B] font-600 hover:underline cursor-pointer">Browse Shop →</button>
           </div>
+        ) : filteredOrders.length === 0 ? (
+          <motion.div
+            key={activeFilter}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-14 bg-white rounded-2xl border border-[#E4E8E6]"
+          >
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[#F7F8F6] text-xl">📦</div>
+            <div className="font-700 text-[#10212B]">No {selectedFilter.label.toLowerCase()}</div>
+            <div className="mt-1 text-sm text-[#65727A]">Orders matching this status will appear here.</div>
+            <button onClick={() => setActiveFilter('all')} className="mt-4 text-sm font-700 text-[#1E7D3B] hover:underline cursor-pointer">
+              View all orders
+            </button>
+          </motion.div>
         ) : (
-          <div className="space-y-4">
-            {orders.map(order => {
+          <motion.div layout className="space-y-4">
+            <AnimatePresence initial={false} mode="popLayout">
+            {filteredOrders.map(order => {
               const canCancel = order.status === 'pending_payment' || order.status === 'pending_financing';
               return (
-                <div
+                <motion.div
                   key={order.id}
+                  layout
+                  initial={{ opacity: 0, y: 12, scale: 0.99 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.99 }}
+                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                   data-tour-target={order.id === 'ord_tour_001' ? '4' : undefined}
                   className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5"
                 >
@@ -163,10 +240,11 @@ export function OrdersPage() {
                       )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
     </CustomerLayout>

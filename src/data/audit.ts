@@ -91,6 +91,21 @@ function describe(action: AnyAction, prev: AppState, next: AppState): Derived | 
         amount: o.total,
       };
     }
+    case 'ADD_PAYMENT': {
+      const p = a.payment;
+      if (p.status !== 'pending' || p.method !== 'cash' || !p.financingId) return null;
+      const f = next.financing.find(x => x.id === p.financingId);
+      const who = customerName(next, p.customerId);
+      return {
+        category: 'payment',
+        action: 'payment.cash_submitted',
+        summary: `${who} submitted ${peso(p.amount)} cash ${p.type === 'full_settlement' ? 'settlement' : `installment #${p.installmentWeekNo}`} for supervisor confirmation`,
+        targetType: 'payment',
+        targetId: p.id,
+        targetLabel: p.paymentNo,
+        amount: p.amount,
+      };
+    }
     case 'UPDATE_ORDER_STATUS': {
       const o = next.orders.find(x => x.id === a.orderId);
       const label = o?.orderNo ?? a.orderId;
@@ -169,10 +184,14 @@ function describe(action: AnyAction, prev: AppState, next: AppState): Derived | 
     case 'CONFIRM_CASH_PAYMENT': {
       const p = next.payments.find(x => x.id === a.paymentId);
       const who = customerName(next, p?.customerId);
+      const automatic = p?.method === 'gcash';
       return {
+        actor: automatic ? SYSTEM : undefined,
         category: 'payment',
-        action: 'payment.confirm_cash',
-        summary: `Confirmed ${peso(p?.amount ?? 0)} cash payment ${p?.paymentNo ?? ''} for ${who}`,
+        action: automatic ? 'payment.gcash_settled' : 'payment.confirm_cash',
+        summary: automatic
+          ? `Settled ${peso(p?.amount ?? 0)} GCash payment ${p?.paymentNo ?? ''} for ${who}`
+          : `Confirmed ${peso(p?.amount ?? 0)} cash payment ${p?.paymentNo ?? ''} for ${who}`,
         targetType: 'payment',
         targetId: a.paymentId,
         targetLabel: p?.paymentNo,

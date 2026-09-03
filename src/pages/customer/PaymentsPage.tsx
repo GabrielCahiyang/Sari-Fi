@@ -54,6 +54,9 @@ export function PaymentsPage() {
                       </div>
                       {pay.orderId && <div className="text-[10px] text-[#65727A]">Order payment</div>}
                       {pay.financingId && <div className="text-[10px] text-[#65727A]">Financing repayment</div>}
+                      {pay.financingId && pay.method === 'cash' && pay.status === 'pending' && (
+                        <div className="text-[10px] font-600 text-amber-700">Awaiting supervisor confirmation</div>
+                      )}
                       {pay.confirmedBy && <div className="text-[10px] text-[#65727A]">Confirmed by {pay.confirmedBy}</div>}
                     </div>
                   </div>

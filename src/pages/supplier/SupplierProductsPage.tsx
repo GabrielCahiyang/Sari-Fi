@@ -3,6 +3,7 @@ import { SupplierLayout } from '../../components/layout/SupplierLayout';
 import { useApp } from '../../context/AppContext';
 import { saveRecord, deleteRecord } from '../../services/firebase/rtdbService';
 import type { Product } from '../../types';
+import { isNonNegativeInteger, isNonNegativeNumber, isPositiveNumber } from '../../utils/validation';
 
 export function SupplierProductsPage() {
   const { state, dispatch, formatPHP, showToast } = useApp();
@@ -10,6 +11,8 @@ export function SupplierProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [savingProduct, setSavingProduct] = useState(false);
 
   const supplier = useMemo(() => {
     return state.suppliers.find(s => s.id === state.currentUser?.supplierId) || {
@@ -17,8 +20,18 @@ export function SupplierProductsPage() {
       name: state.currentUser?.name || 'Wholesale Supplier',
       email: state.currentUser?.email || 'supplier@sarifi.ph',
       status: 'active' as const,
+      categories: [] as string[],
     };
   }, [state.suppliers, state.currentUser]);
+
+  const assignedCategories = useMemo(() => {
+    const unique = new Map<string, string>();
+    for (const category of supplier.categories || []) {
+      const clean = category.trim();
+      if (clean) unique.set(clean.toLowerCase(), clean);
+    }
+    return Array.from(unique.values()).sort((a, b) => a.localeCompare(b));
+  }, [supplier.categories]);
 
   // Supplier's own products
   const myProducts = useMemo(() => {
@@ -27,10 +40,9 @@ export function SupplierProductsPage() {
 
   const categories = useMemo(() => {
     const set = new Set<string>();
-    state.categories.forEach(c => set.add(c.name));
     myProducts.forEach(p => set.add(p.category));
     return ['All', ...Array.from(set)];
-  }, [state.categories, myProducts]);
+  }, [myProducts]);
 
   const filtered = useMemo(() => {
     return myProducts.filter(p => {
@@ -45,7 +57,7 @@ export function SupplierProductsPage() {
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
-    category: 'Beverages',
+    category: '',
     sellingPrice: '',
     costPrice: '',
     stock: '',
@@ -148,11 +160,15 @@ export function SupplierProductsPage() {
   };
 
   const openAddModal = () => {
+    if (assignedCategories.length === 0) {
+      showToast('error', 'No product categories are assigned to your supplier account. Contact an administrator.');
+      return;
+    }
     setEditingProduct(null);
     setFormData({
       name: '',
       sku: `SKU-${Date.now().toString().slice(-4)}`,
-      category: categories.find(c => c !== 'All') || 'Beverages',
+      category: assignedCategories[0],
       sellingPrice: '',
       costPrice: '',
       stock: '',
@@ -160,15 +176,17 @@ export function SupplierProductsPage() {
       imageUrl: '',
       status: 'active',
     });
+    setFormErrors({});
     setModalOpen(true);
   };
 
   const openEditModal = (prod: Product) => {
+    const categoryStillAssigned = assignedCategories.some(category => category.toLowerCase() === prod.category.trim().toLowerCase());
     setEditingProduct(prod);
     setFormData({
       name: prod.name,
       sku: prod.sku,
-      category: prod.category,
+      category: categoryStillAssigned ? prod.category : '',
       sellingPrice: String(prod.sellingPrice),
       costPrice: String(prod.costPrice),
       stock: String(prod.stock),
@@ -176,36 +194,62 @@ export function SupplierProductsPage() {
       imageUrl: prod.imageUrl || '',
       status: prod.status,
     });
+    setFormErrors(categoryStillAssigned ? {} : {
+      category: `“${prod.category}” is no longer assigned to your account. Choose an assigned category before saving.`,
+    });
     setModalOpen(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
-      showToast('error', 'Please enter a product name.');
+    if (savingProduct) return;
+    const errors: Record<string, string> = {};
+    const cleanSku = formData.sku.trim().toUpperCase();
+    if (supplier.status !== 'active') errors.account = 'This supplier account is inactive and cannot publish products';
+    if (!formData.name.trim()) errors.name = 'Product name is required';
+    if (!cleanSku) errors.sku = 'SKU / code is required';
+    else if (state.products.some(p => p.id !== editingProduct?.id && p.sku.trim().toUpperCase() === cleanSku)) {
+      errors.sku = 'This SKU is already assigned to another product';
+    }
+    if (!formData.category.trim()) errors.category = 'Choose one of your assigned categories';
+    else if (!assignedCategories.some(category => category.toLowerCase() === formData.category.trim().toLowerCase())) {
+      errors.category = 'This category is not assigned to your supplier account';
+    }
+    if (!isPositiveNumber(formData.sellingPrice)) errors.sellingPrice = 'Selling price must be greater than ₱0';
+    if (!isNonNegativeNumber(formData.costPrice)) errors.costPrice = 'Cost price must be ₱0 or greater';
+    if (!isNonNegativeInteger(formData.stock)) errors.stock = 'Stock must be a whole number of 0 or more';
+    if (!isNonNegativeInteger(formData.reorderLevel)) errors.reorderLevel = 'Reorder level must be a whole number of 0 or more';
+    const cleanImageUrl = formData.imageUrl.trim();
+    if (cleanImageUrl && !cleanImageUrl.startsWith('data:image/') && !/^https?:\/\//i.test(cleanImageUrl)) {
+      errors.imageUrl = 'Photo link must begin with http:// or https://';
+    }
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      showToast('error', 'Please resolve the highlighted product fields.');
       return;
     }
 
-    const sellingPrice = parseFloat(formData.sellingPrice) || 0;
-    const costPrice = parseFloat(formData.costPrice) || 0;
-    const stock = parseInt(formData.stock) || 0;
-    const reorderLevel = parseInt(formData.reorderLevel) || 10;
+    const sellingPrice = Number(formData.sellingPrice);
+    const costPrice = Number(formData.costPrice);
+    const stock = Number(formData.stock);
+    const reorderLevel = Number(formData.reorderLevel);
 
     const prodId = editingProduct ? editingProduct.id : `prod_${Date.now()}`;
     const productRecord: Product = {
       id: prodId,
       name: formData.name.trim(),
-      sku: formData.sku.trim() || `SKU-${Date.now().toString().slice(-4)}`,
-      category: formData.category,
+      sku: cleanSku,
+      category: formData.category.trim(),
       supplierId: supplier.id,
       sellingPrice,
       costPrice,
       stock,
       reorderLevel,
       status: formData.status,
-      imageUrl: formData.imageUrl.trim() || undefined,
+      imageUrl: cleanImageUrl || undefined,
     };
 
+    setSavingProduct(true);
     try {
       await saveRecord('products', productRecord);
       if (editingProduct) {
@@ -219,6 +263,8 @@ export function SupplierProductsPage() {
     } catch (err: any) {
       console.error(err);
       showToast('error', 'Failed to save product: ' + err.message);
+    } finally {
+      setSavingProduct(false);
     }
   };
 
@@ -249,7 +295,9 @@ export function SupplierProductsPage() {
 
           <button
             onClick={openAddModal}
-            className="px-4 py-2.5 text-xs font-700 bg-[#1E7D3B] text-white hover:bg-[#165f2c] rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-xs shrink-0 self-start sm:self-auto"
+            disabled={assignedCategories.length === 0 || supplier.status !== 'active'}
+            title={assignedCategories.length === 0 ? 'Ask an administrator to assign product categories first' : undefined}
+            className="px-4 py-2.5 text-xs font-700 bg-[#1E7D3B] text-white hover:bg-[#165f2c] rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-xs shrink-0 self-start sm:self-auto disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:bg-[#1E7D3B]"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -257,6 +305,12 @@ export function SupplierProductsPage() {
             Add New Product
           </button>
         </div>
+
+        {assignedCategories.length === 0 && (
+          <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+            <span className="font-800">Product publishing is unavailable.</span> Ask an administrator to assign at least one supplied category to your partner account.
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
@@ -473,14 +527,20 @@ export function SupplierProductsPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-4 sm:p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              <form onSubmit={handleSave} className="p-4 sm:p-5 space-y-4 max-h-[75vh] overflow-y-auto" noValidate>
+                {Object.keys(formErrors).length > 0 && (
+                  <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">
+                    <div className="font-800">Please check the product details</div>
+                    <div className="mt-0.5">{Object.values(formErrors)[0]}</div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-700 text-[#0D2B45] mb-1">Product Name *</label>
                   <input
                     type="text"
                     required
                     value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    onChange={e => { setFormData({ ...formData, name: e.target.value }); setFormErrors(prev => ({ ...prev, name: '' })); }}
                     placeholder="e.g. Coca-Cola 1.5L (Case of 12)"
                     className="w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
                   />
@@ -492,23 +552,25 @@ export function SupplierProductsPage() {
                     <input
                       type="text"
                       value={formData.sku}
-                      onChange={e => setFormData({ ...formData, sku: e.target.value })}
+                      onChange={e => { setFormData({ ...formData, sku: e.target.value }); setFormErrors(prev => ({ ...prev, sku: '' })); }}
                       placeholder="BEV-001"
                       className="w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-700 text-[#0D2B45] mb-1">Category</label>
+                    <label className="block text-xs font-700 text-[#0D2B45] mb-1">Assigned Category *</label>
                     <select
                       value={formData.category}
-                      onChange={e => setFormData({ ...formData, category: e.target.value })}
+                      onChange={e => { setFormData({ ...formData, category: e.target.value }); setFormErrors(prev => ({ ...prev, category: '' })); }}
                       className="w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
                     >
-                      {categories.filter(c => c !== 'All').map(c => (
+                      <option value="">Choose assigned category…</option>
+                      {assignedCategories.map(c => (
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
+                    {formErrors.category && <p className="mt-1 text-[11px] text-red-600">{formErrors.category}</p>}
                   </div>
                 </div>
 
@@ -518,10 +580,10 @@ export function SupplierProductsPage() {
                     <input
                       type="number"
                       required
-                      min="0"
+                      min="0.01"
                       step="0.01"
                       value={formData.sellingPrice}
-                      onChange={e => setFormData({ ...formData, sellingPrice: e.target.value })}
+                      onChange={e => { setFormData({ ...formData, sellingPrice: e.target.value }); setFormErrors(prev => ({ ...prev, sellingPrice: '' })); }}
                       placeholder="Price to sari-sari stores"
                       className="w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
                     />
@@ -534,7 +596,7 @@ export function SupplierProductsPage() {
                       min="0"
                       step="0.01"
                       value={formData.costPrice}
-                      onChange={e => setFormData({ ...formData, costPrice: e.target.value })}
+                      onChange={e => { setFormData({ ...formData, costPrice: e.target.value }); setFormErrors(prev => ({ ...prev, costPrice: '' })); }}
                       placeholder="Your production/acquisition cost"
                       className="w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
                     />
@@ -548,7 +610,8 @@ export function SupplierProductsPage() {
                       type="number"
                       min="0"
                       value={formData.stock}
-                      onChange={e => setFormData({ ...formData, stock: e.target.value })}
+                      step="1"
+                      onChange={e => { setFormData({ ...formData, stock: e.target.value }); setFormErrors(prev => ({ ...prev, stock: '' })); }}
                       placeholder="Units on hand"
                       className="w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
                     />
@@ -558,9 +621,10 @@ export function SupplierProductsPage() {
                     <label className="block text-xs font-700 text-[#0D2B45] mb-1">Reorder Alert Level</label>
                     <input
                       type="number"
-                      min="1"
+                      min="0"
+                      step="1"
                       value={formData.reorderLevel}
-                      onChange={e => setFormData({ ...formData, reorderLevel: e.target.value })}
+                      onChange={e => { setFormData({ ...formData, reorderLevel: e.target.value }); setFormErrors(prev => ({ ...prev, reorderLevel: '' })); }}
                       placeholder="12"
                       className="w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
                     />
@@ -652,10 +716,11 @@ export function SupplierProductsPage() {
                       <input
                         type="url"
                         value={formData.imageUrl}
-                        onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
+                        onChange={e => { setFormData({ ...formData, imageUrl: e.target.value }); setFormErrors(prev => ({ ...prev, imageUrl: '' })); }}
                         placeholder="https://example.com/product.jpg"
                         className="w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#1E7D3B]/30 focus:border-[#1E7D3B]"
                       />
+                      {formErrors.imageUrl && <p className="mt-1 text-[11px] text-red-600">{formErrors.imageUrl}</p>}
                     </div>
                   )}
                 </div>
@@ -685,9 +750,10 @@ export function SupplierProductsPage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 text-xs font-700 bg-[#1E7D3B] text-white hover:bg-[#165f2c] rounded-xl transition-colors cursor-pointer shadow-xs"
+                    disabled={savingProduct || processingImage}
+                    className="px-5 py-2 text-xs font-700 bg-[#1E7D3B] text-white hover:bg-[#165f2c] rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {editingProduct ? 'Save Changes' : 'Publish Product'}
+                    {savingProduct ? 'Saving…' : editingProduct ? 'Save Changes' : 'Publish Product'}
                   </button>
                 </div>
               </form>

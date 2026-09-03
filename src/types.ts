@@ -104,6 +104,9 @@ export interface OrderItem {
 export interface Order {
   id: string;
   orderNo: string;
+  /** Links the separate supplier fulfillment orders created by one customer checkout. */
+  checkoutGroupId?: string;
+  supplierId?: string;
   customerId: string;
   items: OrderItem[];
   total: number;
@@ -164,6 +167,8 @@ export interface Payment {
   customerId: string;
   orderId?: string;
   financingId?: string;
+  /** Identifies the exact schedule row for an installment payment request. */
+  installmentWeekNo?: number;
   type: 'purchase' | 'installment' | 'full_settlement';
   method: 'cash' | 'gcash';
   amount: number;

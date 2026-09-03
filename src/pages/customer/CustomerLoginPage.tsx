@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import logo from '../../assets/sarifi-logo.png';
 import { useApp } from '../../context/AppContext';
+import { isValidEmail } from '../../utils/validation';
 
 export function CustomerLoginPage() {
   const { login, navigate, showToast } = useApp();
@@ -14,9 +15,22 @@ export function CustomerLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
+      const message = 'Enter both your email and password.';
+      setError(message);
+      showToast('error', message);
+      return;
+    }
+    if (!isValidEmail(cleanEmail)) {
+      const message = 'Enter a valid email address.';
+      setError(message);
+      showToast('error', message);
+      return;
+    }
     setLoading(true);
 
-    const ok = await login(email.trim(), password);
+    const ok = await login(cleanEmail, password);
     setLoading(false);
 
     if (!ok) {
@@ -63,15 +77,15 @@ export function CustomerLoginPage() {
 
           <div className="flex justify-center mb-2">
             <span className="px-3 py-1 rounded-full text-[10px] font-700 uppercase tracking-widest bg-emerald-50 text-[#1E7D3B] border border-emerald-200/60">
-              Store Owner Portal
+              Customer Portal
             </span>
           </div>
 
           <h1 className="text-2xl font-800 text-[#10212B] tracking-tight">
-            Store Owner Sign In
+            Customer Sign In
           </h1>
           <p className="text-xs sm:text-sm text-[#65727A] mt-1.5 max-w-xs mx-auto">
-            Access your sari-sari store credit line, wholesale restock orders, and installments.
+            Access your account, available credit, orders, and payment history.
           </p>
         </div>
 
@@ -92,7 +106,7 @@ export function CustomerLoginPage() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-700 text-[#0D2B45] mb-1.5 uppercase tracking-wider">
-              Store Login Email
+              Customer Login Email
             </label>
             <input
               type="email"
@@ -146,7 +160,7 @@ export function CustomerLoginPage() {
             disabled={loading}
             className="w-full py-3.5 bg-[#1E7D3B] hover:bg-[#22913f] text-white font-700 rounded-xl transition-all text-sm disabled:opacity-60 cursor-pointer shadow-md shadow-[#1E7D3B]/20 mt-2"
           >
-            {loading ? 'Signing in…' : 'Sign In as Store Owner'}
+            {loading ? 'Signing in…' : 'Sign In'}
           </motion.button>
         </form>
       </motion.div>

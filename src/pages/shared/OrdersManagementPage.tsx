@@ -47,7 +47,7 @@ export function OrdersManagementPage() {
 
     const confirmedBy = state.currentUser?.name || 'Staff';
     try {
-      await settleOrderPayment(paymentId, confirmedBy);
+      await settleOrderPayment(paymentId, confirmedBy, state.currentUser?.role);
       dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId, confirmedBy });
       const order = orderId ? state.orders.find(item => item.id === orderId) : undefined;
       showToast('success', order?.paymentType === 'split'

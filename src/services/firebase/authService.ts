@@ -23,6 +23,23 @@ export interface UserProfile {
 
 const RTDB_SESSION_KEY = 'sarifi_rtdb_session';
 
+async function isLinkedAccountActive(profile: Partial<UserProfile>, allowMissing = false): Promise<boolean> {
+  if (profile.role === 'admin') return true;
+  const link = profile.role === 'customer'
+    ? { node: 'customers', id: profile.customerId || profile.id }
+    : profile.role === 'supplier'
+      ? { node: 'suppliers', id: profile.supplierId || profile.id }
+      : { node: 'employees', id: profile.employeeId || profile.id };
+  if (!link.id) return false;
+  try {
+    const snapshot = await get(ref(database, `${link.node}/${link.id}`));
+    if (!snapshot.exists()) return allowMissing;
+    return snapshot.val()?.status === 'active';
+  } catch {
+    return allowMissing;
+  }
+}
+
 /**
  * Fetch a user's role and profile from Realtime Database (/users/{uid})
  */
@@ -112,6 +129,7 @@ export async function loginWithEmail(email: string, password: string): Promise<A
           u.password &&
           String(u.password).trim() === cleanPassword
         ) {
+          if (!(await isLinkedAccountActive({ ...u, id: u.id || uid }))) continue;
           const authUser: AuthUser = {
             id: u.id || uid,
             name: u.name || 'User',
@@ -119,6 +137,7 @@ export async function loginWithEmail(email: string, password: string): Promise<A
             role: u.role || 'customer',
             customerId: u.customerId,
             employeeId: u.employeeId,
+            supplierId: u.supplierId,
           };
           if (typeof window !== 'undefined') {
             localStorage.setItem(RTDB_SESSION_KEY, JSON.stringify(authUser));
@@ -139,7 +158,8 @@ export async function loginWithEmail(email: string, password: string): Promise<A
           c.loginEmail &&
           c.loginEmail.trim().toLowerCase() === cleanEmail &&
           c.password &&
-          String(c.password).trim() === cleanPassword
+          String(c.password).trim() === cleanPassword &&
+          c.status === 'active'
         ) {
           const authUser: AuthUser = {
             id: c.id || cid,
@@ -167,7 +187,8 @@ export async function loginWithEmail(email: string, password: string): Promise<A
           e.email &&
           e.email.trim().toLowerCase() === cleanEmail &&
           e.password &&
-          String(e.password).trim() === cleanPassword
+          String(e.password).trim() === cleanPassword &&
+          e.status === 'active'
         ) {
           const authUser: AuthUser = {
             id: e.id || eid,
@@ -195,7 +216,8 @@ export async function loginWithEmail(email: string, password: string): Promise<A
           (s.loginEmail || s.email) &&
           (s.loginEmail || s.email).trim().toLowerCase() === cleanEmail &&
           s.password &&
-          String(s.password).trim() === cleanPassword
+          String(s.password).trim() === cleanPassword &&
+          s.status === 'active'
         ) {
           const authUser: AuthUser = {
             id: s.id || sid,
@@ -219,7 +241,7 @@ export async function loginWithEmail(email: string, password: string): Promise<A
   const seedMatch = USERS.find(
     u => u.email.trim().toLowerCase() === cleanEmail && String(u.password).trim() === cleanPassword
   );
-  if (seedMatch) {
+  if (seedMatch && await isLinkedAccountActive(seedMatch, true)) {
     const authUser: AuthUser = {
       id: seedMatch.id,
       name: seedMatch.name,
@@ -258,6 +280,11 @@ export async function loginWithEmail(email: string, password: string): Promise<A
       await set(ref(database, `users/${uid}`), profile);
     }
 
+    if (!(await isLinkedAccountActive(profile))) {
+      await fbSignOut(auth);
+      throw new Error('This account is inactive or no longer exists.');
+    }
+
     const authUser: AuthUser = {
       id: profile.id,
       name: profile.name,
@@ -265,6 +292,7 @@ export async function loginWithEmail(email: string, password: string): Promise<A
       role: profile.role,
       employeeId: profile.employeeId,
       customerId: profile.customerId,
+      supplierId: profile.supplierId,
     };
 
     if (typeof window !== 'undefined') {

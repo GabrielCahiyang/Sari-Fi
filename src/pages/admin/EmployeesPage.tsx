@@ -6,6 +6,7 @@ import { Modal, ConfirmDialog } from '../../components/ui/Modal';
 import { AuditTrail } from '../../components/AuditTrail';
 import type { Employee } from '../../types';
 import { saveRecord, updateRecord, deleteRecord } from '../../services/firebase/rtdbService';
+import { isValidEmail, isValidPhone } from '../../utils/validation';
 
 interface StaffFormData {
   name: string;
@@ -83,18 +84,25 @@ export function EmployeesPage() {
     const cleanPassword = formData.password.trim();
 
     if (!cleanName) errs.name = 'Full name is required';
+    else if (cleanName.length < 2) errs.name = 'Enter at least 2 characters';
     if (!cleanEmail) {
       errs.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    } else if (!isValidEmail(cleanEmail)) {
       errs.email = 'Enter a valid email address';
-    } else if (state.employees.some(e => e.email && e.email.toLowerCase() === cleanEmail)) {
-      errs.email = 'A staff account with this email already exists';
+    } else if (
+      state.employees.some(e => e.email && e.email.toLowerCase() === cleanEmail)
+      || state.customers.some(c => c.loginEmail?.toLowerCase() === cleanEmail)
+      || state.suppliers.some(s => s.loginEmail?.toLowerCase() === cleanEmail)
+    ) {
+      errs.email = 'Another account already uses this email';
     }
+
+    if (formData.phone.trim() && !isValidPhone(formData.phone)) errs.phone = 'Enter a valid phone number (7–15 digits)';
 
     if (!cleanPassword) {
       errs.password = 'Password is required';
-    } else if (cleanPassword.length < 4) {
-      errs.password = 'Password must be at least 4 characters';
+    } else if (cleanPassword.length < 6) {
+      errs.password = 'Password must be at least 6 characters';
     }
 
     setErrors(errs);
@@ -180,22 +188,25 @@ export function EmployeesPage() {
   const validateEdit = (): boolean => {
     const errs: Record<string, string> = {};
     if (!editFormData.name.trim()) errs.name = 'Full name is required';
+    else if (editFormData.name.trim().length < 2) errs.name = 'Enter at least 2 characters';
     if (!editFormData.email.trim()) {
       errs.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editFormData.email.trim().toLowerCase())) {
+    } else if (!isValidEmail(editFormData.email)) {
       errs.email = 'Enter a valid email address';
     } else if (
-      state.employees.some(
-        e => e.id !== editingEmployee?.id && e.email && e.email.toLowerCase() === editFormData.email.trim().toLowerCase()
-      )
+      state.employees.some(e => e.id !== editingEmployee?.id && e.email && e.email.toLowerCase() === editFormData.email.trim().toLowerCase())
+      || state.customers.some(c => c.loginEmail?.toLowerCase() === editFormData.email.trim().toLowerCase())
+      || state.suppliers.some(s => s.loginEmail?.toLowerCase() === editFormData.email.trim().toLowerCase())
     ) {
       errs.email = 'Another staff account already uses this email';
     }
 
+    if (editFormData.phone.trim() && !isValidPhone(editFormData.phone)) errs.phone = 'Enter a valid phone number (7–15 digits)';
+
     if (!editFormData.password.trim()) {
       errs.password = 'Password is required';
-    } else if (editFormData.password.trim().length < 4) {
-      errs.password = 'Password must be at least 4 characters';
+    } else if (editFormData.password.trim().length < 6) {
+      errs.password = 'Password must be at least 6 characters';
     }
 
     setEditErrors(errs);
@@ -605,7 +616,7 @@ export function EmployeesPage() {
                     setFormData({ ...formData, password: e.target.value });
                     if (errors.password) setErrors({ ...errors, password: '' });
                   }}
-                  placeholder="At least 4 characters"
+                  placeholder="At least 6 characters"
                   className={`w-full px-3 py-2 pr-10 border rounded-xl text-sm focus:outline-none transition-all ${
                     errors.password ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'
                   }`}
@@ -626,10 +637,14 @@ export function EmployeesPage() {
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                onChange={e => {
+                  setFormData({ ...formData, phone: e.target.value });
+                  if (errors.phone) setErrors({ ...errors, phone: '' });
+                }}
                 placeholder="0917-xxx-xxxx"
-                className="mt-1 w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:border-[#1E7D3B]"
+                className={`mt-1 w-full px-3 py-2 border rounded-xl text-sm focus:outline-none ${errors.phone ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'}`}
               />
+              {errors.phone && <span className="text-[11px] text-red-500 font-500 mt-1 block">{errors.phone}</span>}
             </div>
 
             <div>
@@ -737,9 +752,13 @@ export function EmployeesPage() {
               <input
                 type="tel"
                 value={editFormData.phone}
-                onChange={e => setEditFormData({ ...editFormData, phone: e.target.value })}
-                className="mt-1 w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:border-[#1E7D3B]"
+                onChange={e => {
+                  setEditFormData({ ...editFormData, phone: e.target.value });
+                  if (editErrors.phone) setEditErrors({ ...editErrors, phone: '' });
+                }}
+                className={`mt-1 w-full px-3 py-2 border rounded-xl text-sm focus:outline-none ${editErrors.phone ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'}`}
               />
+              {editErrors.phone && <span className="text-[11px] text-red-500 font-500 mt-1 block">{editErrors.phone}</span>}
             </div>
 
             <div>

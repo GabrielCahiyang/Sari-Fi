@@ -9,6 +9,7 @@ export function SettingsPage() {
   const [settings, setSettings] = useState<SystemSettings>(state.settings);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
     setSettings(state.settings);
@@ -16,6 +17,37 @@ export function SettingsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const checks: Array<[keyof SystemSettings, string, number, number, boolean?]> = [
+      ['financingCharge', 'Financing charge', 1, 100],
+      ['startingCreditLimit', 'Starting credit limit', 1000, 50000],
+      ['limitIncreaseAmount', 'Limit increase per cycle', 0, 10000],
+      ['maxAutomaticLimit', 'Maximum automatic limit', 5000, 100000],
+      ['weeklyPenalty', 'Weekly overdue penalty', 0, 50],
+      ['plan1Installments', '1-month installments', 1, 12, true],
+      ['plan2Installments', '2-month installments', 1, 16, true],
+    ];
+    for (const [key, label, min, max, integerOnly] of checks) {
+      const value = settings[key];
+      if (!Number.isFinite(value) || value < min || value > max || (integerOnly && !Number.isInteger(value))) {
+        const message = `${label} must be ${integerOnly ? 'a whole number ' : ''}between ${min.toLocaleString()} and ${max.toLocaleString()}.`;
+        setValidationError(message);
+        showToast('error', message);
+        return;
+      }
+    }
+    if (settings.maxAutomaticLimit < settings.startingCreditLimit) {
+      const message = 'Maximum automatic limit cannot be lower than the starting credit limit.';
+      setValidationError(message);
+      showToast('error', message);
+      return;
+    }
+    if (settings.plan2Installments <= settings.plan1Installments) {
+      const message = 'The 2-month plan must have more installments than the 1-month plan.';
+      setValidationError(message);
+      showToast('error', message);
+      return;
+    }
+    setValidationError('');
     setSaving(true);
     try {
       await saveSettings(settings);
@@ -40,6 +72,7 @@ export function SettingsPage() {
   };
 
   const update = (key: keyof SystemSettings, value: number) => {
+    setValidationError('');
     setSettings(prev => ({ ...prev, [key]: isNaN(value) ? 0 : value }));
   };
 
@@ -53,7 +86,12 @@ export function SettingsPage() {
   return (
     <InternalLayout title="Settings">
       <div className="max-w-3xl space-y-6">
-        <form onSubmit={handleSave} className="space-y-6">
+        <form onSubmit={handleSave} className="space-y-6" noValidate>
+          {validationError && (
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-600 text-red-700">
+              {validationError}
+            </div>
+          )}
           {/* Financing Settings */}
           <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-6">
             <div className="font-700 text-base text-[#10212B] mb-4 sm:mb-5">Financing Settings</div>

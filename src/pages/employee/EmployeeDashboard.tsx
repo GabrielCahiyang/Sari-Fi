@@ -1,6 +1,7 @@
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { OrderStatusBadge, Badge } from '../../components/ui/Badge';
+import { settleOrderPayment } from '../../services/firebase/rtdbService';
 
 export function EmployeeDashboard() {
   const { state, dispatch, navigate, getCustomer, showToast, formatPHP } = useApp();
@@ -11,9 +12,21 @@ export function EmployeeDashboard() {
   const lowStock = state.products.filter(p => p.stock <= p.reorderLevel && p.stock > 0);
   const outOfStock = state.products.filter(p => p.stock === 0);
 
-  const confirmCash = (paymentId: string) => {
-    dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId, confirmedBy: state.currentUser!.name });
-    showToast('success', 'Cash payment confirmed. Order is now processing.');
+  const confirmCash = async (paymentId: string) => {
+    const payment = state.payments.find(item => item.id === paymentId);
+    if (!payment || payment.status !== 'pending') return;
+    if (payment.type === 'installment' || payment.type === 'full_settlement') {
+      showToast('error', 'Only a supervisor can confirm cash financing repayments.');
+      return;
+    }
+    const confirmedBy = state.currentUser?.name || 'Employee';
+    try {
+      await settleOrderPayment(paymentId, confirmedBy, state.currentUser?.role);
+      dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId, confirmedBy });
+      showToast('success', 'Cash payment confirmed. Order is now processing.');
+    } catch (err: any) {
+      showToast('error', 'Failed to confirm cash: ' + (err?.message || 'Please try again.'));
+    }
   };
 
   return (
@@ -54,18 +67,22 @@ export function EmployeeDashboard() {
               <div className="space-y-3">
                 {pendingCash.map(pay => {
                   const customer = getCustomer(pay.customerId);
+                  const supervisorRequired = pay.type === 'installment' || pay.type === 'full_settlement';
                   return (
                     <div key={pay.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                       <div>
                         <div className="font-600 text-sm text-[#10212B]">{customer?.fullName || 'Unknown'}</div>
                         <div className="text-xs text-[#65727A]">{pay.paymentNo} · {formatPHP(pay.amount)} Cash</div>
-                        {pay.orderId && <div className="text-xs text-[#65727A]">Order payment</div>}
+                        <div className="text-xs text-[#65727A]">
+                          {supervisorRequired ? 'Financing repayment · Supervisor approval required' : 'Order payment'}
+                        </div>
                       </div>
                       <button
                         onClick={() => confirmCash(pay.id)}
-                        className="px-4 py-2 bg-[#1E7D3B] text-white text-sm font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer self-start sm:self-auto shadow-sm shadow-[#1E7D3B]/20"
+                        disabled={supervisorRequired}
+                        className="px-4 py-2 bg-[#1E7D3B] text-white text-sm font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer self-start sm:self-auto shadow-sm shadow-[#1E7D3B]/20 disabled:bg-[#E4E8E6] disabled:text-[#65727A] disabled:shadow-none disabled:cursor-not-allowed"
                       >
-                        Confirm Cash Received
+                        {supervisorRequired ? 'Supervisor Required' : 'Confirm Cash Received'}
                       </button>
                     </div>
                   );

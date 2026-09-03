@@ -3,6 +3,7 @@ import { SupplierLayout } from '../../components/layout/SupplierLayout';
 import { useApp } from '../../context/AppContext';
 import { updateRecord } from '../../services/firebase/rtdbService';
 import type { Supplier } from '../../types';
+import { isValidEmail, isValidPhone } from '../../utils/validation';
 
 export function SupplierAccountPage() {
   const { state, dispatch, showToast } = useApp();
@@ -35,14 +36,49 @@ export function SupplierAccountPage() {
     gcashNumber: supplier.gcashNumber || '09171234567',
   });
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleaned = Object.fromEntries(
+      Object.entries(formData).map(([key, value]) => [key, value.trim()])
+    ) as typeof formData;
+    const errors: Record<string, string> = {};
+    if (!cleaned.name) errors.name = 'Company name is required';
+    if (!cleaned.contact) errors.contact = 'Primary contact person is required';
+    if (!cleaned.phone) errors.phone = 'Phone number is required';
+    else if (!isValidPhone(cleaned.phone)) errors.phone = 'Enter a valid phone number (7–15 digits)';
+    if (!cleaned.email) errors.email = 'Official email is required';
+    else if (!isValidEmail(cleaned.email)) errors.email = 'Enter a valid official email address';
+    else if (state.suppliers.some(s => s.id !== supplier.id && s.email?.trim().toLowerCase() === cleaned.email.toLowerCase())) {
+      errors.email = 'Another supplier already uses this email';
+    }
+    if (!cleaned.address) errors.address = 'Warehouse / dispatch address is required';
+
+    const bankDigits = cleaned.bankAccountNo.replace(/[\s-]/g, '');
+    const gcashDigits = cleaned.gcashNumber.replace(/\D/g, '');
+    if ((cleaned.bankName && !cleaned.bankAccountNo) || (!cleaned.bankName && cleaned.bankAccountNo)) {
+      errors.payout = 'Provide both a bank name and bank account number';
+    } else if (cleaned.bankAccountNo && !/^\d{6,20}$/.test(bankDigits)) {
+      errors.payout = 'Bank account number must contain 6–20 digits';
+    }
+    if (cleaned.gcashNumber && (gcashDigits.length < 10 || gcashDigits.length > 13)) {
+      errors.gcashNumber = 'Enter a valid GCash number';
+    }
+    if (!cleaned.bankAccountNo && !cleaned.gcashNumber) {
+      errors.payout = 'Add at least one payout channel: bank account or GCash';
+    }
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      showToast('error', Object.values(errors)[0]);
+      return;
+    }
+
     setSaving(true);
     try {
       const updated: Supplier = {
         ...supplier,
-        ...formData,
+        ...cleaned,
       };
 
       await updateRecord('suppliers', supplier.id, updated);
@@ -92,7 +128,13 @@ export function SupplierAccountPage() {
         </div>
 
         {/* Edit Form */}
-        <form onSubmit={handleSave} className="space-y-6">
+        <form onSubmit={handleSave} className="space-y-6" noValidate>
+          {Object.keys(formErrors).length > 0 && (
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
+              <div className="font-800">Please check your account details</div>
+              <div className="mt-0.5">{Object.values(formErrors)[0]}</div>
+            </div>
+          )}
           {/* Company Information */}
           <div className="bg-white p-5 rounded-2xl border border-[#E4E8E6] shadow-xs space-y-4">
             <h3 className="font-800 text-sm text-[#0D2B45] border-b border-[#E4E8E6] pb-3">

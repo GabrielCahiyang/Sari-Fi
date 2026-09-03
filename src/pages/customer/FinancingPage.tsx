@@ -3,8 +3,10 @@ import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
 import { FinancingStatusBadge, InstallmentStatusBadge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
-import { saveRecord, updateRecord } from '../../services/firebase/rtdbService';
-import type { Financing, Payment } from '../../types';
+import { GcashWebhookSimulator } from '../../components/payment/GcashWebhookSimulator';
+import { saveRecord, settleOrderPayment } from '../../services/firebase/rtdbService';
+import { generateMockGcashReference } from '../../services/payment/mockGcashService';
+import type { Payment } from '../../types';
 
 export function FinancingPage() {
   const { state, dispatch, getCurrentCustomer, getCustomerFinancing, showToast, formatPHP } = useApp();
@@ -15,6 +17,7 @@ export function FinancingPage() {
   const [payWeekNo, setPayWeekNo] = useState<number | null>(null);
   const [payFull, setPayFull] = useState(false);
   const [gcashProcessing, setGcashProcessing] = useState(false);
+  const [pendingGcashPayment, setPendingGcashPayment] = useState<Payment | null>(null);
 
   if (!customer) return null;
 
@@ -36,68 +39,54 @@ export function FinancingPage() {
       return;
     }
 
-    if (payMethod === 'gcash') {
-      setGcashProcessing(true);
-      await new Promise(r => setTimeout(r, 800));
-      setGcashProcessing(false);
+    const existingRequest = state.payments.find(payment =>
+      payment.financingId === targetFin.id
+      && payment.status === 'pending'
+      && (payment.type === 'full_settlement'
+        || (payment.type === 'installment' && payment.installmentWeekNo === payWeekNo))
+    );
+    if (existingRequest) {
+      showToast('info', existingRequest.method === 'cash'
+        ? 'This cash repayment is already waiting for supervisor confirmation.'
+        : 'This repayment is already being processed.');
+      setPayWeekNo(null);
+      setSelectedFin(null);
+      return;
     }
 
-    const principalPerInstallment = targetFin.principal / targetFin.installmentCount;
-    const newPaidPrincipal = Math.min(targetFin.principal, targetFin.paidPrincipal + principalPerInstallment);
-    const allPaid = targetFin.schedule.every(s => s.weekNo === payWeekNo || s.status === 'paid');
-
-    const updatedSchedule = targetFin.schedule.map(s => {
-      if (s.weekNo === payWeekNo) return { ...s, status: 'paid' as const, paidAt: new Date().toISOString(), paidMethod: payMethod };
-      if (s.weekNo === payWeekNo + 1 && s.status === 'upcoming') return { ...s, status: 'due' as const };
-      return s;
-    });
-
-    const updatedFinancing: Financing = {
-      ...targetFin,
-      paidPrincipal: newPaidPrincipal,
-      schedule: updatedSchedule,
-      status: allPaid ? 'completed' : targetFin.status,
-    };
-
+    const gcashReference = payMethod === 'gcash' ? generateMockGcashReference() : undefined;
     const newPayment: Payment = {
-      id: `pay${Date.now()}`,
-      paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
+      id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      paymentNo: `PAY-${Date.now().toString().slice(-8)}`,
       customerId: targetFin.customerId,
       financingId: targetFin.id,
+      installmentWeekNo: payWeekNo,
       type: 'installment',
       method: payMethod,
       amount: inst.baseAmount + inst.penalty,
-      status: 'paid',
+      status: 'pending',
+      mockTransactionId: gcashReference?.transactionId,
+      referenceId: gcashReference?.referenceId,
       createdAt: new Date().toISOString(),
-      paidAt: new Date().toISOString(),
     };
 
-    const allPaidAfterThis = targetFin.schedule.every(s => s.weekNo === payWeekNo || s.status === 'paid');
-    const limitInc = state.settings?.limitIncreaseAmount || 0;
-    const maxLim = state.settings?.maxAutomaticLimit || 20000;
-    const shouldGrowInstallment = allPaidAfterThis && customer.creditLimit < maxLim && limitInc > 0;
-    const newLimitInstallment = shouldGrowInstallment ? Math.min(maxLim, customer.creditLimit + limitInc) : customer.creditLimit;
-
     try {
-      await saveRecord('financing', updatedFinancing);
+      if (payMethod === 'gcash') setGcashProcessing(true);
       await saveRecord('payments', newPayment);
-      const newUsed = Math.max(0, customer.usedCredit - principalPerInstallment);
-      await updateRecord('customers', customer.id, {
-        usedCredit: newUsed,
-        ...(shouldGrowInstallment ? { creditLimit: newLimitInstallment } : {})
-      });
+      dispatch({ type: 'ADD_PAYMENT', payment: newPayment });
+
+      if (payMethod === 'cash') {
+        showToast('success', `Cash payment request submitted. Installment #${payWeekNo} remains due until a supervisor confirms receipt.`);
+        setPayWeekNo(null);
+        setSelectedFin(null);
+      } else {
+        setPendingGcashPayment(newPayment);
+      }
     } catch (err: any) {
       console.error('Failed to save installment payment to RTDB:', err);
+      showToast('error', 'Payment could not be submitted: ' + (err?.message || 'Please try again.'));
+      setGcashProcessing(false);
     }
-
-    dispatch({ type: 'PAY_INSTALLMENT', financingId: selectedFin, weekNo: payWeekNo, method: payMethod });
-    if (shouldGrowInstallment) {
-      showToast('success', `Installment #${payWeekNo} paid! Financing complete & credit limit grew by ₱${limitInc.toLocaleString()} to ₱${newLimitInstallment.toLocaleString()}! 🎉`);
-    } else {
-      showToast('success', `Installment #${payWeekNo} paid successfully via ${payMethod === 'gcash' ? 'GCash' : 'Cash'}. Credit restored.`);
-    }
-    setPayWeekNo(null);
-    setSelectedFin(null);
   };
 
   const doPayFull = async () => {
@@ -111,65 +100,75 @@ export function FinancingPage() {
       return;
     }
 
-    const remainingPrincipal = Math.max(0, targetFin.principal - targetFin.paidPrincipal);
-    if (remainingPrincipal <= 0) return;
-
-    if (payMethod === 'gcash') {
-      setGcashProcessing(true);
-      await new Promise(r => setTimeout(r, 800));
-      setGcashProcessing(false);
+    const existingRequest = state.payments.find(payment =>
+      payment.financingId === targetFin.id
+      && payment.status === 'pending'
+      && (payment.type === 'installment' || payment.type === 'full_settlement')
+    );
+    if (existingRequest) {
+      showToast('info', existingRequest.method === 'cash'
+        ? 'A cash repayment is already waiting for supervisor confirmation.'
+        : 'A repayment is already being processed.');
+      setPayFull(false);
+      setSelectedFin(null);
+      return;
     }
 
     const remaining = targetFin.totalRepayable - (targetFin.paidPrincipal / targetFin.principal * targetFin.totalRepayable);
-    const updatedSchedule = targetFin.schedule.map(s =>
-      s.status !== 'paid' ? { ...s, status: 'paid' as const, paidAt: new Date().toISOString(), paidMethod: payMethod } : s
-    );
 
-    const updatedFinancing: Financing = {
-      ...targetFin,
-      paidPrincipal: targetFin.principal,
-      schedule: updatedSchedule,
-      status: 'completed',
-    };
-
+    const gcashReference = payMethod === 'gcash' ? generateMockGcashReference() : undefined;
     const newPayment: Payment = {
-      id: `pay${Date.now()}`,
-      paymentNo: `PAY-${String(state.payments.length + 1).padStart(4, '0')}`,
+      id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      paymentNo: `PAY-${Date.now().toString().slice(-8)}`,
       customerId: targetFin.customerId,
       financingId: targetFin.id,
       type: 'full_settlement',
       method: payMethod,
       amount: Math.round(remaining * 100) / 100,
-      status: 'paid',
+      status: 'pending',
+      mockTransactionId: gcashReference?.transactionId,
+      referenceId: gcashReference?.referenceId,
       createdAt: new Date().toISOString(),
-      paidAt: new Date().toISOString(),
     };
 
-    const limitInc = state.settings?.limitIncreaseAmount || 0;
-    const maxLim = state.settings?.maxAutomaticLimit || 20000;
-    const shouldGrowFull = customer.creditLimit < maxLim && limitInc > 0;
-    const newLimitFull = shouldGrowFull ? Math.min(maxLim, customer.creditLimit + limitInc) : customer.creditLimit;
-
     try {
-      await saveRecord('financing', updatedFinancing);
+      if (payMethod === 'gcash') setGcashProcessing(true);
       await saveRecord('payments', newPayment);
-      const newUsed = Math.max(0, customer.usedCredit - remainingPrincipal);
-      await updateRecord('customers', customer.id, {
-        usedCredit: newUsed,
-        ...(shouldGrowFull ? { creditLimit: newLimitFull } : {})
-      });
+      dispatch({ type: 'ADD_PAYMENT', payment: newPayment });
+
+      if (payMethod === 'cash') {
+        showToast('success', 'Cash settlement request submitted. The balance remains open until a supervisor confirms receipt.');
+        setPayFull(false);
+        setSelectedFin(null);
+      } else {
+        setPendingGcashPayment(newPayment);
+      }
     } catch (err: any) {
       console.error('Failed to save full settlement to RTDB:', err);
+      showToast('error', 'Payment could not be submitted: ' + (err?.message || 'Please try again.'));
+      setGcashProcessing(false);
     }
+  };
 
-    dispatch({ type: 'PAY_FULL_BALANCE', financingId: selectedFin, method: payMethod });
-    if (shouldGrowFull) {
-      showToast('success', `Full balance settled! Credit limit grew by ₱${limitInc.toLocaleString()} to ₱${newLimitFull.toLocaleString()}! 🎉`);
-    } else {
-      showToast('success', 'Full balance settled! Credit fully restored and financing completed.');
-    }
-    setPayFull(false);
+  const confirmFinancingGcash = async () => {
+    if (!pendingGcashPayment) throw new Error('GCash payment request is missing.');
+    await settleOrderPayment(pendingGcashPayment.id, 'GCash webhook');
+    dispatch({ type: 'CONFIRM_CASH_PAYMENT', paymentId: pendingGcashPayment.id, confirmedBy: 'GCash webhook' });
+    showToast(
+      'success',
+      pendingGcashPayment.type === 'installment'
+        ? `Installment #${pendingGcashPayment.installmentWeekNo} paid via GCash. Credit restored.`
+        : 'Full balance settled via GCash. Credit restored and financing completed.',
+    );
+  };
+
+  const finishFinancingGcash = () => {
+    const paymentType = pendingGcashPayment?.type;
+    setPendingGcashPayment(null);
+    setGcashProcessing(false);
     setSelectedFin(null);
+    if (paymentType === 'installment') setPayWeekNo(null);
+    if (paymentType === 'full_settlement') setPayFull(false);
   };
 
   const fin = financing.find(f => f.id === selectedFin);
@@ -213,6 +212,17 @@ export function FinancingPage() {
               const progress = paidInstallments / fin.installmentCount;
               const remaining = Math.round(fin.totalRepayable - (fin.paidPrincipal / fin.principal * fin.totalRepayable));
               const nextDue = fin.schedule.find(s => s.status === 'due' || s.status === 'overdue');
+              const pendingCashRepayments = state.payments.filter(payment =>
+                payment.financingId === fin.id
+                && payment.method === 'cash'
+                && payment.status === 'pending'
+                && (payment.type === 'installment' || payment.type === 'full_settlement')
+              );
+              const pendingNextInstallment = pendingCashRepayments.some(payment =>
+                payment.type === 'installment' && payment.installmentWeekNo === nextDue?.weekNo
+              );
+              const pendingFullSettlement = pendingCashRepayments.some(payment => payment.type === 'full_settlement');
+              const hasPendingCashRepayment = pendingCashRepayments.length > 0;
               return (
                 <div
                   key={fin.id}
@@ -260,6 +270,15 @@ export function FinancingPage() {
                       </div>
                     )}
 
+                    {hasPendingCashRepayment && (
+                      <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                        <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                        <span>
+                          Cash {pendingFullSettlement ? 'full settlement' : `installment #${pendingCashRepayments[0]?.installmentWeekNo}`} submitted. Your balance and credit will update only after a supervisor confirms receipt.
+                        </span>
+                      </div>
+                    )}
+
                     {(fin.status === 'active' || fin.status === 'overdue') && nextDue && (
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                         <div className="text-xs sm:text-sm">
@@ -271,16 +290,18 @@ export function FinancingPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => { setSelectedFin(fin.id); setPayWeekNo(nextDue.weekNo); }}
-                            className="flex-1 sm:flex-initial px-3 py-2 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer text-center"
+                            disabled={hasPendingCashRepayment}
+                            className="flex-1 sm:flex-initial px-3 py-2 bg-[#1E7D3B] text-white text-xs font-600 rounded-xl hover:bg-[#22913f] transition-all cursor-pointer text-center disabled:bg-[#E4E8E6] disabled:text-[#65727A] disabled:cursor-not-allowed"
                           >
-                            Pay Installment
+                            {pendingNextInstallment ? 'Supervisor Confirmation Pending' : 'Pay Installment'}
                           </button>
                           <button
                             data-tour-target={fin.id === 'fin_tour_001' ? '6' : undefined}
                             onClick={() => { setSelectedFin(fin.id); setPayFull(true); }}
-                            className="flex-1 sm:flex-initial px-3 py-2 bg-[#0D2B45] text-white text-xs font-600 rounded-xl hover:bg-[#1a3d5c] transition-all cursor-pointer text-center"
+                            disabled={hasPendingCashRepayment}
+                            className="flex-1 sm:flex-initial px-3 py-2 bg-[#0D2B45] text-white text-xs font-600 rounded-xl hover:bg-[#1a3d5c] transition-all cursor-pointer text-center disabled:bg-[#E4E8E6] disabled:text-[#65727A] disabled:cursor-not-allowed"
                           >
-                            Pay Full Balance
+                            {pendingFullSettlement ? 'Supervisor Confirmation Pending' : 'Pay Full Balance'}
                           </button>
                         </div>
                       </div>
@@ -296,7 +317,11 @@ export function FinancingPage() {
                     <div className="border-t border-[#F7F8F6] px-5 pb-4">
                       <div className="text-xs font-700 text-[#65727A] uppercase tracking-wider mt-4 mb-3">Repayment Schedule</div>
                       <div className="space-y-2">
-                        {fin.schedule.map(s => (
+                        {fin.schedule.map(s => {
+                          const cashPending = pendingCashRepayments.some(payment =>
+                            payment.type === 'installment' && payment.installmentWeekNo === s.weekNo
+                          );
+                          return (
                           <div key={s.weekNo} className="flex items-center justify-between py-1.5 border-b border-[#F7F8F6] last:border-0">
                             <div className="flex items-center gap-3">
                               <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-700 ${s.status === 'paid' ? 'bg-[#1E7D3B] text-white' : s.status === 'due' ? 'bg-[#FFC107] text-[#0D2B45]' : s.status === 'overdue' ? 'bg-red-500 text-white' : 'bg-[#F7F8F6] text-[#65727A]'}`}>
@@ -313,9 +338,15 @@ export function FinancingPage() {
                                 {s.penalty > 0 && <div className="text-[10px] text-red-500">+{formatPHP(s.penalty)} penalty</div>}
                               </div>
                               <InstallmentStatusBadge status={s.status} />
+                              {cashPending && (
+                                <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-700 text-amber-700">
+                                  Cash pending
+                                </span>
+                              )}
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -327,10 +358,21 @@ export function FinancingPage() {
       </div>
 
       {/* Pay Installment Modal */}
-      <Modal open={payWeekNo !== null && selectedFin !== null} onClose={() => { setPayWeekNo(null); setSelectedFin(null); }} title="Pay Installment" size="sm">
+      <Modal open={payWeekNo !== null && selectedFin !== null} onClose={() => { if (!gcashProcessing) { setPayWeekNo(null); setSelectedFin(null); } }} title={gcashProcessing ? 'GCash Payment Verification' : 'Pay Installment'} size="sm" dismissible={!gcashProcessing}>
         {fin && payWeekNo !== null && (() => {
           const s = fin.schedule.find(i => i.weekNo === payWeekNo);
           if (!s) return null;
+          if (gcashProcessing && pendingGcashPayment?.type === 'installment') {
+            return (
+              <GcashWebhookSimulator
+                amount={formatPHP(pendingGcashPayment.amount)}
+                merchantLabel="Sari-Fi Financing"
+                references={[{ label: `${fin.financingNo} · Week ${payWeekNo}`, referenceId: pendingGcashPayment.referenceId }]}
+                onConfirm={confirmFinancingGcash}
+                onFinished={finishFinancingGcash}
+              />
+            );
+          }
           return (
             <div className="space-y-4">
               <div className="bg-[#F7F8F6] rounded-xl p-4">
@@ -345,17 +387,26 @@ export function FinancingPage() {
                   {(['gcash', 'cash'] as const).map(m => (
                     <label key={m} className={`flex-1 flex items-center gap-2 p-3 rounded-xl border cursor-pointer text-sm font-600 transition-all ${payMethod === m ? 'border-[#1E7D3B] bg-[#F0FAF4] text-[#1E7D3B]' : 'border-[#E4E8E6] text-[#65727A]'}`}>
                       <input type="radio" name="pm" checked={payMethod === m} onChange={() => setPayMethod(m)} className="sr-only" />
-                      {m === 'gcash' ? 'GCash (instant)' : 'Cash (staff confirms)'}
+                      {m === 'gcash' ? 'GCash (instant)' : 'Cash (supervisor confirms)'}
                     </label>
                   ))}
                 </div>
               </div>
+              {payMethod === 'cash' && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+                  Submitting cash creates a pending request. This installment stays unpaid and no credit is restored until a supervisor confirms the cash was received.
+                </div>
+              )}
               <button
                 onClick={doPayInstallment}
                 disabled={gcashProcessing}
                 className="w-full py-3 bg-[#1E7D3B] text-white font-700 text-sm rounded-xl hover:bg-[#22913f] transition-all disabled:opacity-60"
               >
-                {gcashProcessing ? 'Processing…' : `Pay ${formatPHP(s.baseAmount + s.penalty)} via ${payMethod === 'gcash' ? 'GCash' : 'Cash'}`}
+                {gcashProcessing
+                  ? 'Processing…'
+                  : payMethod === 'cash'
+                    ? `Submit Cash Request — ${formatPHP(s.baseAmount + s.penalty)}`
+                    : `Pay ${formatPHP(s.baseAmount + s.penalty)} via GCash`}
               </button>
             </div>
           );
@@ -363,9 +414,20 @@ export function FinancingPage() {
       </Modal>
 
       {/* Pay Full Balance Modal */}
-      <Modal open={payFull && selectedFin !== null} onClose={() => { setPayFull(false); setSelectedFin(null); }} title="Pay Full Balance" size="sm">
+      <Modal open={payFull && selectedFin !== null} onClose={() => { if (!gcashProcessing) { setPayFull(false); setSelectedFin(null); } }} title={gcashProcessing ? 'GCash Payment Verification' : 'Pay Full Balance'} size="sm" dismissible={!gcashProcessing}>
         {fin && (() => {
           const remaining = Math.round(fin.totalRepayable - (fin.paidPrincipal / fin.principal * fin.totalRepayable));
+          if (gcashProcessing && pendingGcashPayment?.type === 'full_settlement') {
+            return (
+              <GcashWebhookSimulator
+                amount={formatPHP(pendingGcashPayment.amount)}
+                merchantLabel="Sari-Fi Financing"
+                references={[{ label: `${fin.financingNo} · Full settlement`, referenceId: pendingGcashPayment.referenceId }]}
+                onConfirm={confirmFinancingGcash}
+                onFinished={finishFinancingGcash}
+              />
+            );
+          }
           return (
             <div className="space-y-4">
               <div className="bg-[#F7F8F6] rounded-xl p-4">
@@ -379,17 +441,26 @@ export function FinancingPage() {
                   {(['gcash', 'cash'] as const).map(m => (
                     <label key={m} className={`flex-1 flex items-center gap-2 p-3 rounded-xl border cursor-pointer text-sm font-600 transition-all ${payMethod === m ? 'border-[#1E7D3B] bg-[#F0FAF4] text-[#1E7D3B]' : 'border-[#E4E8E6] text-[#65727A]'}`}>
                       <input type="radio" name="pm2" checked={payMethod === m} onChange={() => setPayMethod(m)} className="sr-only" />
-                      {m === 'gcash' ? 'GCash' : 'Cash'}
+                      {m === 'gcash' ? 'GCash (instant)' : 'Cash (supervisor confirms)'}
                     </label>
                   ))}
                 </div>
               </div>
+              {payMethod === 'cash' && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+                  Your financing remains active until a supervisor confirms receiving the full cash settlement.
+                </div>
+              )}
               <button
                 onClick={doPayFull}
                 disabled={gcashProcessing}
                 className="w-full py-3 bg-[#0D2B45] text-white font-700 text-sm rounded-xl hover:bg-[#1a3d5c] transition-all disabled:opacity-60"
               >
-                {gcashProcessing ? 'Processing…' : `Settle Full Balance — ${formatPHP(remaining)}`}
+                {gcashProcessing
+                  ? 'Processing…'
+                  : payMethod === 'cash'
+                    ? `Submit Cash Settlement — ${formatPHP(remaining)}`
+                    : `Settle Full Balance — ${formatPHP(remaining)}`}
               </button>
             </div>
           );

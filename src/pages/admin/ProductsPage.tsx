@@ -5,6 +5,7 @@ import { Badge, StockBadge } from '../../components/ui/Badge';
 import { Modal, ConfirmDialog } from '../../components/ui/Modal';
 import type { Product, ProductCategory } from '../../types';
 import { saveRecord, deleteRecord, uploadProductImage } from '../../services/firebase/rtdbService';
+import { isNonNegativeInteger, isNonNegativeNumber, isPositiveNumber } from '../../utils/validation';
 
 interface ProductFormData {
   name: string;
@@ -104,6 +105,18 @@ export function ProductsPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
+    if (file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      showToast('error', 'Product photo must be a JPEG, PNG, or WebP image.');
+      e.target.value = '';
+      setSelectedFile(null);
+      return;
+    }
+    if (file && file.size > 10 * 1024 * 1024) {
+      showToast('error', 'Product photo must be 10 MB or smaller.');
+      e.target.value = '';
+      setSelectedFile(null);
+      return;
+    }
     setSelectedFile(file);
     if (file) {
       const url = URL.createObjectURL(file);
@@ -118,30 +131,37 @@ export function ProductsPage() {
 
     if (!data.name.trim()) newErrors.name = 'Product name is required';
     if (!data.sku.trim()) newErrors.sku = 'SKU is required';
+    else if (state.products.some(p => p.id !== editProduct?.id && p.sku.trim().toUpperCase() === data.sku.trim().toUpperCase())) {
+      newErrors.sku = 'This SKU is already assigned to another product';
+    }
     if (!data.category.trim()) newErrors.category = 'Category is required';
+    if (!data.supplierId) newErrors.supplierId = 'Supplier is required';
+    else if (!state.suppliers.some(s => s.id === data.supplierId && s.status === 'active')) {
+      newErrors.supplierId = 'Select an active supplier';
+    }
 
     if (!data.sellingPrice.trim()) {
       newErrors.sellingPrice = 'Selling price is required';
-    } else if (isNaN(Number(data.sellingPrice)) || Number(data.sellingPrice) <= 0) {
+    } else if (!isPositiveNumber(data.sellingPrice)) {
       newErrors.sellingPrice = 'Must be greater than 0';
     }
 
     if (!data.costPrice.trim()) {
       newErrors.costPrice = 'Cost price is required';
-    } else if (isNaN(Number(data.costPrice)) || Number(data.costPrice) < 0) {
+    } else if (!isNonNegativeNumber(data.costPrice)) {
       newErrors.costPrice = 'Cannot be negative';
     }
 
     if (!data.stock.trim()) {
       newErrors.stock = 'Stock is required';
-    } else if (isNaN(Number(data.stock)) || Number(data.stock) < 0) {
-      newErrors.stock = 'Cannot be negative';
+    } else if (!isNonNegativeInteger(data.stock)) {
+      newErrors.stock = 'Must be a whole number of 0 or more';
     }
 
     if (!data.reorderLevel.trim()) {
       newErrors.reorderLevel = 'Reorder level is required';
-    } else if (isNaN(Number(data.reorderLevel)) || Number(data.reorderLevel) < 0) {
-      newErrors.reorderLevel = 'Cannot be negative';
+    } else if (!isNonNegativeInteger(data.reorderLevel)) {
+      newErrors.reorderLevel = 'Must be a whole number of 0 or more';
     }
 
     setErrors(newErrors);
@@ -385,15 +405,19 @@ export function ProductsPage() {
         </div>
 
         <div>
-          <label className="text-xs font-600 text-[#65727A]">Supplier</label>
+          <label className="text-xs font-600 text-[#65727A]">Supplier <span className="text-red-500">*</span></label>
           <select
             value={formData.supplierId}
-            onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
-            className="mt-1 w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-sm focus:outline-none focus:border-[#1E7D3B] cursor-pointer"
+            onChange={e => {
+              setFormData({ ...formData, supplierId: e.target.value });
+              if (errors.supplierId) setErrors({ ...errors, supplierId: '' });
+            }}
+            className={`mt-1 w-full px-3 py-2 border rounded-xl text-sm focus:outline-none cursor-pointer ${errors.supplierId ? 'border-red-500 bg-red-50/30' : 'border-[#E4E8E6] focus:border-[#1E7D3B]'}`}
           >
-            <option value="">None / General</option>
-            {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <option value="">Select supplier…</option>
+            {state.suppliers.filter(s => s.status === 'active' || s.id === editProduct?.supplierId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
+          {errors.supplierId && <span className="text-[11px] text-red-500 font-500 mt-1 block">{errors.supplierId}</span>}
         </div>
 
         <div>
