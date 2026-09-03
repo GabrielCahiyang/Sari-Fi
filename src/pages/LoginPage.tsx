@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import logo from '../imports/image-1.png';
+import logo from '../assets/sarifi-logo.png';
 import { useApp } from '../context/AppContext';
 
 export function LoginPage() {
@@ -58,7 +58,7 @@ export function LoginPage() {
         {/* Brand Header */}
         <div className="text-center mb-6 pt-2">
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-[#0D2B45] mb-3 shadow-xs">
-            <img src={logo} alt="Sari-Fi" className="h-8 object-contain brightness-0 invert" />
+            <img src={logo} alt="Sari-Fi" className="h-10 object-contain" />
           </div>
 
           <div className="flex justify-center mb-2">

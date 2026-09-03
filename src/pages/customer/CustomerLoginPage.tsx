@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import logo from '../../imports/image-1.png';
+import logo from '../../assets/sarifi-logo.png';
 import { useApp } from '../../context/AppContext';
 
 export function CustomerLoginPage() {

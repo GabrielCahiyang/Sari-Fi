@@ -7,7 +7,7 @@ import {
   useTransform,
   type Variants,
 } from "motion/react";
-import logo from "../imports/image-1.png";
+import logo from "../assets/sarifi-logo.png";
 import { useApp } from "../context/AppContext";
 import { useTour } from "../context/TourContext";
 

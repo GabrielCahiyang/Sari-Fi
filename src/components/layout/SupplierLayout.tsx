@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import logo from '../../imports/image-1.png';
+import logo from '../../assets/sarifi-logo.png';
 import { useApp } from '../../context/AppContext';
 
 interface NavItem {
@@ -210,7 +210,7 @@ export function SupplierLayout({ children }: { children: React.ReactNode }) {
         {/* Brand */}
         <div className="p-5 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Sari-Fi" className="h-8 object-contain brightness-0 invert" />
+            <img src={logo} alt="Sari-Fi" className="h-8 object-contain" />
             <div>
               <div className="text-sm font-800 text-white tracking-tight leading-tight">Sari-Fi</div>
               <div className="text-[10px] font-700 text-[#FFC107] uppercase tracking-wider">

@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useApp } from "../../context/AppContext";
 import { InternalLayout } from "../../components/layout/InternalLayout";
 import type { OrderItem } from "../../types";
-import logo from "../../imports/image-1.png";
+import logo from "../../assets/sarifi-logo.png";
 
 type Period = "all" | "month" | "week" | "today";
 
