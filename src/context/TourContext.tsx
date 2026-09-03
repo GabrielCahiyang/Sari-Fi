@@ -238,6 +238,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const activeActionPromiseRef = useRef<Promise<void> | null>(null);
   const transitionLockedRef = useRef(false);
   const startLockedRef = useRef(false);
+  const initialSessionRef = useRef<{ user: AuthUser | null; page: string } | null>(null);
 
   const tourDispatch = useCallback((action: Parameters<typeof dispatch>[0]) => {
     dispatch({
@@ -599,6 +600,10 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     startLockedRef.current = true;
 
     try {
+      initialSessionRef.current = {
+        user: stateRef.current.currentUser,
+        page: stateRef.current.currentPage,
+      };
       const liveCustomer = await getRecord<Customer>('customers', 'cust1788380537668').catch(() => null);
       customerSnapshotRef.current = liveCustomer ?? stateRef.current.customers.find(
         customer => customer.id === 'cust1788380537668'
@@ -649,7 +654,15 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     try {
       await activeActionPromiseRef.current?.catch(() => undefined);
       await cleanupDatabaseData();
-      tourDispatch({ type: 'NAVIGATE', page: 'home' });
+      if (initialSessionRef.current?.user) {
+        tourDispatch({
+          type: 'LOGIN_AND_NAVIGATE',
+          user: initialSessionRef.current.user,
+          page: initialSessionRef.current.page,
+        });
+      } else {
+        tourDispatch({ type: 'NAVIGATE', page: 'home' });
+      }
       setIsTourActive(false);
       setCurrentStepIndex(0);
       setTourPhase('focusing');
