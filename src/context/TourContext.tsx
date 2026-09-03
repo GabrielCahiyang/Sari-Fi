@@ -5,9 +5,10 @@ import {
   createOrderWithReservation,
   getRecord,
   saveRecord,
+  transitionOrderFlow,
   updateRootPaths,
 } from '../services/firebase/rtdbService';
-import type { AuthUser, Product, Order, Financing, Payment, Customer } from '../types';
+import type { AuthUser, Product, Order, Financing, Payment, Customer, RestockOrder } from '../types';
 
 export type TourPhase = 'focusing' | 'clicking' | 'success';
 
@@ -55,9 +56,9 @@ export const TOUR_STEPS: TourStep[] = [
     roleIcon: '🏪',
     roleBadgeColor: 'bg-[#1E7D3B] text-white',
     title: 'Store Owner Shops & Selects Credit Financing',
-    summary: 'Store owner browses catalog and checks out with 4-week financing at flat 5%.',
+    summary: 'Store owner browses the catalog and checks out with the configured 1-month financing plan.',
     detailedInstruction:
-      'Switched to Gabriel Cahiyang (Store Owner) on the live Shop page! Watch the system spotlight the cart and place an order for 3 cases via 4-Week Financing (₱378/wk, flat 5% fee).',
+      'Switched to Gabriel Cahiyang (Store Owner) on the live Shop page. Watch the system reserve 3 cases and create a financing request using the current system charge and installment settings.',
     targetFocusName: 'Wholesale Cart & 4-Week Revolving Financing Checkout',
     actionButtonLabel: 'Add to Cart & Place Financed Order',
     targetPage: 'customer/shop',
@@ -138,12 +139,12 @@ export const TOUR_STEPS: TourStep[] = [
     roleName: 'Sari-Sari Store Owner',
     roleIcon: '📲',
     roleBadgeColor: 'bg-[#1E7D3B] text-white',
-    title: 'Store Owner Pays Installment via GCash Mockup',
-    summary: 'Store owner pays weekly installment from retail sales profits.',
+    title: 'Store Owner Pays an Installment via GCash',
+    summary: 'GCash settles instantly and restores only the principal portion of the credit line.',
     detailedInstruction:
-      'Viewing Gabriel\'s Financing schedule! Watch Gabriel submit his Week 1 installment payment (₱378) through the interactive GCash Mockup with reference GCASH-98314.',
+      'Viewing Gabriel\'s financing schedule. Watch Week 1 settle instantly through the GCash mock, advance the repayment schedule, and restore the principal portion of his available credit.',
     targetFocusName: 'Weekly Installment Schedule & GCash Payment Mockup',
-    actionButtonLabel: 'Submit Week 1 via GCash',
+    actionButtonLabel: 'Pay Week 1 via GCash',
     targetPage: 'customer/financing',
     targetUser: {
       id: 'cust1788380537668',
@@ -156,36 +157,36 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: 6,
     stageNumber: '07',
-    roleName: 'Cashier / Staff',
-    roleIcon: '💳',
-    roleBadgeColor: 'bg-blue-600 text-white',
-    title: 'Staff Confirms Payment & Credit Line Restores Instantly',
-    summary: 'Staff verifies GCash reference; credit line restores in real time.',
+    roleName: 'Sari-Sari Store Owner',
+    roleIcon: '✅',
+    roleBadgeColor: 'bg-[#1E7D3B] text-white',
+    title: 'Store Owner Completes the Financing Cycle',
+    summary: 'Full GCash settlement completes financing, releases the remaining principal, and grows the limit.',
     detailedInstruction:
-      'Switched to Cashier Sham Lam in Payments Management! Watch the cashier verify the GCash reference and click "Confirm Payment". Gabriel\'s credit line RESTORES immediately by ₱378!',
-    targetFocusName: 'Cashier Payment Verification & Credit Line Restoration',
-    actionButtonLabel: 'Confirm Payment & Restore Credit',
-    targetPage: 'employee/payments',
+      'Still in Gabriel\'s financing account. Watch the remaining balance settle through GCash, the financing status become COMPLETED, used credit return to zero, and the configured automatic limit increase apply.',
+    targetFocusName: 'Full Balance Settlement & Automatic Limit Growth',
+    actionButtonLabel: 'Settle Remaining Balance',
+    targetPage: 'customer/financing',
     targetUser: {
-      id: 'e1788382039518',
-      name: 'Sham Lam',
-      email: 'shamlam@gmial.com',
-      role: 'employee',
-      employeeId: 'e1788382039518',
+      id: 'cust1788380537668',
+      name: 'Gabriel Cahiyang',
+      email: 'gabzcah@gmail.com',
+      role: 'customer',
+      customerId: 'cust1788380537668',
     },
   },
   {
     id: 7,
     stageNumber: '08',
-    roleName: 'Supplier & Virtuous Growth',
+    roleName: 'Wholesale Supplier',
     roleIcon: '🔄',
     roleBadgeColor: 'bg-emerald-800 text-white',
-    title: 'Supplier Restocks Warehouse & Store Limit Grows',
-    summary: 'Supplier logs intake batch; prompt repayments automatically raise store limit.',
+    title: 'Supplier Logs a Warehouse Restock',
+    summary: 'Supplier records a received intake batch and replenishes available stock.',
     detailedInstruction:
-      'In the Restock Hub, watch the supplier restock +50 factory crates. Meanwhile, Gabriel\'s clean repayment history automatically upgrades his credit limit to ₱7,000!',
+      'In the Restock Hub, watch the supplier log a received batch of 50 factory cases. The stock count and restock history update together, closing the supply cycle.',
     targetFocusName: 'Factory Restock Intake & Store Credit Limit Growth',
-    actionButtonLabel: 'Restock Warehouse & Upgrade Limit',
+    actionButtonLabel: 'Log +50 Received Cases',
     targetPage: 'supplier/restock',
     targetUser: {
       id: 'sup1788397726900',
@@ -257,6 +258,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       'orders/ord_tour_001': null,
       'financing/fin_tour_001': null,
       'payments/pay_tour_001': null,
+      'payments/pay_tour_settle': null,
+      'restockOrders/restock_tour_001': null,
     };
 
     if (customerSnapshotRef.current) {
@@ -281,7 +284,11 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     });
     tourDispatch({
       type: 'SYNC_PAYMENTS',
-      payments: currentState.payments.filter(p => p.id !== 'pay_tour_001'),
+      payments: currentState.payments.filter(p => p.id !== 'pay_tour_001' && p.id !== 'pay_tour_settle'),
+    });
+    tourDispatch({
+      type: 'SYNC_RESTOCK',
+      restockOrders: currentState.restockOrders.filter(order => order.id !== 'restock_tour_001'),
     });
 
     if (customerSnapshotRef.current) {
@@ -324,6 +331,12 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
           // STEP 2: Store Owner Cart & Financed Order Placement
           const orderId = 'ord_tour_001';
           const finId = 'fin_tour_001';
+          const chargePercent = currentState.settings?.financingCharge ?? 20;
+          const installmentCount = currentState.settings?.plan1Installments ?? 4;
+          const principal = 1440;
+          const chargeAmount = Math.round(principal * chargePercent / 100);
+          const totalRepayable = principal + chargeAmount;
+          const weeklyInstallment = Math.round((totalRepayable / installmentCount) * 100) / 100;
           const order: Order = {
             id: orderId,
             orderNo: 'ORD-TOUR-001',
@@ -353,21 +366,22 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
             financingNo: 'FIN-TOUR-001',
             orderId,
             customerId: 'cust1788380537668',
-            principal: 1440,
-            chargePercent: 5,
-            chargeAmount: 72,
-            totalRepayable: 1512,
+            principal,
+            chargePercent,
+            chargeAmount,
+            totalRepayable,
             plan: 1,
-            installmentCount: 4,
-            weeklyInstallment: 378,
+            installmentCount,
+            weeklyInstallment,
             status: 'pending',
             paidPrincipal: 0,
-            schedule: [
-              { weekNo: 1, dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0], baseAmount: 378, penalty: 0, status: 'due' },
-              { weekNo: 2, dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0], baseAmount: 378, penalty: 0, status: 'upcoming' },
-              { weekNo: 3, dueDate: new Date(Date.now() + 21 * 86400000).toISOString().split('T')[0], baseAmount: 378, penalty: 0, status: 'upcoming' },
-              { weekNo: 4, dueDate: new Date(Date.now() + 28 * 86400000).toISOString().split('T')[0], baseAmount: 378, penalty: 0, status: 'upcoming' },
-            ],
+            schedule: Array.from({ length: installmentCount }, (_, index) => ({
+              weekNo: index + 1,
+              dueDate: new Date(Date.now() + (index + 1) * 7 * 86400000).toISOString().split('T')[0],
+              baseAmount: weeklyInstallment,
+              penalty: 0,
+              status: index === 0 ? 'due' as const : 'upcoming' as const,
+            })),
             createdAt: new Date().toISOString(),
           };
 
@@ -401,35 +415,41 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
           await createOrderWithReservation(order, undefined, financing);
           tourDispatch({ type: 'PLACE_ORDER', order, financing });
-          showToast('success', '✓ Order #ORD-TOUR-001 placed via 4-Week Financing (₱378/wk)!');
+          showToast('success', `✓ Order #ORD-TOUR-001 reserved with ${installmentCount} installments at ${chargePercent}% financing charge.`);
           break;
         }
 
         case 2: {
           // STEP 3: Supervisor Approves Financing
+          const fallbackChargePercent = currentState.settings?.financingCharge ?? 20;
+          const fallbackInstallments = currentState.settings?.plan1Installments ?? 4;
+          const fallbackCharge = Math.round(1440 * fallbackChargePercent / 100);
+          const fallbackRepayable = 1440 + fallbackCharge;
+          const fallbackInstallment = Math.round((fallbackRepayable / fallbackInstallments) * 100) / 100;
           const fin = currentState.financing.find(f => f.id === 'fin_tour_001') || {
             id: 'fin_tour_001',
             financingNo: 'FIN-TOUR-001',
             orderId: 'ord_tour_001',
             customerId: 'cust1788380537668',
             principal: 1440,
-            chargePercent: 5,
-            chargeAmount: 72,
-            totalRepayable: 1512,
+            chargePercent: fallbackChargePercent,
+            chargeAmount: fallbackCharge,
+            totalRepayable: fallbackRepayable,
             plan: 1 as const,
-            installmentCount: 4,
-            weeklyInstallment: 378,
+            installmentCount: fallbackInstallments,
+            weeklyInstallment: fallbackInstallment,
             status: 'active' as const,
             paidPrincipal: 0,
             approvedBy: 'SuperJeff',
             approvedAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
-            schedule: [
-              { weekNo: 1, dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0], baseAmount: 378, penalty: 0, status: 'due' },
-              { weekNo: 2, dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0], baseAmount: 378, penalty: 0, status: 'upcoming' },
-              { weekNo: 3, dueDate: new Date(Date.now() + 21 * 86400000).toISOString().split('T')[0], baseAmount: 378, penalty: 0, status: 'upcoming' },
-              { weekNo: 4, dueDate: new Date(Date.now() + 28 * 86400000).toISOString().split('T')[0], baseAmount: 378, penalty: 0, status: 'upcoming' },
-            ],
+            schedule: Array.from({ length: fallbackInstallments }, (_, index) => ({
+              weekNo: index + 1,
+              dueDate: new Date(Date.now() + (index + 1) * 7 * 86400000).toISOString().split('T')[0],
+              baseAmount: fallbackInstallment,
+              penalty: 0,
+              status: index === 0 ? 'due' as const : 'upcoming' as const,
+            })),
           };
 
           await approveFinancingFlow(fin.id, 'SuperJeff');
@@ -440,139 +460,148 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
         }
 
         case 3: {
-          // STEP 4: Supplier Dispatches
+          // STEP 4: Supplier follows the guarded READY -> OUT_FOR_DELIVERY flow.
           const ord = currentState.orders.find(o => o.id === 'ord_tour_001');
-          const readyOrder: Order = ord ? {
-            ...ord,
-            status: 'ready' as const,
-            stockReservationStatus: 'committed',
-            updatedAt: new Date().toISOString(),
-          } : {
-            id: 'ord_tour_001',
-            orderNo: 'ORD-TOUR-001',
-            customerId: 'cust1788380537668',
-            items: [{ productId: 'prod_tour_coke', productName: 'Coca-Cola 1.5L (Case of 12)', quantity: 3, price: 480, supplierId: 'sup1788397726900' }],
-            total: 1440,
-            status: 'ready',
-            paymentType: 'financing',
-            paymentStatus: 'pending',
-            stockReservationStatus: 'committed',
-            financingId: 'fin_tour_001',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-
-          await saveRecord('orders', readyOrder);
+          if (!ord) throw new Error('Tour order is not available.');
+          await transitionOrderFlow(ord.id, 'ready', 'supplier');
           tourDispatch({ type: 'UPDATE_ORDER_STATUS', orderId: 'ord_tour_001', status: 'ready' });
           await new Promise(resolve => setTimeout(resolve, 650));
-          const updatedOrd: Order = { ...readyOrder, status: 'out_for_delivery', updatedAt: new Date().toISOString() };
-          await saveRecord('orders', updatedOrd);
+          await transitionOrderFlow(ord.id, 'out_for_delivery', 'supplier');
           tourDispatch({ type: 'UPDATE_ORDER_STATUS', orderId: 'ord_tour_001', status: 'out_for_delivery' });
           showToast('success', '✓ Supplier marked the order READY, then dispatched it.');
           break;
         }
 
         case 4: {
-          // STEP 5: Delivery & Store Owner Confirms Receipt
+          // STEP 5: Supplier stops at DELIVERED; only the customer can complete.
           const ord = currentState.orders.find(o => o.id === 'ord_tour_001');
-          const deliveredOrder: Order = ord ? {
-            ...ord,
-            status: 'delivered' as const,
-            updatedAt: new Date().toISOString(),
-          } : {
-            id: 'ord_tour_001',
-            orderNo: 'ORD-TOUR-001',
-            customerId: 'cust1788380537668',
-            items: [{ productId: 'prod_tour_coke', productName: 'Coca-Cola 1.5L (Case of 12)', quantity: 3, price: 480, supplierId: 'sup1788397726900' }],
-            total: 1440,
-            status: 'delivered',
-            paymentType: 'financing',
-            paymentStatus: 'pending',
-            financingId: 'fin_tour_001',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-
-          await saveRecord('orders', deliveredOrder);
+          if (!ord) throw new Error('Tour order is not available.');
+          await transitionOrderFlow(ord.id, 'delivered', 'supplier');
           tourDispatch({ type: 'UPDATE_ORDER_STATUS', orderId: 'ord_tour_001', status: 'delivered' });
           await new Promise(resolve => setTimeout(resolve, 650));
-          const updatedOrd: Order = { ...deliveredOrder, status: 'completed', updatedAt: new Date().toISOString() };
-          await saveRecord('orders', updatedOrd);
+          await transitionOrderFlow(ord.id, 'completed', 'customer');
           tourDispatch({ type: 'UPDATE_ORDER_STATUS', orderId: 'ord_tour_001', status: 'completed' });
           showToast('success', '✓ Store Owner Gabriel confirmed receipt! Order marked COMPLETED.');
           break;
         }
 
         case 5: {
-          // STEP 6: Store Owner Pays Week 1 via GCash
+          // STEP 6: GCash settles immediately and releases principal, not fees.
+          const fin = currentState.financing.find(f => f.id === 'fin_tour_001');
+          const cust = currentState.customers.find(c => c.id === 'cust1788380537668');
+          if (!fin || !cust) throw new Error('Tour financing account is not available.');
+          const firstInstallment = fin.schedule.find(entry => entry.weekNo === 1);
+          if (!firstInstallment) throw new Error('Tour installment schedule is not available.');
+          const paidAt = new Date().toISOString();
+          const principalReleased = fin.principal / fin.installmentCount;
           const payment: Payment = {
             id: 'pay_tour_001',
             paymentNo: 'PAY-TOUR-001',
             customerId: 'cust1788380537668',
             financingId: 'fin_tour_001',
-            amount: 378,
+            amount: firstInstallment.baseAmount + firstInstallment.penalty,
             method: 'gcash',
             type: 'installment',
-            status: 'pending',
+            status: 'paid',
             referenceId: 'GCASH-98314',
-            createdAt: new Date().toISOString(),
+            confirmedBy: 'Auto (GCash)',
+            createdAt: paidAt,
+            paidAt,
           };
-
-          await saveRecord('payments', payment);
+          const updatedFinancing: Financing = {
+            ...fin,
+            paidPrincipal: Math.min(fin.principal, fin.paidPrincipal + principalReleased),
+            schedule: fin.schedule.map(entry => {
+              if (entry.weekNo === 1) return { ...entry, status: 'paid' as const, paidAt, paidMethod: 'gcash' as const };
+              if (entry.weekNo === 2 && entry.status === 'upcoming') return { ...entry, status: 'due' as const };
+              return entry;
+            }),
+          };
+          const updatedCustomer = { ...cust, usedCredit: Math.max(0, cust.usedCredit - principalReleased) };
+          await updateRootPaths({
+            [`payments/${payment.id}`]: payment,
+            [`financing/${fin.id}`]: updatedFinancing,
+            [`customers/${cust.id}`]: updatedCustomer,
+          });
           tourDispatch({ type: 'SYNC_PAYMENTS', payments: [payment, ...currentState.payments] });
-          showToast('success', '✓ Submitted Week 1 Installment (₱378.00) via GCash [Ref: GCASH-98314]!');
+          tourDispatch({ type: 'SYNC_FINANCING', financing: currentState.financing.map(item => item.id === fin.id ? updatedFinancing : item) });
+          tourDispatch({ type: 'UPDATE_CUSTOMER', customer: updatedCustomer });
+          showToast('success', `✓ GCash settled instantly. ₱${principalReleased.toLocaleString('en-PH')} principal restored to available credit.`);
           break;
         }
 
         case 6: {
-          // STEP 7: Staff Confirms Payment & Restores Credit
-          const pay = currentState.payments.find(p => p.id === 'pay_tour_001');
-          if (pay) {
-            const updatedPay = { ...pay, status: 'paid' as const, confirmedBy: 'Sham Lam' };
-            await saveRecord('payments', updatedPay);
-          }
-
+          // STEP 7: Full GCash settlement completes financing and grows the limit once.
           const fin = currentState.financing.find(f => f.id === 'fin_tour_001');
-          if (fin) {
-            const newSchedule = fin.schedule.map(s => s.weekNo === 1 ? { ...s, status: 'paid' as const, paidAt: new Date().toISOString() } : s);
-            const updatedFin = {
-              ...fin,
-              schedule: newSchedule,
-              paidPrincipal: 360,
-              remainingBalance: 1134,
-            };
-            await saveRecord('financing', updatedFin);
-            tourDispatch({ type: 'PAY_INSTALLMENT', financingId: 'fin_tour_001', weekNo: 1, method: 'gcash', confirmedBy: 'Sham Lam' });
-          }
-
           const cust = currentState.customers.find(c => c.id === 'cust1788380537668');
-          if (cust) {
-            const updatedCust = { ...cust, usedCredit: Math.max(0, (cust.usedCredit || 1440) - 378) };
-            await saveRecord('customers', updatedCust);
-            tourDispatch({ type: 'UPDATE_CUSTOMER', customer: updatedCust });
-          }
-
-          showToast('success', '✓ Payment CONFIRMED! +₱378.00 restored to Gabriel\'s available credit.');
+          if (!fin || !cust) throw new Error('Tour financing account is not available.');
+          const paidAt = new Date().toISOString();
+          const remainingPrincipal = Math.max(0, fin.principal - fin.paidPrincipal);
+          const remainingBalance = Math.max(0, fin.totalRepayable - (fin.paidPrincipal / fin.principal * fin.totalRepayable));
+          const limitIncrease = currentState.settings?.limitIncreaseAmount ?? 1000;
+          const maxLimit = currentState.settings?.maxAutomaticLimit ?? 20000;
+          const newLimit = Math.min(maxLimit, cust.creditLimit + limitIncrease);
+          const settlement: Payment = {
+            id: 'pay_tour_settle',
+            paymentNo: 'PAY-TOUR-SETTLE',
+            customerId: cust.id,
+            financingId: fin.id,
+            amount: Math.round(remainingBalance * 100) / 100,
+            method: 'gcash',
+            type: 'full_settlement',
+            status: 'paid',
+            confirmedBy: 'Auto (GCash)',
+            referenceId: 'GCASH-98315',
+            createdAt: paidAt,
+            paidAt,
+          };
+          const completedFinancing: Financing = {
+            ...fin,
+            status: 'completed',
+            paidPrincipal: fin.principal,
+            schedule: fin.schedule.map(entry => entry.status === 'paid' ? entry : { ...entry, status: 'paid' as const, paidAt, paidMethod: 'gcash' as const }),
+          };
+          const updatedCustomer: Customer = {
+            ...cust,
+            usedCredit: Math.max(0, cust.usedCredit - remainingPrincipal),
+            creditLimit: newLimit,
+          };
+          await updateRootPaths({
+            [`payments/${settlement.id}`]: settlement,
+            [`financing/${fin.id}`]: completedFinancing,
+            [`customers/${cust.id}`]: updatedCustomer,
+          });
+          tourDispatch({ type: 'SYNC_PAYMENTS', payments: [settlement, ...currentState.payments] });
+          tourDispatch({ type: 'SYNC_FINANCING', financing: currentState.financing.map(item => item.id === fin.id ? completedFinancing : item) });
+          tourDispatch({ type: 'UPDATE_CUSTOMER', customer: updatedCustomer });
+          showToast('success', `✓ Financing completed. Remaining principal restored and credit limit is now ₱${newLimit.toLocaleString('en-PH')}.`);
           break;
         }
 
         case 7: {
-          // STEP 8: Supplier Restocks & Limit Upgrade
+          // STEP 8: Supplier records the received stock batch.
           const prod = currentState.products.find(p => p.id === 'prod_tour_coke');
-          if (prod) {
-            const updatedProd = { ...prod, stock: (prod.stock || 47) + 50 };
-            await saveRecord('products', updatedProd);
-            tourDispatch({ type: 'UPDATE_PRODUCT', product: updatedProd });
-          }
-
-          const cust = currentState.customers.find(c => c.id === 'cust1788380537668');
-          if (cust) {
-            const updatedCust: Customer = { ...cust, creditLimit: 7000, usedCredit: 0 };
-            await saveRecord('customers', updatedCust);
-            tourDispatch({ type: 'UPDATE_CUSTOMER', customer: updatedCust });
-          }
-
-          showToast('success', '✓ Warehouse restocked (+50 units) & Gabriel\'s credit limit upgraded to ₱7,000!');
+          if (!prod) throw new Error('Tour product is not available.');
+          const receivedAt = new Date().toISOString();
+          const updatedProduct = { ...prod, stock: prod.stock + 50 };
+          const restock: RestockOrder = {
+            id: 'restock_tour_001',
+            restockNo: 'RO-TOUR-001',
+            supplierId: 'sup1788397726900',
+            supplierName: 'Test',
+            items: [{ productId: prod.id, productName: prod.name, quantity: 50, costPrice: prod.costPrice }],
+            totalCost: prod.costPrice * 50,
+            status: 'received',
+            createdAt: receivedAt,
+            receivedAt,
+          };
+          await updateRootPaths({
+            [`products/${prod.id}`]: updatedProduct,
+            [`restockOrders/${restock.id}`]: restock,
+          });
+          tourDispatch({ type: 'UPDATE_PRODUCT', product: updatedProduct });
+          tourDispatch({ type: 'SYNC_RESTOCK', restockOrders: [restock, ...currentState.restockOrders] });
+          showToast('success', '✓ Received restock recorded. 50 cases added to supplier inventory.');
           break;
         }
       }
@@ -661,6 +690,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
           page: initialSessionRef.current.page,
         });
       } else {
+        tourDispatch({ type: 'SET_CURRENT_USER', user: null });
         tourDispatch({ type: 'NAVIGATE', page: 'home' });
       }
       setIsTourActive(false);

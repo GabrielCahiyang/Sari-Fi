@@ -276,6 +276,7 @@ export function FinancingPage() {
                             Pay Installment
                           </button>
                           <button
+                            data-tour-target={fin.id === 'fin_tour_001' ? '6' : undefined}
                             onClick={() => { setSelectedFin(fin.id); setPayFull(true); }}
                             className="flex-1 sm:flex-initial px-3 py-2 bg-[#0D2B45] text-white text-xs font-600 rounded-xl hover:bg-[#1a3d5c] transition-all cursor-pointer text-center"
                           >
