@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { FinancingStatusBadge } from '../../components/ui/Badge';
 import { approveFinancingFlow, cancelOrderFlow } from '../../services/firebase/rtdbService';
+import { formatFrequency, getFinancingFrequency, getFinancingInstallmentAmount, getFinancingPlanName } from '../../utils/repaymentPlans';
 
 export function FinancingManagementPage() {
   const { state, dispatch, getCustomer, showToast, formatPHP, logAudit } = useApp();
@@ -192,11 +193,11 @@ export function FinancingManagementPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[#65727A]">Plan:</span>
-                      <span className="font-600 text-[#10212B]">{fin.plan}mo · {paidInstallments}/{fin.installmentCount} paid</span>
+                      <span className="font-600 text-[#10212B]">{getFinancingPlanName(fin)} · {paidInstallments}/{fin.installmentCount} paid</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[#65727A]">Weekly Due:</span>
-                      <span className="font-700 text-[#1E7D3B]">{formatPHP(fin.weeklyInstallment)}</span>
+                      <span className="text-[#65727A]">{formatFrequency(getFinancingFrequency(fin))} Due:</span>
+                      <span className="font-700 text-[#1E7D3B]">{formatPHP(getFinancingInstallmentAmount(fin))}</span>
                     </div>
                     <div className="flex justify-between pt-1 border-t border-[#E4E8E6]">
                       <span className="font-700 text-[#10212B]">Total Repayable:</span>
@@ -238,7 +239,7 @@ export function FinancingManagementPage() {
                   <th className="text-left px-5 py-3">Principal</th>
                   <th className="text-left px-5 py-3">Charge</th>
                   <th className="text-left px-5 py-3">Total</th>
-                  <th className="text-left px-5 py-3">Weekly</th>
+                  <th className="text-left px-5 py-3">Installment</th>
                   <th className="text-left px-5 py-3">Plan</th>
                   <th className="text-left px-5 py-3">Status</th>
                   {(role === 'supervisor' || role === 'admin') && <th className="text-left px-5 py-3">Actions</th>}
@@ -265,8 +266,8 @@ export function FinancingManagementPage() {
                       <td className="px-5 py-3 font-600 text-sm text-[#10212B]">{formatPHP(fin.principal)}</td>
                       <td className="px-5 py-3 text-sm text-[#65727A]">{fin.chargePercent}% · {formatPHP(fin.chargeAmount)}</td>
                       <td className="px-5 py-3 font-700 text-sm text-[#10212B]">{formatPHP(fin.totalRepayable)}</td>
-                      <td className="px-5 py-3 font-600 text-sm text-[#1E7D3B]">{formatPHP(fin.weeklyInstallment)}</td>
-                      <td className="px-5 py-3 text-xs text-[#65727A]">{fin.plan}mo · {paidInstallments}/{fin.installmentCount}×</td>
+                      <td className="px-5 py-3 font-600 text-sm text-[#1E7D3B]">{formatPHP(getFinancingInstallmentAmount(fin))} <span className="text-[10px] text-[#65727A]">{getFinancingFrequency(fin)}</span></td>
+                      <td className="px-5 py-3 text-xs text-[#65727A]">{getFinancingPlanName(fin)} · {paidInstallments}/{fin.installmentCount}×</td>
                       <td className="px-5 py-3"><FinancingStatusBadge status={fin.status} /></td>
                       {(role === 'supervisor' || role === 'admin') && (
                         <td className="px-5 py-3">

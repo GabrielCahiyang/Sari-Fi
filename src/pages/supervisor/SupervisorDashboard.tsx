@@ -2,6 +2,7 @@ import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { OrderStatusBadge, FinancingStatusBadge } from '../../components/ui/Badge';
 import { approveFinancingFlow, cancelOrderFlow } from '../../services/firebase/rtdbService';
+import { getFinancingInstallmentAmount, getFinancingPlanName } from '../../utils/repaymentPlans';
 
 export function SupervisorDashboard() {
   const { state, dispatch, navigate, getCustomer, showToast, formatPHP } = useApp();
@@ -96,7 +97,7 @@ export function SupervisorDashboard() {
                         <div><div className="text-[#65727A] text-[10px]">Principal</div><div className="font-700 text-[#10212B]">{formatPHP(fin.principal)}</div></div>
                         <div><div className="text-[#65727A] text-[10px]">Charge ({fin.chargePercent}%)</div><div className="font-700 text-[#10212B]">{formatPHP(fin.chargeAmount)}</div></div>
                         <div><div className="text-[#65727A] text-[10px]">Total Repayable</div><div className="font-700 text-[#10212B]">{formatPHP(fin.totalRepayable)}</div></div>
-                        <div><div className="text-[#65727A] text-[10px]">Plan</div><div className="font-700 text-[#10212B]">{fin.plan}mo · {fin.installmentCount}×{formatPHP(fin.weeklyInstallment)}</div></div>
+                        <div><div className="text-[#65727A] text-[10px]">Plan</div><div className="font-700 text-[#10212B]">{getFinancingPlanName(fin)} · {fin.installmentCount}×{formatPHP(getFinancingInstallmentAmount(fin))}</div></div>
                       </div>
                       <div className="text-xs text-[#65727A] mb-3">
                         Customer standing: <span className={`font-600 ${customer?.status === 'active' ? 'text-[#1E7D3B]' : 'text-red-500'}`}>{customer?.status === 'active' ? 'Good Standing' : 'Suspended'}</span>

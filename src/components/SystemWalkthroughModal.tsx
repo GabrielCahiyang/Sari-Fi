@@ -211,7 +211,7 @@ export function SystemWalkthroughModal({ isOpen, onClose }: SystemWalkthroughMod
       roleIcon: '📲',
       roleBadgeColor: 'bg-[#1E7D3B] text-white',
       accountEmail: 'gabzcah@gmail.com (Store Owner)',
-      title: 'Store Owner Pays Weekly Installment via GCash Mockup',
+      title: 'Store Owner Pays an Installment via GCash Mockup',
       headline: 'Installments paid from weekly retail profits via GCash or Cash',
       storyNarrative:
         'Having sold bottles from the 3 cases over the week, Gabriel has retail cash in hand. Week 1 installment of ₱378 is due. He opens his "Financing & Payments" dashboard, selects Week 1, and submits payment through the interactive GCash Mockup with reference code GCASH-98314.',

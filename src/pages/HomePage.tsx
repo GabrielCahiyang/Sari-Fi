@@ -10,6 +10,7 @@ import {
 import logo from "../assets/sarifi-logo.png";
 import { useApp } from "../context/AppContext";
 import { useTour } from "../context/TourContext";
+import { formatFrequency, formatPlanDuration, getRepaymentPlans } from "../utils/repaymentPlans";
 
 interface BenefitItem {
   icon: ReactNode;
@@ -51,8 +52,8 @@ const STEPS = [
 function getBenefits(settings: any, productsCount: number): BenefitItem[] {
   const limitInc = settings?.limitIncreaseAmount || 1000;
   const maxLimit = settings?.maxAutomaticLimit || 20000;
-  const plan1Weeks = settings?.plan1Installments || 4;
-  const plan2Weeks = settings?.plan2Installments || 8;
+  const plans = getRepaymentPlans(settings).filter(plan => plan.active);
+  const planSummary = plans.slice(0, 2).map(plan => `${plan.name} (${plan.installmentCount} ${plan.paymentFrequency})`).join(' or ');
 
   return [
     {
@@ -161,8 +162,8 @@ function getBenefits(settings: any, productsCount: number): BenefitItem[] {
           />
         </svg>
       ),
-      title: "Weekly Installments",
-      description: `Choose a 1-month (${plan1Weeks} wks) or 2-month (${plan2Weeks} wks) plan with equal weekly installments that fit your cash flow.`,
+      title: "Flexible Repayments",
+      description: `Choose ${planSummary || 'a flexible repayment plan'} with equal installments designed around your cash flow.`,
       color: "bg-[#FFF9E6] border border-[#FFD54F]/40",
       textMuted: "text-[#65727A]",
       iconColor: "text-[#B8860B]",
@@ -230,8 +231,7 @@ export function HomePage() {
   const MAX_LIMIT = settings?.maxAutomaticLimit || 20000;
   const LIMIT_INC = settings?.limitIncreaseAmount || 1000;
   const CHARGE_PCT = settings?.financingCharge ?? 2;
-  const PLAN1_WEEKS = settings?.plan1Installments || 4;
-  const PLAN2_WEEKS = settings?.plan2Installments || 8;
+  const repaymentPlans = getRepaymentPlans(settings).filter(plan => plan.active);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
@@ -278,8 +278,9 @@ export function HomePage() {
 
   // Financing calculator
   const [principal, setPrincipal] = useState(Math.min(5000, LIMIT));
-  const [planMonths, setPlanMonths] = useState<1 | 2>(2);
-  const weeks = planMonths === 1 ? PLAN1_WEEKS : PLAN2_WEEKS;
+  const [calculatorPlanId, setCalculatorPlanId] = useState(repaymentPlans[0]?.id ?? '');
+  const calculatorPlan = repaymentPlans.find(plan => plan.id === calculatorPlanId) ?? repaymentPlans[0];
+  const weeks = calculatorPlan?.installmentCount ?? 1;
   const [paidWeeks, setPaidWeeks] = useState(2);
   const paid = Math.min(paidWeeks, weeks);
   const charge = Math.round(principal * (CHARGE_PCT / 100));
@@ -1021,14 +1022,13 @@ export function HomePage() {
                 </div>
 
                 {/* Plan Toggle */}
-                <div className="flex rounded-xl bg-white/10 p-1 shrink-0">
-                  {([1, 2] as const).map((m) => {
-                    const selected = planMonths === m;
-                    const wks = m === 1 ? PLAN1_WEEKS : PLAN2_WEEKS;
+                <div className="flex max-w-full overflow-x-auto rounded-xl bg-white/10 p-1 shrink-0">
+                  {repaymentPlans.map((plan) => {
+                    const selected = calculatorPlan?.id === plan.id;
                     return (
                       <button
-                        key={m}
-                        onClick={() => setPlanMonths(m)}
+                        key={plan.id}
+                        onClick={() => setCalculatorPlanId(plan.id)}
                         className={`relative px-4 py-2 rounded-lg text-xs font-700 transition-all cursor-pointer ${
                           selected
                             ? "text-white"
@@ -1047,7 +1047,7 @@ export function HomePage() {
                           />
                         )}
                         <span className="relative z-10">
-                          {m}-Month ({wks} wks)
+                          {plan.name} · {formatPlanDuration(plan)}
                         </span>
                       </button>
                     );
@@ -1072,7 +1072,7 @@ export function HomePage() {
                 {
                   label: "Total Repayable",
                   value: peso(total),
-                  sub: `${weeks} weekly payments × ${peso(perWeek)}`,
+                  sub: `${weeks} ${formatFrequency(calculatorPlan?.paymentFrequency ?? 'weekly').toLowerCase()} payments × ${peso(perWeek)}`,
                 },
               ].map((card) => (
                 <motion.div
@@ -1105,9 +1105,7 @@ export function HomePage() {
                 </button>
               </div>
 
-              <div
-                className={`grid grid-cols-4 gap-2 ${weeks > 4 ? "md:grid-cols-8" : "md:grid-cols-4"}`}
-              >
+              <div className="grid grid-cols-4 gap-2 md:grid-cols-8 max-h-64 overflow-y-auto pr-1">
                 {Array.from({ length: weeks }, (_, i) => {
                   const isPaid = i < paid;
                   return (
@@ -1123,7 +1121,7 @@ export function HomePage() {
                       }`}
                     >
                       <div className="text-[10px] text-white/50 mb-1">
-                        Wk {i + 1}
+                        #{i + 1}
                       </div>
                       <div
                         className={`text-xs font-700 tnum ${isPaid ? "text-white" : "text-white/70"}`}

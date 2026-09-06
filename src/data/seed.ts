@@ -392,6 +392,8 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   limitIncreaseAmount: 1000,
   maxAutomaticLimit: 20000,
   weeklyPenalty: 10,
-  plan1Installments: 4,
-  plan2Installments: 8,
+  repaymentPlans: [
+    { id: 'plan_1_month', name: '1-Month Plan', durationValue: 1, durationUnit: 'month', paymentFrequency: 'weekly', installmentCount: 4, active: true },
+    { id: 'plan_2_months', name: '2-Month Plan', durationValue: 2, durationUnit: 'month', paymentFrequency: 'weekly', installmentCount: 8, active: true },
+  ],
 };

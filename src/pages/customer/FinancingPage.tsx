@@ -7,6 +7,7 @@ import { GcashWebhookSimulator } from '../../components/payment/GcashWebhookSimu
 import { saveRecord, settleOrderPayment } from '../../services/firebase/rtdbService';
 import { generateMockGcashReference } from '../../services/payment/mockGcashService';
 import type { Payment } from '../../types';
+import { formatFrequency, getFinancingFrequency, getFinancingInstallmentAmount, getFinancingPlanName } from '../../utils/repaymentPlans';
 
 export function FinancingPage() {
   const { state, dispatch, getCurrentCustomer, getCustomerFinancing, showToast, formatPHP } = useApp();
@@ -234,7 +235,7 @@ export function FinancingPage() {
                       <div>
                         <div className="font-800 text-base text-[#10212B]">{fin.financingNo}</div>
                         <div className="text-xs text-[#65727A] mt-0.5">
-                          {fin.plan}-Month Plan · {fin.installmentCount} installments of {formatPHP(fin.weeklyInstallment)}
+                          {getFinancingPlanName(fin)} · {fin.installmentCount} {getFinancingFrequency(fin)} installments of {formatPHP(getFinancingInstallmentAmount(fin))}
                         </div>
                       </div>
                       <FinancingStatusBadge status={fin.status} />
@@ -328,7 +329,7 @@ export function FinancingPage() {
                                 {s.weekNo}
                               </div>
                               <div>
-                                <div className="text-xs font-600 text-[#10212B]">Week {s.weekNo}</div>
+                                <div className="text-xs font-600 text-[#10212B]">Payment {s.weekNo}</div>
                                 <div className="text-[11px] text-[#65727A]">Due {new Date(s.dueDate).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                               </div>
                             </div>
@@ -367,7 +368,7 @@ export function FinancingPage() {
               <GcashWebhookSimulator
                 amount={formatPHP(pendingGcashPayment.amount)}
                 merchantLabel="Sari-Fi Financing"
-                references={[{ label: `${fin.financingNo} · Week ${payWeekNo}`, referenceId: pendingGcashPayment.referenceId }]}
+                references={[{ label: `${fin.financingNo} · Payment ${payWeekNo}`, referenceId: pendingGcashPayment.referenceId }]}
                 onConfirm={confirmFinancingGcash}
                 onFinished={finishFinancingGcash}
               />
@@ -379,7 +380,7 @@ export function FinancingPage() {
                 <div className="text-xs text-[#65727A] mb-1">Amount Due</div>
                 <div className="text-2xl font-800 text-[#10212B]">{formatPHP(s.baseAmount + s.penalty)}</div>
                 {s.penalty > 0 && <div className="text-xs text-red-500 mt-0.5">Includes {formatPHP(s.penalty)} overdue penalty</div>}
-                <div className="text-xs text-[#65727A] mt-1">Week {s.weekNo} of {fin.installmentCount}</div>
+                <div className="text-xs text-[#65727A] mt-1">Payment {s.weekNo} of {fin.installmentCount} · {formatFrequency(getFinancingFrequency(fin))}</div>
               </div>
               <div>
                 <div className="text-xs font-600 text-[#65727A] mb-2">Payment Method</div>

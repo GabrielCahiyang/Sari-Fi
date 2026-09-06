@@ -4,6 +4,7 @@ import { database, storage } from '../../firebase';
 import type { SystemSettings, AuditEntry, Customer, Financing, Order, Payment, Product, Supplier, UserRole } from '../../types';
 import { DEFAULT_SETTINGS } from '../../data/seed';
 import { canTransitionOrder, resolveFinancialOrderStatus } from '../../domain/orderFlow';
+import { getFinancingFrequency, rescheduleInstallments } from '../../utils/repaymentPlans';
 
 /**
  * Generic Realtime Database List Subscriber
@@ -293,17 +294,12 @@ export async function approveFinancingFlow(financingId: string, approvedBy: stri
     getRecord<any>('customers', loan.customerId),
   ]);
   const now = new Date().toISOString();
-  const today = new Date();
   const activeLoan: Financing = {
     ...loan,
     status: 'active',
     approvedBy,
     approvedAt: now,
-    schedule: loan.schedule.map((entry, index) => {
-      const due = new Date(today);
-      due.setDate(due.getDate() + (index + 1) * 7);
-      return { ...entry, dueDate: due.toISOString().split('T')[0], status: index === 0 ? 'due' : 'upcoming' };
-    }),
+    schedule: rescheduleInstallments(loan.schedule, getFinancingFrequency(loan)),
   };
   const paths: Record<string, unknown> = { [`financing/${financingId}`]: cleanUndefined(activeLoan) };
   const order = Object.values(orders).find(item => item.financingId === financingId || item.id === loan.orderId);

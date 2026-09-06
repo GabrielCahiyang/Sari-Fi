@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
 import { GcashWebhookSimulator } from '../../components/payment/GcashWebhookSimulator';
-import type { Order, Financing, Payment, InstallmentSchedule, OrderItem } from '../../types';
+import type { Order, Financing, Payment, OrderItem } from '../../types';
 import {
   createOrdersWithReservations,
   settleOrderPayment,
@@ -13,6 +13,7 @@ import {
   processMockGcashWebhook,
   type MockGcashWebhookPayload,
 } from '../../services/payment/mockGcashService';
+import { buildInstallmentSchedule, formatFrequency, formatPlanDuration, getRepaymentPlans } from '../../utils/repaymentPlans';
 
 type Mode = 'cash' | 'gcash' | 'financing' | 'split';
 
@@ -20,7 +21,9 @@ export function CheckoutPage() {
   const { state, dispatch, navigate, getProduct, getCurrentCustomer, showToast, formatPHP } = useApp();
   const customer = getCurrentCustomer();
   const [mode, setMode] = useState<Mode>('cash');
-  const [plan, setPlan] = useState<1 | 2>(1);
+  const availablePlans = getRepaymentPlans(state.settings).filter(plan => plan.active);
+  const [planId, setPlanId] = useState(availablePlans[0]?.id ?? '');
+  const selectedPlan = availablePlans.find(plan => plan.id === planId) ?? availablePlans[0];
   const [splitMethod, setSplitMethod] = useState<'cash' | 'gcash'>('cash');
   const [placing, setPlacing] = useState(false);
   const [pendingWebhookData, setPendingWebhookData] = useState<Array<{ order: Order; payment: Payment }> | null>(null);
@@ -33,8 +36,8 @@ export function CheckoutPage() {
 
   const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const available = customer ? customer.creditLimit - customer.usedCredit : 0;
-  const { financingCharge, plan1Installments, plan2Installments } = state.settings;
-  const installmentCount = plan === 1 ? plan1Installments : plan2Installments;
+  const { financingCharge } = state.settings;
+  const installmentCount = selectedPlan?.installmentCount ?? 1;
   const chargeAmount = Math.round(total * financingCharge / 100);
   const totalRepayable = total + chargeAmount;
   const weeklyInstallment = Math.round(totalRepayable / installmentCount * 100) / 100;
@@ -55,21 +58,6 @@ export function CheckoutPage() {
     groups.set(supplierId, current);
     return groups;
   }, new Map<string, OrderItem[]>()).entries());
-
-  const generateSchedule = (count: number, amount: number): InstallmentSchedule[] => {
-    const today = new Date();
-    return Array.from({ length: count }, (_, i) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + (i + 1) * 7);
-      return {
-        weekNo: i + 1,
-        dueDate: d.toISOString().split('T')[0],
-        baseAmount: amount,
-        penalty: 0,
-        status: i === 0 ? 'upcoming' as const : 'upcoming' as const,
-      };
-    });
-  };
 
   const placeOrder = async () => {
     if (!customer || items.length === 0 || isPlacingRef.current) return;
@@ -95,6 +83,10 @@ export function CheckoutPage() {
     }
     if (mode === 'split' && !canSplit) {
       showToast('error', 'Split payment requires some available credit below the order total.');
+      return;
+    }
+    if ((mode === 'financing' || mode === 'split') && !selectedPlan) {
+      showToast('error', 'No active repayment plan is available. Please contact an administrator.');
       return;
     }
     isPlacingRef.current = true;
@@ -143,7 +135,7 @@ export function CheckoutPage() {
         financingIndex += 1;
         const groupCharge = Math.round(financedAmount * financingCharge / 100);
         const groupRepayable = financedAmount + groupCharge;
-        const groupWeekly = Math.round(groupRepayable / installmentCount * 100) / 100;
+        const groupInstallment = Math.round(groupRepayable / installmentCount * 100) / 100;
         financing = {
           id: `fin${idSeed}_${financingIndex}`,
           financingNo: `FIN-${String(state.financing.length + financingIndex).padStart(4, '0')}`,
@@ -153,12 +145,18 @@ export function CheckoutPage() {
           chargePercent: financingCharge,
           chargeAmount: groupCharge,
           totalRepayable: groupRepayable,
-          plan,
+          plan: selectedPlan.id,
+          planId: selectedPlan.id,
+          planName: selectedPlan.name,
+          planDurationValue: selectedPlan.durationValue,
+          planDurationUnit: selectedPlan.durationUnit,
+          paymentFrequency: selectedPlan.paymentFrequency,
           installmentCount,
-          weeklyInstallment: groupWeekly,
+          installmentAmount: groupInstallment,
+          weeklyInstallment: groupInstallment,
           paidPrincipal: 0,
           status: 'pending',
-          schedule: generateSchedule(installmentCount, groupWeekly),
+          schedule: buildInstallmentSchedule(installmentCount, groupInstallment, selectedPlan.paymentFrequency),
           createdAt: now,
         };
       }
@@ -351,12 +349,12 @@ export function CheckoutPage() {
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-                  {[1, 2].map(p => (
-                    <label key={p} className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${plan === p ? 'border-[#1E7D3B] bg-[#F0FAF4]' : 'border-[#E4E8E6]'}`}>
-                      <input type="radio" name="plan" checked={plan === p} onChange={() => setPlan(p as 1 | 2)} className="text-[#1E7D3B]" />
-                      <div>
-                        <div className="font-600 text-sm">{p === 1 ? '1 Month' : '2 Months'}</div>
-                        <div className="text-[11px] text-[#65727A]">{p === 1 ? plan1Installments : plan2Installments} weekly payments</div>
+                  {availablePlans.map(plan => (
+                    <label key={plan.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedPlan?.id === plan.id ? 'border-[#1E7D3B] bg-[#F0FAF4] ring-1 ring-[#1E7D3B]/10' : 'border-[#E4E8E6] hover:border-[#1E7D3B]/30'}`}>
+                      <input type="radio" name="plan" checked={selectedPlan?.id === plan.id} onChange={() => setPlanId(plan.id)} className="text-[#1E7D3B]" />
+                      <div className="min-w-0">
+                        <div className="font-700 text-sm text-[#10212B] truncate">{plan.name}</div>
+                        <div className="text-[11px] text-[#65727A]">{formatPlanDuration(plan)} · {plan.installmentCount} {plan.paymentFrequency} payments</div>
                       </div>
                     </label>
                   ))}
@@ -367,7 +365,7 @@ export function CheckoutPage() {
                     ['Principal', formatPHP(mode === 'split' ? financingAmount : total)],
                     [`Finance Charge (${financingCharge}%)`, formatPHP(mode === 'split' ? splitCharge : chargeAmount)],
                     ['Total Repayable', formatPHP(mode === 'split' ? splitTotalRepayable : totalRepayable)],
-                    ['Weekly Installment', formatPHP(mode === 'split' ? splitWeekly : weeklyInstallment)],
+                    [`${selectedPlan ? formatFrequency(selectedPlan.paymentFrequency) : ''} Installment`, formatPHP(mode === 'split' ? splitWeekly : weeklyInstallment)],
                     ['Number of Payments', `${installmentCount}×`],
                   ].map(([label, value]) => (
                     <div key={label} className="flex justify-between border-b border-[#F7F8F6] pb-2 last:border-0">

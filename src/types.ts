@@ -131,6 +131,7 @@ export interface Order {
 export type FinancingStatus = 'pending' | 'approved' | 'active' | 'completed' | 'rejected' | 'overdue';
 
 export interface InstallmentSchedule {
+  /** Legacy sequence key retained so existing repayment/payment records remain compatible. */
   weekNo: number;
   dueDate: string;
   baseAmount: number;
@@ -138,6 +139,19 @@ export interface InstallmentSchedule {
   status: 'upcoming' | 'due' | 'paid' | 'overdue';
   paidAt?: string;
   paidMethod?: 'cash' | 'gcash';
+}
+
+export type PlanDurationUnit = 'day' | 'week' | 'month' | 'year';
+export type PaymentFrequency = 'daily' | 'weekly' | 'monthly';
+
+export interface RepaymentPlan {
+  id: string;
+  name: string;
+  durationValue: number;
+  durationUnit: PlanDurationUnit;
+  paymentFrequency: PaymentFrequency;
+  installmentCount: number;
+  active: boolean;
 }
 
 export interface Financing {
@@ -149,8 +163,16 @@ export interface Financing {
   chargePercent: number;
   chargeAmount: number;
   totalRepayable: number;
-  plan: 1 | 2;
+  /** Legacy month marker. New records use the snapshot fields below. */
+  plan: 1 | 2 | string;
+  planId?: string;
+  planName?: string;
+  planDurationValue?: number;
+  planDurationUnit?: PlanDurationUnit;
+  paymentFrequency?: PaymentFrequency;
   installmentCount: number;
+  installmentAmount?: number;
+  /** Legacy amount key retained for existing records. */
   weeklyInstallment: number;
   paidPrincipal: number;
   status: FinancingStatus;
@@ -207,8 +229,10 @@ export interface SystemSettings {
   limitIncreaseAmount: number;
   maxAutomaticLimit: number;
   weeklyPenalty: number;
-  plan1Installments: number;
-  plan2Installments: number;
+  repaymentPlans: RepaymentPlan[];
+  /** Legacy settings retained only to migrate older databases safely. */
+  plan1Installments?: number;
+  plan2Installments?: number;
 }
 
 export type AuditCategory =
@@ -270,7 +294,7 @@ export interface AppState {
 
 export interface CheckoutData {
   mode: 'cash' | 'gcash' | 'financing' | 'split';
-  plan?: 1 | 2;
+  plan?: string;
   splitMethod?: 'cash' | 'gcash';
   total: number;
   financingAmount?: number;

@@ -15,6 +15,7 @@ import {
   loginWithEmail, logoutUser, subscribeToAuth
 } from '../services/firebase/authService';
 import { canTransitionOrder, resolveFinancialOrderStatus } from '../domain/orderFlow';
+import { getFinancingFrequency, normalizeRepaymentSettings, rescheduleInstallments } from '../utils/repaymentPlans';
 
 type Action = (
   | { type: 'LOGIN'; user: AuthUser }
@@ -220,12 +221,7 @@ function coreReducer(state: AppState, action: Action): AppState {
       // Defensive Guard / Idempotency: only pending financing can be approved
       if (!fin || fin.status !== 'pending') return state;
 
-      const today = new Date();
-      const schedule: InstallmentSchedule[] = fin.schedule.map((s, i) => {
-        const d = new Date(today);
-        d.setDate(d.getDate() + (i + 1) * 7);
-        return { ...s, dueDate: d.toISOString().split('T')[0], status: i === 0 ? 'due' : 'upcoming' };
-      });
+      const schedule: InstallmentSchedule[] = rescheduleInstallments(fin.schedule, getFinancingFrequency(fin));
       const updatedFinancing = state.financing.map(f =>
         f.id === action.financingId
           ? { ...f, status: 'active' as const, approvedBy: action.approvedBy, approvedAt: new Date().toISOString(), schedule }
@@ -746,7 +742,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // Subscribe to RTDB collections
     const unsubSettings = subscribeToNodeObject<SystemSettings>('settings', (s) => {
-      if (s) dispatch({ type: 'SYNC_SETTINGS', settings: s });
+      if (s) dispatch({ type: 'SYNC_SETTINGS', settings: normalizeRepaymentSettings(s) });
     });
     const unsubSuppliers = subscribeToNodeList<Supplier>('suppliers', (list) => {
       dispatch({ type: 'SYNC_SUPPLIERS', suppliers: list || [] });

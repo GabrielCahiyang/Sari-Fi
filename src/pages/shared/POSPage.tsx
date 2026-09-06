@@ -4,7 +4,7 @@ import { InternalLayout } from '../../components/layout/InternalLayout';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { GcashWebhookSimulator } from '../../components/payment/GcashWebhookSimulator';
-import type { Order, Financing, Payment, InstallmentSchedule, Customer } from '../../types';
+import type { Order, Financing, Payment, Customer } from '../../types';
 import {
   createOrdersWithReservations,
   settleOrderPayment,
@@ -15,6 +15,7 @@ import {
   processMockGcashWebhook,
   type MockGcashWebhookPayload,
 } from '../../services/payment/mockGcashService';
+import { buildInstallmentSchedule, formatFrequency, formatPlanDuration, getRepaymentPlans } from '../../utils/repaymentPlans';
 
 type Mode = 'cash' | 'gcash' | 'financing' | 'split';
 
@@ -40,7 +41,9 @@ export function POSPage() {
 
   // Checkout state
   const [mode, setMode] = useState<Mode>('cash');
-  const [plan, setPlan] = useState<1 | 2>(1);
+  const availablePlans = getRepaymentPlans(state.settings).filter(plan => plan.active);
+  const [planId, setPlanId] = useState(availablePlans[0]?.id ?? '');
+  const selectedPlan = availablePlans.find(plan => plan.id === planId) ?? availablePlans[0];
   const [splitMethod, setSplitMethod] = useState<'cash' | 'gcash'>('gcash');
   const [processing, setProcessing] = useState(false);
   const [pendingWebhookData, setPendingWebhookData] = useState<Array<{ order: Order; payment: Payment }> | null>(null);
@@ -94,8 +97,8 @@ export function POSPage() {
 
   // ---- Financing / split math (mirrors customer checkout) ----
   const available = customer ? customer.creditLimit - customer.usedCredit : 0;
-  const { financingCharge, plan1Installments, plan2Installments } = state.settings;
-  const installmentCount = plan === 1 ? plan1Installments : plan2Installments;
+  const { financingCharge } = state.settings;
+  const installmentCount = selectedPlan?.installmentCount ?? 1;
   const chargeAmount = Math.round(total * financingCharge / 100);
   const totalRepayable = total + chargeAmount;
   const weeklyInstallment = Math.round(totalRepayable / installmentCount * 100) / 100;
@@ -108,15 +111,6 @@ export function POSPage() {
 
   const canFinance = customer && available >= total && total > 0;
   const canSplit = customer && available > 0 && available < total;
-
-  const generateSchedule = (count: number, amount: number): InstallmentSchedule[] => {
-    const today = new Date();
-    return Array.from({ length: count }, (_, i) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + (i + 1) * 7);
-      return { weekNo: i + 1, dueDate: d.toISOString().split('T')[0], baseAmount: amount, penalty: 0, status: 'upcoming' as const };
-    });
-  };
 
   const openCheckout = () => {
     if (!customer) { setPickerOpen(true); return; }
@@ -151,6 +145,10 @@ export function POSPage() {
     }
     if (mode === 'split' && !canSplit) {
       showToast('error', 'Split payment requires some available credit below the order total.');
+      return;
+    }
+    if ((mode === 'financing' || mode === 'split') && !selectedPlan) {
+      showToast('error', 'No active repayment plan is available. Ask an administrator to publish one.');
       return;
     }
     isPlacingRef.current = true;
@@ -204,7 +202,7 @@ export function POSPage() {
         financingIndex += 1;
         const groupCharge = Math.round(financedAmount * financingCharge / 100);
         const groupRepayable = financedAmount + groupCharge;
-        const groupWeekly = Math.round(groupRepayable / installmentCount * 100) / 100;
+        const groupInstallment = Math.round(groupRepayable / installmentCount * 100) / 100;
         financing = {
           id: `fin${idSeed}_${financingIndex}`,
           financingNo: `FIN-${String(state.financing.length + financingIndex).padStart(4, '0')}`,
@@ -214,12 +212,18 @@ export function POSPage() {
           chargePercent: financingCharge,
           chargeAmount: groupCharge,
           totalRepayable: groupRepayable,
-          plan,
+          plan: selectedPlan.id,
+          planId: selectedPlan.id,
+          planName: selectedPlan.name,
+          planDurationValue: selectedPlan.durationValue,
+          planDurationUnit: selectedPlan.durationUnit,
+          paymentFrequency: selectedPlan.paymentFrequency,
           installmentCount,
-          weeklyInstallment: groupWeekly,
+          installmentAmount: groupInstallment,
+          weeklyInstallment: groupInstallment,
           paidPrincipal: 0,
           status: 'pending',
-          schedule: generateSchedule(installmentCount, groupWeekly),
+          schedule: buildInstallmentSchedule(installmentCount, groupInstallment, selectedPlan.paymentFrequency),
           createdAt: now,
         };
       }
@@ -570,12 +574,12 @@ export function POSPage() {
               <div className="bg-[#F7F8F6] rounded-xl p-4">
                 <div className="font-700 text-xs text-[#10212B] uppercase tracking-wider mb-3">Financing Plan</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                  {[1, 2].map(p => (
-                    <label key={p} className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${plan === p ? 'border-[#1E7D3B] bg-white' : 'border-[#E4E8E6] bg-white'}`}>
-                      <input type="radio" name="posplan" checked={plan === p} onChange={() => setPlan(p as 1 | 2)} className="text-[#1E7D3B]" />
-                      <div>
-                        <div className="font-600 text-sm">{p === 1 ? '1 Month' : '2 Months'}</div>
-                        <div className="text-[11px] text-[#65727A]">{p === 1 ? plan1Installments : plan2Installments} weekly payments</div>
+                  {availablePlans.map(plan => (
+                    <label key={plan.id} className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${selectedPlan?.id === plan.id ? 'border-[#1E7D3B] bg-white ring-1 ring-[#1E7D3B]/10' : 'border-[#E4E8E6] bg-white'}`}>
+                      <input type="radio" name="posplan" checked={selectedPlan?.id === plan.id} onChange={() => setPlanId(plan.id)} className="text-[#1E7D3B]" />
+                      <div className="min-w-0">
+                        <div className="font-700 text-sm truncate">{plan.name}</div>
+                        <div className="text-[11px] text-[#65727A]">{formatPlanDuration(plan)} · {plan.installmentCount} {plan.paymentFrequency}</div>
                       </div>
                     </label>
                   ))}
@@ -585,7 +589,7 @@ export function POSPage() {
                     ['Principal', formatPHP(mode === 'split' ? financingAmount : total)],
                     [`Finance Charge (${financingCharge}%)`, formatPHP(mode === 'split' ? splitCharge : chargeAmount)],
                     ['Total Repayable', formatPHP(mode === 'split' ? splitTotalRepayable : totalRepayable)],
-                    ['Weekly Installment', formatPHP(mode === 'split' ? splitWeekly : weeklyInstallment)],
+                    [`${selectedPlan ? formatFrequency(selectedPlan.paymentFrequency) : ''} Installment`, formatPHP(mode === 'split' ? splitWeekly : weeklyInstallment)],
                   ].map(([l, v]) => (
                     <div key={l} className="flex justify-between">
                       <span className="text-[#65727A]">{l}</span>

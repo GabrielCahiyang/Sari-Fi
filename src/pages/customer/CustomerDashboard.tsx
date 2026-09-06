@@ -1,6 +1,7 @@
 import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
 import { OrderStatusBadge, FinancingStatusBadge } from '../../components/ui/Badge';
+import { formatFrequency, getFinancingFrequency, getFinancingInstallmentAmount, getFinancingPlanName } from '../../utils/repaymentPlans';
 
 export function CustomerDashboard() {
   const { state, navigate, getCurrentCustomer, getCustomerFinancing, getCustomerOrders, formatPHP } = useApp();
@@ -119,7 +120,7 @@ export function CustomerDashboard() {
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <div className="font-700 text-sm text-[#10212B]">{fin.financingNo}</div>
-                        <div className="text-[#65727A] text-xs">{fin.plan}-Month Plan · {formatPHP(fin.weeklyInstallment)}/week</div>
+                        <div className="text-[#65727A] text-xs">{getFinancingPlanName(fin)} · {formatPHP(getFinancingInstallmentAmount(fin))} {formatFrequency(getFinancingFrequency(fin)).toLowerCase()}</div>
                       </div>
                       <FinancingStatusBadge status={fin.status} />
                     </div>

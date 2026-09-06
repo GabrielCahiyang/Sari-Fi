@@ -9,6 +9,7 @@ import {
   updateRootPaths,
 } from '../services/firebase/rtdbService';
 import type { AuthUser, Product, Order, Financing, Payment, Customer, RestockOrder } from '../types';
+import { buildInstallmentSchedule, getRepaymentPlans } from '../utils/repaymentPlans';
 
 export type TourPhase = 'focusing' | 'clicking' | 'success';
 
@@ -143,7 +144,7 @@ export const TOUR_STEPS: TourStep[] = [
     summary: 'GCash settles instantly and restores only the principal portion of the credit line.',
     detailedInstruction:
       'Viewing Gabriel\'s financing schedule. Watch Week 1 settle instantly through the GCash mock, advance the repayment schedule, and restore the principal portion of his available credit.',
-    targetFocusName: 'Weekly Installment Schedule & GCash Payment Mockup',
+    targetFocusName: 'Installment Schedule & GCash Payment Mockup',
     actionButtonLabel: 'Pay Week 1 via GCash',
     targetPage: 'customer/financing',
     targetUser: {
@@ -332,7 +333,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
           const orderId = 'ord_tour_001';
           const finId = 'fin_tour_001';
           const chargePercent = currentState.settings?.financingCharge ?? 20;
-          const installmentCount = currentState.settings?.plan1Installments ?? 4;
+          const selectedPlan = getRepaymentPlans(currentState.settings).find(plan => plan.active) ?? getRepaymentPlans(currentState.settings)[0];
+          const installmentCount = selectedPlan.installmentCount;
           const principal = 1440;
           const chargeAmount = Math.round(principal * chargePercent / 100);
           const totalRepayable = principal + chargeAmount;
@@ -370,18 +372,18 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
             chargePercent,
             chargeAmount,
             totalRepayable,
-            plan: 1,
+            plan: selectedPlan.id,
+            planId: selectedPlan.id,
+            planName: selectedPlan.name,
+            planDurationValue: selectedPlan.durationValue,
+            planDurationUnit: selectedPlan.durationUnit,
+            paymentFrequency: selectedPlan.paymentFrequency,
             installmentCount,
+            installmentAmount: weeklyInstallment,
             weeklyInstallment,
             status: 'pending',
             paidPrincipal: 0,
-            schedule: Array.from({ length: installmentCount }, (_, index) => ({
-              weekNo: index + 1,
-              dueDate: new Date(Date.now() + (index + 1) * 7 * 86400000).toISOString().split('T')[0],
-              baseAmount: weeklyInstallment,
-              penalty: 0,
-              status: index === 0 ? 'due' as const : 'upcoming' as const,
-            })),
+            schedule: buildInstallmentSchedule(installmentCount, weeklyInstallment, selectedPlan.paymentFrequency, new Date(), 'due'),
             createdAt: new Date().toISOString(),
           };
 
@@ -422,7 +424,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
         case 2: {
           // STEP 3: Supervisor Approves Financing
           const fallbackChargePercent = currentState.settings?.financingCharge ?? 20;
-          const fallbackInstallments = currentState.settings?.plan1Installments ?? 4;
+          const fallbackPlan = getRepaymentPlans(currentState.settings).find(plan => plan.active) ?? getRepaymentPlans(currentState.settings)[0];
+          const fallbackInstallments = fallbackPlan.installmentCount;
           const fallbackCharge = Math.round(1440 * fallbackChargePercent / 100);
           const fallbackRepayable = 1440 + fallbackCharge;
           const fallbackInstallment = Math.round((fallbackRepayable / fallbackInstallments) * 100) / 100;
@@ -435,21 +438,21 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
             chargePercent: fallbackChargePercent,
             chargeAmount: fallbackCharge,
             totalRepayable: fallbackRepayable,
-            plan: 1 as const,
+            plan: fallbackPlan.id,
+            planId: fallbackPlan.id,
+            planName: fallbackPlan.name,
+            planDurationValue: fallbackPlan.durationValue,
+            planDurationUnit: fallbackPlan.durationUnit,
+            paymentFrequency: fallbackPlan.paymentFrequency,
             installmentCount: fallbackInstallments,
+            installmentAmount: fallbackInstallment,
             weeklyInstallment: fallbackInstallment,
             status: 'active' as const,
             paidPrincipal: 0,
             approvedBy: 'SuperJeff',
             approvedAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
-            schedule: Array.from({ length: fallbackInstallments }, (_, index) => ({
-              weekNo: index + 1,
-              dueDate: new Date(Date.now() + (index + 1) * 7 * 86400000).toISOString().split('T')[0],
-              baseAmount: fallbackInstallment,
-              penalty: 0,
-              status: index === 0 ? 'due' as const : 'upcoming' as const,
-            })),
+            schedule: buildInstallmentSchedule(fallbackInstallments, fallbackInstallment, fallbackPlan.paymentFrequency, new Date(), 'due'),
           };
 
           await approveFinancingFlow(fin.id, 'SuperJeff');
