@@ -43,7 +43,7 @@ export function AccountPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-3 sm:gap-4 mb-4 sm:mb-5">
+        <div data-tour-target="account" className="grid grid-cols-12 gap-3 sm:gap-4 mb-4 sm:mb-5">
           <div className="col-span-12 sm:col-span-4 bg-[#1E7D3B] rounded-2xl p-3.5 sm:p-4">
             <div className="text-white/70 text-[11px] sm:text-xs font-600 uppercase tracking-wider">Available Credit</div>
             <div className="text-white font-800 text-xl sm:text-2xl mt-1 truncate">{formatPHP(available)}</div>

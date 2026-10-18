@@ -99,7 +99,7 @@ export function CartPage() {
 
   return (
     <CustomerLayout>
-      <div className="max-w-4xl mx-auto p-3.5 sm:p-6">
+      <div data-tour-target="cart" className="max-w-4xl mx-auto p-3.5 sm:p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-800 text-[#0D2B45]">Your Cart</h1>
           <button

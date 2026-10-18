@@ -52,18 +52,18 @@ export function CheckoutPage() {
 
   const customer = getCurrentCustomer()
 
-  const [mode, setMode] = useState<Mode>("cash")
+  const [mode, setMode] = useState<Mode>(state.checkoutData?.mode ?? "cash")
 
   const availablePlans = getRepaymentPlans(state.settings).filter(
     isEligiblePlan,
   )
 
-  const [planId, setPlanId] = useState(availablePlans[0]?.id ?? "")
+  const [planId, setPlanId] = useState(state.checkoutData?.plan ?? availablePlans[0]?.id ?? "")
 
   const selectedPlan =
     availablePlans.find((plan) => plan.id === planId) ?? availablePlans[0]
 
-  const [splitMethod, setSplitMethod] = useState<"cash" | "gcash">("cash")
+  const [splitMethod, setSplitMethod] = useState<"cash" | "gcash">(state.checkoutData?.splitMethod ?? "cash")
 
   const [placing, setPlacing] = useState(false)
 
@@ -591,7 +591,7 @@ export function CheckoutPage() {
         <div className="grid grid-cols-12 gap-4 sm:gap-6">
           {/* Payment Mode Selection */}
           <div className="col-span-12 md:col-span-7 space-y-4">
-            <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5">
+            <div data-tour-target="methods" className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5">
               <div className="font-700 text-sm text-[#10212B] mb-4">
                 Payment Method
               </div>
@@ -742,7 +742,7 @@ export function CheckoutPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                <div data-tour-target="plans" className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
                   {availablePlans.map((plan) => (
                     <label
                       key={plan.id}

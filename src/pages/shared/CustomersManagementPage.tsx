@@ -509,7 +509,7 @@ export function CustomersManagementPage() {
             {customers.map(cust => {
               const usedPct = cust.creditLimit > 0 ? (cust.usedCredit / cust.creditLimit) * 100 : 0;
               return (
-                <div key={cust.id} className="p-4 space-y-3">
+                <div key={cust.id} data-tour-target={cust.id === 'walkthrough_owner' ? 'customers' : undefined} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="font-mono font-700 text-xs text-[#0D2B45]">{cust.accountNo}</div>
@@ -610,7 +610,7 @@ export function CustomersManagementPage() {
                 {customers.map(cust => {
                   const usedPct = cust.creditLimit > 0 ? (cust.usedCredit / cust.creditLimit) * 100 : 0;
                   return (
-                    <tr key={cust.id} className="hover:bg-[#F7F8F6]/50 transition-colors">
+                    <tr key={cust.id} data-tour-target={cust.id === 'walkthrough_owner' ? 'customers' : undefined} className="hover:bg-[#F7F8F6]/50 transition-colors">
                       <td className="px-5 py-3 font-mono font-700 text-[#0D2B45]">{cust.accountNo}</td>
                       <td className="px-5 py-3">
                         <div className="font-600 text-sm text-[#10212B]">{cust.fullName}</div>

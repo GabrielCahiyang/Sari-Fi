@@ -1,3 +1,4 @@
+import { TourVoiceControls } from './TourVoiceControls';
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { TOUR_STEPS, useTour } from '../context/TourContext';
@@ -54,6 +55,11 @@ export function GuidedTourBar() {
     prevStep,
     goToStep,
     endTour,
+    voiceEnabled,
+    voiceSupported,
+    voiceStatus,
+    toggleVoice,
+    replayVoice,
   } = useTour();
 
   const reduceMotion = useReducedMotion();
@@ -69,7 +75,7 @@ export function GuidedTourBar() {
 
     const findVisibleTarget = () => {
       const candidates = Array.from(
-        document.querySelectorAll(`[data-tour-target="${currentStep.id}"]`)
+        document.querySelectorAll(`[data-tour-target="${currentStep.focusTarget}"]`)
       );
 
       return candidates.find(candidate => {
@@ -99,12 +105,13 @@ export function GuidedTourBar() {
         const right = Math.min(window.innerWidth - 8, rect.right + padding);
         const bottom = Math.min(window.innerHeight - 8, rect.bottom + padding);
 
-        setSpotlight({
+        const next = {
           left,
           top,
           width: Math.max(0, right - left),
           height: Math.max(0, bottom - top),
-        });
+        };
+        setSpotlight(previous => previous && Object.keys(next).every(key => Math.abs(previous[key as keyof SpotlightRect] - next[key as keyof SpotlightRect]) < 0.5) ? previous : next);
       });
     };
 
@@ -125,7 +132,8 @@ export function GuidedTourBar() {
     }, 180);
 
     const mutationObserver = new MutationObserver(measure);
-    mutationObserver.observe(document.body, { childList: true, subtree: true });
+    const workspace = document.querySelector('[data-walkthrough-page]');
+    if (workspace) mutationObserver.observe(workspace, { childList: true, subtree: true });
     window.addEventListener('resize', measure);
     window.addEventListener('scroll', measure, true);
     measure();
@@ -141,12 +149,12 @@ export function GuidedTourBar() {
   }, [currentStep.id, isMinimized, isTourActive, reduceMotion]);
 
   const phaseCopy = useMemo(() => {
-    if (isEnding) return { label: 'Restoring your workspace', tone: 'text-sky-200', dot: 'bg-sky-300' };
+    if (isEnding) return { label: 'Returning to your workspace', tone: 'text-sky-200', dot: 'bg-sky-300' };
     if (tourError) return { label: tourError, tone: 'text-rose-200', dot: 'bg-rose-300' };
     if (isPaused) return { label: 'Tour paused', tone: 'text-amber-200', dot: 'bg-amber-300' };
-    if (tourPhase === 'clicking') return { label: 'Applying the demo action', tone: 'text-amber-100', dot: 'bg-amber-300' };
-    if (tourPhase === 'success') return { label: 'Saved — review the live result', tone: 'text-emerald-200', dot: 'bg-emerald-300' };
-    return { label: 'Spotlighting the live workspace', tone: 'text-white/70', dot: 'bg-white/60' };
+    if (tourPhase === 'clicking') return { label: 'Showing the example result', tone: 'text-amber-100', dot: 'bg-amber-300' };
+    if (tourPhase === 'success') return { label: 'Example ready to review', tone: 'text-emerald-200', dot: 'bg-emerald-300' };
+    return { label: 'Locating the page section', tone: 'text-white/70', dot: 'bg-white/60' };
   }, [isEnding, isPaused, tourError, tourPhase]);
 
   if (!isTourActive) return null;
@@ -281,6 +289,7 @@ export function GuidedTourBar() {
                 </div>
                 <div className="truncate text-xs font-700 text-white">{currentStep.title}</div>
               </div>
+              <TourVoiceControls compact enabled={voiceEnabled} supported={voiceSupported} speaking={voiceStatus === 'speaking'} paused={isPaused} failed={voiceStatus === 'error'} onToggle={toggleVoice} onReplay={replayVoice} />
               <button
                 onClick={() => setIsPaused(!isPaused)}
                 disabled={isEnding}
@@ -299,7 +308,7 @@ export function GuidedTourBar() {
                 onClick={() => void endTour()}
                 disabled={isEnding}
                 className="rounded-xl p-2 text-white/45 transition-colors hover:bg-rose-400/10 hover:text-rose-200 disabled:opacity-40"
-                aria-label="Exit tour and reset demo data"
+                aria-label="Exit walkthrough"
               >
                 <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path d="m5 5 10 10M15 5 5 15" strokeLinecap="round" />
@@ -316,6 +325,7 @@ export function GuidedTourBar() {
               transition={reduceMotion ? { duration: 0.01 } : spring}
               className="pointer-events-auto w-full max-w-3xl overflow-hidden rounded-[24px] border border-white/12 bg-[#0B263D]/97 text-white shadow-[0_28px_90px_rgba(4,20,32,0.46)] backdrop-blur-2xl"
               aria-label="Interactive system tour"
+              tabIndex={-1}
             >
               <div className="h-1 bg-white/[0.08]">
                 <motion.div
@@ -325,16 +335,18 @@ export function GuidedTourBar() {
                 />
               </div>
 
-              <div className="flex items-center gap-3 border-b border-white/[0.08] px-4 py-2.5 sm:px-5">
+              <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.08] px-4 py-2.5 sm:px-5">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                   <span className="rounded-md bg-emerald-400/12 px-2 py-1 text-[9px] font-800 uppercase tracking-[0.18em] text-emerald-200">
-                    Live tour
+                    Guided preview
                   </span>
                   <span className="text-[10px] font-600 text-white/40">
                     Step {currentStep.stageNumber} / {String(TOUR_STEPS.length).padStart(2, '0')}
                   </span>
-                  <span className="hidden truncate text-[10px] text-white/30 sm:block">/{currentStep.targetPage}</span>
+                  <span className="hidden truncate text-[10px] text-white/50 sm:block">Demo data · {currentStep.targetPage}</span>
                 </div>
+
+                <TourVoiceControls enabled={voiceEnabled} supported={voiceSupported} speaking={voiceStatus === 'speaking'} paused={isPaused} failed={voiceStatus === 'error'} onToggle={toggleVoice} onReplay={replayVoice} />
 
                 <button
                   onClick={() => setIsPaused(!isPaused)}
@@ -357,7 +369,7 @@ export function GuidedTourBar() {
                   className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-700 text-rose-200/75 transition-colors hover:bg-rose-400/10 hover:text-rose-100 disabled:opacity-40"
                 >
                   {isEnding ? <Spinner /> : null}
-                  <span>{isEnding ? 'Resetting' : 'Exit & reset'}</span>
+                  <span>{isEnding ? 'Returning' : 'Exit walkthrough'}</span>
                 </button>
               </div>
 
@@ -376,7 +388,7 @@ export function GuidedTourBar() {
                         {currentStep.roleIcon} {currentStep.roleName}
                       </span>
                       <span className="text-[10px] text-white/35">
-                        acting as {currentStep.targetUser.email}
+                        {currentStep.targetUser.name} · example account
                       </span>
                     </div>
                     <h2 className="text-sm font-800 tracking-tight text-white sm:text-[15px]">
@@ -385,6 +397,7 @@ export function GuidedTourBar() {
                     <p className="mt-1 max-w-2xl text-[11px] leading-[1.65] text-white/62 sm:text-xs">
                       {currentStep.detailedInstruction}
                     </p>
+                    {voiceStatus === 'error' && <p role="status" className="mt-2 text-[11px] text-amber-200">Voice could not play. Turn Voice on to retry.</p>}
                   </div>
 
                   <div className="flex items-end justify-between gap-3 sm:min-w-44 sm:flex-col sm:items-end">
@@ -398,7 +411,7 @@ export function GuidedTourBar() {
                         whileHover={{ x: -2 }}
                         whileTap={{ scale: 0.96 }}
                         onClick={prevStep}
-                        disabled={currentStepIndex === 0 || tourPhase === 'clicking' || isEnding}
+                        disabled={currentStepIndex === 0 || isEnding}
                         className="rounded-xl border border-white/10 px-3 py-2 text-[10px] font-700 text-white/55 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-25"
                       >
                         Back
@@ -408,19 +421,19 @@ export function GuidedTourBar() {
                           whileHover={{ x: 2 }}
                           whileTap={{ scale: 0.96 }}
                           onClick={nextStep}
-                          disabled={tourPhase !== 'success' || isEnding}
+                          disabled={isEnding}
                           className="rounded-xl bg-emerald-500 px-3.5 py-2 text-[10px] font-800 text-white shadow-[0_8px_24px_rgba(16,185,129,0.22)] transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35 disabled:shadow-none"
                         >
-                          {tourPhase === 'success' ? 'Next step' : 'Auto-playing'}
+                          Next step
                         </motion.button>
                       ) : (
                         <motion.button
                           whileTap={{ scale: 0.96 }}
                           onClick={() => void endTour()}
-                          disabled={tourPhase !== 'success' || isEnding}
+                          disabled={isEnding}
                           className="rounded-xl bg-amber-300 px-3.5 py-2 text-[10px] font-800 text-[#0B263D] transition-colors hover:bg-amber-200 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35"
                         >
-                          Finish & reset
+                          Finish walkthrough
                         </motion.button>
                       )}
                     </div>
@@ -432,12 +445,11 @@ export function GuidedTourBar() {
                 {TOUR_STEPS.map((step, index) => {
                   const active = index === currentStepIndex;
                   const completed = index < currentStepIndex;
-                  const reachable = index <= currentStepIndex;
                   return (
                     <button
                       key={step.id}
-                      onClick={() => reachable && goToStep(index)}
-                      disabled={!reachable || tourPhase === 'clicking' || isEnding}
+                      onClick={() => goToStep(index)}
+                      disabled={isEnding}
                       className="group relative h-5 flex-1 disabled:cursor-default"
                       aria-label={`Tour step ${index + 1}: ${step.title}`}
                       aria-current={active ? 'step' : undefined}

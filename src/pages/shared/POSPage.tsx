@@ -697,7 +697,7 @@ export function POSPage() {
           }`}
         >
           {/* Search + categories */}
-          <div className="mb-4">
+          <div data-tour-target="pos" className="mb-4">
             <div className="relative mb-3">
               <svg
                 className="absolute left-3.5 top-3.5 w-4 h-4 text-[#65727A]"

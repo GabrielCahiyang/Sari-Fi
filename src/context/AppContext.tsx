@@ -736,6 +736,26 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | null>(null);
 
+/** Presentation-only context for the guided tour. No reducers, auth or database effects. */
+export function WalkthroughAppProvider({ state, children }: { state: AppState; children: React.ReactNode }) {
+  const value: AppContextType = {
+    state,
+    dispatch: () => undefined,
+    login: async () => false,
+    logout: async () => undefined,
+    navigate: () => undefined,
+    showToast: () => undefined,
+    getCustomer: id => state.customers.find(c => c.id === id),
+    getProduct: id => state.products.find(p => p.id === id),
+    getCurrentCustomer: () => state.customers.find(c => c.id === state.currentUser?.customerId),
+    getCustomerFinancing: id => state.financing.filter(f => f.customerId === id),
+    getCustomerOrders: id => state.orders.filter(o => o.customerId === id),
+    formatPHP: amount => `₱${(Number(amount) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    logAudit: async () => undefined,
+  };
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 

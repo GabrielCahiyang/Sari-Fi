@@ -196,7 +196,7 @@ export function ShopPage() {
                 <div
                   key={product.id}
                   data-tour-target={
-                    product.id === "prod_tour_coke" ? "1" : undefined
+                    product.id === "walkthrough_product_1" ? "1" : undefined
                   }
                   className="bg-white rounded-2xl border border-[#E4E8E6] p-3 sm:p-4 flex flex-col hover:border-[#1E7D3B]/30 hover:shadow-sm transition-all"
                 >

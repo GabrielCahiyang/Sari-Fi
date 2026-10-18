@@ -1,5 +1,5 @@
 import { AppProvider, useApp } from './context/AppContext';
-import { TourProvider } from './context/TourContext';
+import { TourProvider, useTour } from './context/TourContext';
 import { Toast } from './components/ui/Toast';
 import { GuidedTourBar } from './components/GuidedTourBar';
 import { HomePage } from './pages/HomePage';
@@ -102,15 +102,23 @@ function AppRouter() {
   return <HomePage />;
 }
 
+function TourWorkspace() {
+  const { isTourActive, currentStep } = useTour();
+  const { state } = useApp();
+  return <div className="h-full">
+    <div inert={isTourActive} key={isTourActive ? currentStep.id : 'workspace'} data-walkthrough-page={state.currentPage} className="h-full">
+      <AppRouter />
+      <Toast />
+    </div>
+    <GuidedTourBar />
+  </div>;
+}
+
 export default function App() {
   return (
     <AppProvider>
       <TourProvider>
-        <div className="h-full">
-          <AppRouter />
-          <Toast />
-          <GuidedTourBar />
-        </div>
+        <TourWorkspace />
       </TourProvider>
     </AppProvider>
   );

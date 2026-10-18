@@ -483,6 +483,7 @@ export function HomePage() {
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.95 }}
               onClick={startTour}
+              data-walkthrough-start
               className="flex items-center gap-1.5 text-xs font-800 uppercase tracking-wider text-[#1E7D3B] hover:text-[#165f2c] bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200/80 px-3 py-2 rounded-xl transition-all cursor-pointer shadow-2xs"
             >
               <svg

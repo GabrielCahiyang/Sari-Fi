@@ -219,7 +219,7 @@ export function SupplierRestockPage() {
             return (
               <div
                 key={p.id}
-                data-tour-target={p.id === 'prod_tour_coke' ? '7' : undefined}
+                data-tour-target={p.id === 'walkthrough_product_1' ? '7' : undefined}
                 className={`bg-white rounded-2xl border p-4 transition-all shadow-xs flex flex-col justify-between ${
                   addedNum > 0 ? 'border-[#1E7D3B] ring-1 ring-[#1E7D3B]/20' : 'border-[#E4E8E6]'
                 }`}
