@@ -1,3 +1,4 @@
+import { DEFAULT_REPAYMENT_PLANS } from '../utils/repaymentPlans';
 import type { Customer, Employee, Supplier, Product, Order, Financing, Payment, RestockOrder, SystemSettings, AuditEntry, AuthUser } from '../types';
 
 export const USERS: (AuthUser & { password: string })[] = [
@@ -387,13 +388,12 @@ export const AUDIT_LOG: AuditEntry[] = [
 ];
 
 export const DEFAULT_SETTINGS: SystemSettings = {
+  retailMinimumQuantity: 12,
+  retailMarkupMultiplier: 1.05,
   financingCharge: 20,
   startingCreditLimit: 5000,
   limitIncreaseAmount: 1000,
   maxAutomaticLimit: 20000,
   weeklyPenalty: 10,
-  repaymentPlans: [
-    { id: 'plan_1_month', name: '1-Month Plan', durationValue: 1, durationUnit: 'month', paymentFrequency: 'weekly', installmentCount: 4, active: true },
-    { id: 'plan_2_months', name: '2-Month Plan', durationValue: 2, durationUnit: 'month', paymentFrequency: 'weekly', installmentCount: 8, active: true },
-  ],
+  repaymentPlans: DEFAULT_REPAYMENT_PLANS.map(plan => ({ ...plan })),
 };

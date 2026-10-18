@@ -7,9 +7,23 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc -p functions/tsconfig.json && tsc -p tsconfig.scripts.json",
+    "build:functions": "esbuild functions/src/index.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=functions/lib/index.js",
+    "cloudinary:setup": "tsx scripts/setupCloudinary.ts",
+    "catalog:photos": "tsx scripts/uploadCatalogPhotos.ts",
+    "catalog:photos:dry-run": "tsx scripts/uploadCatalogPhotos.ts --dry-run",
+    "catalog:review": "tsx scripts/findProductPhotos.ts",
+    "catalog:import": "tsx scripts/importClientCatalog.ts",
+    "data:audit": "tsx scripts/auditDatabase.ts",
+    "data:cleanup": "tsx scripts/cleanupLegacyData.ts",
+    "data:verify": "tsx scripts/verifyCleanMigration.ts",
+    "data:restore-rehearsal": "tsx scripts/rehearseRestore.ts"
   },
   "dependencies": {
+    "@cloudinary/react": "^1.14.4",
+    "@cloudinary/url-gen": "^1.22.0",
     "firebase": "^12.18.0",
     "motion": "^13.2.0",
     "react": "^19.0.0",
@@ -21,9 +35,17 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.0",
+    "cloudinary": "^2.11.0",
+    "csv-parse": "^7.0.3",
+    "dotenv": "^18.0.8",
+    "esbuild": "^0.28.2",
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0",
     "oxfmt": "^0.2.0",
     "tailwindcss": "^4.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.0",
-    "vite": "^8.0.5"
+    "vite": "^8.0.5",
+    "vitest": "^5.0.5"
   }
 }

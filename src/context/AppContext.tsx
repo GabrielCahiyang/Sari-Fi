@@ -130,13 +130,16 @@ function coreReducer(state: AppState, action: Action): AppState {
     case 'NAVIGATE':
       return { ...state, currentPage: action.page };
     case 'CART_ADD': {
+      const product = state.products.find(p => p.id === action.productId);
       const existing = state.cart.find(c => c.productId === action.productId);
+      if (!product || product.status !== 'active' || !Number.isSafeInteger(action.quantity) || action.quantity < 1 || (existing?.quantity ?? 0) + action.quantity > product.stock) return state;
       if (existing) {
         return { ...state, cart: state.cart.map(c => c.productId === action.productId ? { ...c, quantity: c.quantity + action.quantity } : c) };
       }
       return { ...state, cart: [...state.cart, { productId: action.productId, quantity: action.quantity }] };
     }
     case 'CART_UPDATE':
+      if (!Number.isSafeInteger(action.quantity) || action.quantity < 1 || action.quantity > (state.products.find(p => p.id === action.productId)?.stock ?? 0)) return state;
       return { ...state, cart: state.cart.map(c => c.productId === action.productId ? { ...c, quantity: action.quantity } : c) };
     case 'CART_REMOVE':
       return { ...state, cart: state.cart.filter(c => c.productId !== action.productId) };
@@ -547,7 +550,17 @@ function coreReducer(state: AppState, action: Action): AppState {
       (action.products || []).forEach(p => {
         if (p && p.id) map.set(p.id, p);
       });
-      return { ...state, products: Array.from(map.values()) };
+      const cart = state.cart.flatMap(item => {
+        const product = map.get(item.productId);
+        if (!product || product.status !== 'active' || product.stock < 1 || !Number.isSafeInteger(item.quantity)) return [];
+        return [{ ...item, quantity: Math.min(item.quantity, product.stock) }];
+      });
+      const changed = JSON.stringify(cart) !== JSON.stringify(state.cart) || state.cart.some(item => {
+        const before = state.products.find(p => p.id === item.productId); const after = map.get(item.productId);
+        return before?.sellingPrice !== after?.sellingPrice || before?.retailPrice !== after?.retailPrice;
+      });
+      return { ...state, products: Array.from(map.values()), cart, checkoutData: changed ? null : state.checkoutData,
+        toast: changed ? { id: 'catalog-update', type: 'info', message: 'Catalog updated—review your cart.' } : state.toast };
     }
     case 'SYNC_EMPLOYEES': {
       const map = new Map<string, Employee>();
@@ -829,7 +842,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getCustomerOrders = useCallback((customerId: string) => state.orders.filter(o => o.customerId === customerId), [state.orders]);
   const formatPHP = useCallback((amount?: number | null) => {
     const val = typeof amount === 'number' && !isNaN(amount) ? amount : Number(amount) || 0;
-    return `₱${val.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+    return `₱${val.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }, []);
 
   const logAudit = useCallback(async (data: {

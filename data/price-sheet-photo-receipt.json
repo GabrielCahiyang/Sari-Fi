@@ -1,0 +1,134 @@
+{
+  "SF-AJINOMOTO-VETSIN": {
+    "sha256": "24dec144c21befaf533fc074be9d05ff69f8c4264e808fa24d863bb54fc9f4f3",
+    "publicId": "sarifi/price-sheet-demo/sf-ajinomoto-vetsin",
+    "assetId": "682ccdb7a8782a61a60feb9d2b95c3bf",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353467/sarifi/price-sheet-demo/sf-ajinomoto-vetsin.png"
+  },
+  "SF-CRISPY-FRY": {
+    "sha256": "8222648eef623241a1f7be2260ed9dd7eace742fb7389a36aec471a9836bc198",
+    "publicId": "sarifi/price-sheet-demo/sf-crispy-fry",
+    "assetId": "e274af8c29cbba1b2bb26f0ed6c1c2f3",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353468/sarifi/price-sheet-demo/sf-crispy-fry.png"
+  },
+  "SF-MAGIC-SARAP": {
+    "sha256": "0f9c8cec5d2d03ab3c25a2b44ce3a91b08bc11b111f34d8fe693b5fdd411c314",
+    "publicId": "sarifi/price-sheet-demo/sf-magic-sarap",
+    "assetId": "a0f3a1ccf2c86aaccbcc270169646f38",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353469/sarifi/price-sheet-demo/sf-magic-sarap.jpg"
+  },
+  "SF-SARSAYA": {
+    "sha256": "c707d4d7de3376c7faf12f02c67571bd4d6db6ba8cc119646d7596a444c0f0ea",
+    "publicId": "sarifi/price-sheet-demo/sf-sarsaya",
+    "assetId": "b502df9a36a919694692c38a1825cffd",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353469/sarifi/price-sheet-demo/sf-sarsaya.jpg"
+  },
+  "SF-KNORR-CUBES": {
+    "sha256": "5c38f3f340485b0d6d1f4dc7373c8cb719daffc1c300392183af5ef13accf9d4",
+    "publicId": "sarifi/price-sheet-demo/sf-knorr-cubes",
+    "assetId": "dc12d99b2e1664e8117ff9270054c41c",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353470/sarifi/price-sheet-demo/sf-knorr-cubes.jpg"
+  },
+  "SF-PANCIT-CANTON": {
+    "sha256": "acd2813f583a8928f700a3ad5ea89a7f1ed58c7d0c0dde730ba4718414eae188",
+    "publicId": "sarifi/price-sheet-demo/sf-pancit-canton",
+    "assetId": "7af5566eabccfa4f8091ee5bf0813d82",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353471/sarifi/price-sheet-demo/sf-pancit-canton.jpg"
+  },
+  "SF-LUCKY-ME-NOODLES": {
+    "sha256": "40a99a4b0f62b0bef55d57cf4e8a771629602c6a8220ee77d53c95282ca59e1a",
+    "publicId": "sarifi/price-sheet-demo/sf-lucky-me-noodles",
+    "assetId": "877f84fe25f798af2ac4b00791f3990c",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353472/sarifi/price-sheet-demo/sf-lucky-me-noodles.jpg"
+  },
+  "SF-KOPIKO-BLACK-SOLO": {
+    "sha256": "0b9aa9c1a3ebba2121315923049a0e073319739a845cb98e75ccd313bbfcdf60",
+    "publicId": "sarifi/price-sheet-demo/sf-kopiko-black-solo",
+    "assetId": "346bf8366e4de10bbfb542a542b66db9",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353473/sarifi/price-sheet-demo/sf-kopiko-black-solo.png"
+  },
+  "SF-KOPIKO-BLACK-TWIN": {
+    "sha256": "ea7f8d534e62de1e7a1ef1fe023596af7262bba18b5f50d1f23a4871f34de0be",
+    "publicId": "sarifi/price-sheet-demo/sf-kopiko-black-twin",
+    "assetId": "0a5ff49b9e1bc8723e4e1280e8bfd9fe",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353473/sarifi/price-sheet-demo/sf-kopiko-black-twin.jpg"
+  },
+  "SF-KOPIKO-BLANCA-SOLO": {
+    "sha256": "0d80cc3fdc91ec9221675390a67ca26a97bd3ea31be198b6ed4a9c06e4a4b3fc",
+    "publicId": "sarifi/price-sheet-demo/sf-kopiko-blanca-solo",
+    "assetId": "7553ac1b0c6fe9b0c2588b5323f5620d",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353474/sarifi/price-sheet-demo/sf-kopiko-blanca-solo.jpg"
+  },
+  "SF-KOPIKO-BLANCA-TWIN": {
+    "sha256": "f967b670d943b94ee9cd3022be8581b8ba374771e64ce493281efca652e57e1e",
+    "publicId": "sarifi/price-sheet-demo/sf-kopiko-blanca-twin",
+    "assetId": "1f54afe4b766bac0a2bb93d95f9feb5f",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353475/sarifi/price-sheet-demo/sf-kopiko-blanca-twin.jpg"
+  },
+  "SF-NESCAFE-STICK": {
+    "sha256": "3c48937bae60317b84881abf55e71fc84abd6a336bcec5d7593349e54fbe3fc7",
+    "publicId": "sarifi/price-sheet-demo/sf-nescafe-stick",
+    "assetId": "84a011e30d22f7db8721e9d6b9ff0562",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353475/sarifi/price-sheet-demo/sf-nescafe-stick.png"
+  },
+  "SF-COFFEE-MATE": {
+    "sha256": "d035c2bda886d538a7754781b6adce1bec85fe8f9ffe91361d88d0db0e6074b3",
+    "publicId": "sarifi/price-sheet-demo/sf-coffee-mate",
+    "assetId": "b60dd23d1bcfb8008116634050da0c33",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353476/sarifi/price-sheet-demo/sf-coffee-mate.png"
+  },
+  "SF-ENERGEN-SOLO": {
+    "sha256": "51e791f36592ff9cfacdf6b5f255ce9fd9b5194ad80523f478377452dcdcd34a",
+    "publicId": "sarifi/price-sheet-demo/sf-energen-solo",
+    "assetId": "bb7ed52020e598fc5c5d986a27fd316e",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353477/sarifi/price-sheet-demo/sf-energen-solo.png"
+  },
+  "SF-ENERGEN-TWIN": {
+    "sha256": "ce6ab7ded5aa1e477262e4b813214b6be8aa98e2a3df6ffd6ae0d2bd8ddd182c",
+    "publicId": "sarifi/price-sheet-demo/sf-energen-twin",
+    "assetId": "11ce0c6b75fb7bdb28c233188cb319e1",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353477/sarifi/price-sheet-demo/sf-energen-twin.jpg"
+  },
+  "SF-MILO": {
+    "sha256": "a43749ce988a739e89a6fd3c5d2083be71a33e292f68d40062aac01473ae5191",
+    "publicId": "sarifi/price-sheet-demo/sf-milo",
+    "assetId": "aaa6a98043d795e31d692c1f9e86c18a",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353478/sarifi/price-sheet-demo/sf-milo.jpg"
+  },
+  "SF-SUNSILK": {
+    "sha256": "7754be08437c3b75b50aae78f679a5c9fd727f6167161db28abbe9dbb8a767fa",
+    "publicId": "sarifi/price-sheet-demo/sf-sunsilk",
+    "assetId": "3ffa9b5e9f3a8de11215dd99b77d83b6",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353479/sarifi/price-sheet-demo/sf-sunsilk.jpg"
+  },
+  "SF-HEAD-SHOULDERS": {
+    "sha256": "ef55ba9308543de785b005828757d2caa9e64e6a9b5f40bb816a223ec1bd0066",
+    "publicId": "sarifi/price-sheet-demo/sf-head-shoulders",
+    "assetId": "03e4b3bdac83ef387d07b6b83b0514ef",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353480/sarifi/price-sheet-demo/sf-head-shoulders.jpg"
+  },
+  "SF-PANTENE": {
+    "sha256": "c5605bd2f2f5e2963da3fca44e88fb77080f4b59cadb5a8d9d87d885224f9b8a",
+    "publicId": "sarifi/price-sheet-demo/sf-pantene",
+    "assetId": "27fcb91085227ef1dc880f55d838184f",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353480/sarifi/price-sheet-demo/sf-pantene.jpg"
+  },
+  "SF-REJOICE": {
+    "sha256": "3a88cb4c7b24cde780d2f6eb37291907f44b3564517aba7fe3b8354036f0df5f",
+    "publicId": "sarifi/price-sheet-demo/sf-rejoice",
+    "assetId": "8820452956866777c27ff1b89a0d6d80",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353481/sarifi/price-sheet-demo/sf-rejoice.jpg"
+  },
+  "SF-KERATIN": {
+    "sha256": "39a748ea6635282722144bb7b2d0763be496b36a258e2b9ff4d1dcc5a41e4e5c",
+    "publicId": "sarifi/price-sheet-demo/sf-keratin",
+    "assetId": "c3288a912091c65543e13b17cf0a24f8",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353482/sarifi/price-sheet-demo/sf-keratin.jpg"
+  },
+  "SF-CREAM-SILK": {
+    "sha256": "b715b8ef63bf3048f1c06e24a7e51ee497174fef5e7ca36500f48999c9584c45",
+    "publicId": "sarifi/price-sheet-demo/sf-cream-silk",
+    "assetId": "9c19f9b07d8ea909415eab08d8705134",
+    "url": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353482/sarifi/price-sheet-demo/sf-cream-silk.jpg"
+  }
+}

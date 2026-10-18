@@ -70,6 +70,8 @@ export interface Product {
   category: string;
   supplierId: string;
   sellingPrice: number;
+  /** Lower customer price at the same-SKU quantity threshold. */
+  retailPrice?: number;
   costPrice: number;
   stock: number;
   reorderLevel: number;
@@ -224,6 +226,9 @@ export interface RestockOrder {
 }
 
 export interface SystemSettings {
+  retailMinimumQuantity?: number;
+  retailMarkupMultiplier?: number;
+  /** @deprecated Historical configuration; new charges derive from term months. */
   financingCharge: number;
   startingCreditLimit: number;
   limitIncreaseAmount: number;

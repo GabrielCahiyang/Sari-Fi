@@ -1,0 +1,142 @@
+{
+  "seed": "owner-price-sheet-demo-2026-10-19",
+  "verifiedAt": "2026-10-18T19:58:15.090Z",
+  "createdCount": 22,
+  "verifiedCount": 22,
+  "totalCatalogCount": 22,
+  "assumptions": "Owner authorized reasonable demo values: stock 60, reorder 12, estimated cost 85% of retail. Exact sheet prices preserved. Generic names do not assert sourced flavor/weight.",
+  "products": [
+    {
+      "id": "sheet_sf_ajinomoto_vetsin",
+      "sku": "SF-AJINOMOTO-VETSIN",
+      "name": "Ajinomoto Vetsin",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353467/sarifi/price-sheet-demo/sf-ajinomoto-vetsin.png"
+    },
+    {
+      "id": "sheet_sf_crispy_fry",
+      "sku": "SF-CRISPY-FRY",
+      "name": "Ajinomoto Crispy Fry",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353468/sarifi/price-sheet-demo/sf-crispy-fry.png"
+    },
+    {
+      "id": "sheet_sf_magic_sarap",
+      "sku": "SF-MAGIC-SARAP",
+      "name": "Maggi Magic Sarap",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353469/sarifi/price-sheet-demo/sf-magic-sarap.jpg"
+    },
+    {
+      "id": "sheet_sf_sarsaya",
+      "sku": "SF-SARSAYA",
+      "name": "Sarsaya Oyster Sauce",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353469/sarifi/price-sheet-demo/sf-sarsaya.jpg"
+    },
+    {
+      "id": "sheet_sf_knorr_cubes",
+      "sku": "SF-KNORR-CUBES",
+      "name": "Knorr Cubes",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353470/sarifi/price-sheet-demo/sf-knorr-cubes.jpg"
+    },
+    {
+      "id": "sheet_sf_pancit_canton",
+      "sku": "SF-PANCIT-CANTON",
+      "name": "Lucky Me Pancit Canton",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353471/sarifi/price-sheet-demo/sf-pancit-canton.jpg"
+    },
+    {
+      "id": "sheet_sf_lucky_me_noodles",
+      "sku": "SF-LUCKY-ME-NOODLES",
+      "name": "Lucky Me Noodles",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353472/sarifi/price-sheet-demo/sf-lucky-me-noodles.jpg"
+    },
+    {
+      "id": "sheet_sf_kopiko_black_solo",
+      "sku": "SF-KOPIKO-BLACK-SOLO",
+      "name": "Kopiko Black (Solo)",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353473/sarifi/price-sheet-demo/sf-kopiko-black-solo.png"
+    },
+    {
+      "id": "sheet_sf_kopiko_black_twin",
+      "sku": "SF-KOPIKO-BLACK-TWIN",
+      "name": "Kopiko Black (Twin)",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353473/sarifi/price-sheet-demo/sf-kopiko-black-twin.jpg"
+    },
+    {
+      "id": "sheet_sf_kopiko_blanca_solo",
+      "sku": "SF-KOPIKO-BLANCA-SOLO",
+      "name": "Kopiko Blanca (Solo)",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353474/sarifi/price-sheet-demo/sf-kopiko-blanca-solo.jpg"
+    },
+    {
+      "id": "sheet_sf_kopiko_blanca_twin",
+      "sku": "SF-KOPIKO-BLANCA-TWIN",
+      "name": "Kopiko Blanca (Twin)",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353475/sarifi/price-sheet-demo/sf-kopiko-blanca-twin.jpg"
+    },
+    {
+      "id": "sheet_sf_nescafe_stick",
+      "sku": "SF-NESCAFE-STICK",
+      "name": "Nescafe Stick",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353475/sarifi/price-sheet-demo/sf-nescafe-stick.png"
+    },
+    {
+      "id": "sheet_sf_coffee_mate",
+      "sku": "SF-COFFEE-MATE",
+      "name": "Coffee Mate",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353476/sarifi/price-sheet-demo/sf-coffee-mate.png"
+    },
+    {
+      "id": "sheet_sf_energen_solo",
+      "sku": "SF-ENERGEN-SOLO",
+      "name": "Energen (Solo)",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353477/sarifi/price-sheet-demo/sf-energen-solo.png"
+    },
+    {
+      "id": "sheet_sf_energen_twin",
+      "sku": "SF-ENERGEN-TWIN",
+      "name": "Energen (Twin)",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353477/sarifi/price-sheet-demo/sf-energen-twin.jpg"
+    },
+    {
+      "id": "sheet_sf_milo",
+      "sku": "SF-MILO",
+      "name": "Milo",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353478/sarifi/price-sheet-demo/sf-milo.jpg"
+    },
+    {
+      "id": "sheet_sf_sunsilk",
+      "sku": "SF-SUNSILK",
+      "name": "Sunsilk",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353479/sarifi/price-sheet-demo/sf-sunsilk.jpg"
+    },
+    {
+      "id": "sheet_sf_head_shoulders",
+      "sku": "SF-HEAD-SHOULDERS",
+      "name": "Head & Shoulders",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353480/sarifi/price-sheet-demo/sf-head-shoulders.jpg"
+    },
+    {
+      "id": "sheet_sf_pantene",
+      "sku": "SF-PANTENE",
+      "name": "Pantene",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353480/sarifi/price-sheet-demo/sf-pantene.jpg"
+    },
+    {
+      "id": "sheet_sf_rejoice",
+      "sku": "SF-REJOICE",
+      "name": "Rejoice",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353481/sarifi/price-sheet-demo/sf-rejoice.jpg"
+    },
+    {
+      "id": "sheet_sf_keratin",
+      "sku": "SF-KERATIN",
+      "name": "Keratin Conditioner",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353482/sarifi/price-sheet-demo/sf-keratin.jpg"
+    },
+    {
+      "id": "sheet_sf_cream_silk",
+      "sku": "SF-CREAM-SILK",
+      "name": "Cream Silk Conditioner",
+      "imageUrl": "https://res.cloudinary.com/a5bi1hsj/image/upload/v1792353482/sarifi/price-sheet-demo/sf-cream-silk.jpg"
+    }
+  ]
+}

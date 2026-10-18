@@ -1,0 +1,4 @@
+{
+  "functions": [{ "source": "functions", "codebase": "sarifi-checkout", "predeploy": ["npm run build:functions"] }],
+  "emulators": { "database": { "port": 9000 }, "functions": { "port": 5001 }, "auth": { "port": 9099 } }
+}

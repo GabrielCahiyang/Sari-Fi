@@ -1,4 +1,11 @@
-import { useState, useMemo, useEffect, type ReactNode } from "react";
+import clientOwnerPhoto from "../assets/client-owner-photo.png"
+
+import { sumMoney } from "../utils/productPricing"
+
+import { calculateFinancing } from "../utils/financingCalculator"
+
+import { useState, useMemo, useEffect, type ReactNode } from "react"
+
 import {
   motion,
   AnimatePresence,
@@ -6,54 +13,81 @@ import {
   useSpring,
   useTransform,
   type Variants,
-} from "motion/react";
-import logo from "../assets/sarifi-logo.png";
-import { useApp } from "../context/AppContext";
-import { useTour } from "../context/TourContext";
-import { formatFrequency, formatPlanDuration, getRepaymentPlans } from "../utils/repaymentPlans";
+} from "motion/react"
+
+import logo from "../assets/sarifi-logo.png"
+
+import { useApp } from "../context/AppContext"
+
+import { useTour } from "../context/TourContext"
+
+import {
+  formatFrequency,
+  formatPlanDuration,
+  getRepaymentPlans,
+  isEligiblePlan,
+  getPlanChargePercent,
+} from "../utils/repaymentPlans"
 
 interface BenefitItem {
-  icon: ReactNode;
-  title: string;
-  description: string;
-  color: string;
-  textMuted: string;
-  iconColor: string;
+  icon: ReactNode
+
+  title: string
+
+  description: string
+
+  color: string
+
+  textMuted: string
+
+  iconColor: string
 }
 
 const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1759860002165-f059bfcee759?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzYXJpLXNhcmklMjBzdG9yZSUyMHBoaWxpcHBpbmVzJTIwZ3JvY2VyeSUyMG1hcmtldHxlbnwxfHx8fDE3ODgzNzI1NTF8MA&ixlib=rb-4.1.0&q=80&w=1080";
+  "https://images.unsplash.com/photo-1759860002165-f059bfcee759?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzYXJpLXNhcmklMjBzdG9yZSUyMHBoaWxpcHBpbmVzJTIwZ3JvY2VyeSUyMG1hcmtldHxlbnwxfHx8fDE3ODgzNzI1NTF8MA&ixlib=rb-4.1.0&q=80&w=1080"
+
 const STORE_IMAGE =
-  "https://images.unsplash.com/photo-1759774289306-36f0cdb59bc1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwyfHxzYXJpLXNhcmklMjBzdG9yZSUyMHBoaWxpcHBpbmVzJTIwZ3JvY2VyeSUyMG1hcmtldHxlbnwxfHx8fDE3ODgzNzI1NTF8MA&ixlib=rb-4.1.0&q=80&w=1080";
-const OWNER_IMAGE =
-  "https://images.unsplash.com/photo-1687422808311-a776f467a468?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwzfHxzbWFsbCUyMGJ1c2luZXNzJTIwd29tYW4lMjBlbnRyZXByZW5ldXIlMjBzdG9yZSUyMG93bmVyfGVufDF8fHx8MTc4ODM3MjU2MHww&ixlib=rb-4.1.0&q=80&w=1080";
+  "https://images.unsplash.com/photo-1759774289306-36f0cdb59bc1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwyfHxzYXJpLXNhcmklMjBzdG9yZSUyMHBoaWxpcHBpbmVzJTIwZ3JvY2VyeSUyMG1hcmtldHxlbnwxfHx8fDE3ODgzNzI1NTF8MA&ixlib=rb-4.1.0&q=80&w=1080"
+
+const OWNER_IMAGE = clientOwnerPhoto
 
 const STEPS = [
   {
     number: "01",
+
     title: "Apply In Person",
+
     description:
       "Visit any Sari-Fi branch. Our staff records your personal and store information during your application.",
   },
+
   {
     number: "02",
+
     title: "Get Approved",
+
     description:
       "Our team reviews your application. Approved applicants receive a personal Sari-Fi account with a starting credit line.",
   },
+
   {
     number: "03",
+
     title: "Shop & Finance",
+
     description:
-      "Log in, browse wholesale inventory, and choose how to pay — full, financed, or split.",
+      "Log in, browse grocery essentials and unlock retail rates by quantity, and choose how to pay — full, financed, or split.",
   },
-];
+]
 
 function getBenefits(settings: any, productsCount: number): BenefitItem[] {
-  const limitInc = settings?.limitIncreaseAmount || 1000;
-  const maxLimit = settings?.maxAutomaticLimit || 20000;
-  const plans = getRepaymentPlans(settings).filter(plan => plan.active);
-  const planSummary = plans.slice(0, 2).map(plan => `${plan.name} (${plan.installmentCount} ${plan.paymentFrequency})`).join(' or ');
+  const limitInc = settings?.limitIncreaseAmount || 1000
+
+  const maxLimit = settings?.maxAutomaticLimit || 20000
+
+  const plans = getRepaymentPlans(settings).filter(isEligiblePlan)
+
+  const planSummary = `${plans.length} available repayment terms`
 
   return [
     {
@@ -72,13 +106,19 @@ function getBenefits(settings: any, productsCount: number): BenefitItem[] {
           />
         </svg>
       ),
+
       title: "Revolving Credit",
+
       description:
         "As you repay, your available credit restores automatically. One approval, ongoing access.",
+
       color: "bg-[#1E7D3B] text-white",
+
       textMuted: "text-white/80",
+
       iconColor: "text-white",
     },
+
     {
       icon: (
         <svg
@@ -95,12 +135,22 @@ function getBenefits(settings: any, productsCount: number): BenefitItem[] {
           />
         </svg>
       ),
-      title: "Wholesale Prices",
-      description: `Access ${productsCount || 30}+ product lines at wholesale prices — direct to your store, no middleman.`,
+
+      title: "Retail Prices",
+
+      description: `Browse ${
+        productsCount
+          ? `${productsCount} grocery products`
+          : "grocery essentials"
+      }. Buy ${settings?.retailMinimumQuantity ?? 12} or more of the same item to unlock our lower retail unit price.`,
+
       color: "bg-white border border-[#E4E8E6]",
+
       textMuted: "text-[#65727A]",
+
       iconColor: "text-[#1E7D3B]",
     },
+
     {
       icon: (
         <svg
@@ -117,13 +167,19 @@ function getBenefits(settings: any, productsCount: number): BenefitItem[] {
           />
         </svg>
       ),
+
       title: "Flexible Payment",
+
       description:
         "Pay in full, use Sari-Fi financing, or split your payment between credit and cash or GCash.",
+
       color: "bg-white border border-[#E4E8E6]",
+
       textMuted: "text-[#65727A]",
+
       iconColor: "text-[#1E7D3B]",
     },
+
     {
       icon: (
         <svg
@@ -140,12 +196,18 @@ function getBenefits(settings: any, productsCount: number): BenefitItem[] {
           />
         </svg>
       ),
+
       title: "Credit Growth",
+
       description: `Each completed financing cycle can increase your limit by ${peso(limitInc)} — up to ${peso(maxLimit)}.`,
+
       color: "bg-[#0D2B45] text-white",
+
       textMuted: "text-white/80",
+
       iconColor: "text-[#7DBE4C]",
     },
+
     {
       icon: (
         <svg
@@ -162,12 +224,18 @@ function getBenefits(settings: any, productsCount: number): BenefitItem[] {
           />
         </svg>
       ),
+
       title: "Flexible Repayments",
-      description: `Choose ${planSummary || 'a flexible repayment plan'} with equal installments designed around your cash flow.`,
+
+      description: `Choose ${planSummary || "a flexible repayment plan"} with equal installments designed around your cash flow.`,
+
       color: "bg-[#FFF9E6] border border-[#FFD54F]/40",
+
       textMuted: "text-[#65727A]",
+
       iconColor: "text-[#B8860B]",
     },
+
     {
       icon: (
         <svg
@@ -184,112 +252,176 @@ function getBenefits(settings: any, productsCount: number): BenefitItem[] {
           />
         </svg>
       ),
+
       title: "GCash Ready",
+
       description:
         "Pay installments or orders via GCash — instant confirmation, no queuing at the counter.",
+
       color: "bg-white border border-[#E4E8E6]",
+
       textMuted: "text-[#65727A]",
+
       iconColor: "text-[#1E7D3B]",
     },
-  ];
+  ]
 }
 
 const REQUIREMENTS = [
   "Registered or established sari-sari store",
-  "Valid government-issued ID",
-  "Proof of business address / store presence",
-  "At least 6 months in active operation",
-];
 
-const peso = (n: number) => `₱${Math.round(n).toLocaleString("en-PH")}`;
+  "Valid government-issued ID",
+
+  "Proof of business address / store presence",
+
+  "At least 6 months in active operation",
+]
+
+const peso = (n: number) =>
+  n.toLocaleString("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    minimumFractionDigits: 2,
+  })
 
 const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 25 },
+
   visible: {
     opacity: 1,
+
     y: 0,
+
     transition: { type: "spring", stiffness: 260, damping: 22 },
   },
-};
+}
 
 const staggerContainer: Variants = {
   hidden: { opacity: 0 },
+
   visible: {
     opacity: 1,
+
     transition: {
       staggerChildren: 0.1,
+
       delayChildren: 0.05,
     },
   },
-};
+}
 
 export function HomePage() {
-  const { navigate, state } = useApp();
-  const { startTour } = useTour();
-  const settings = state.settings;
-  const LIMIT = settings?.startingCreditLimit || 5000;
-  const MAX_LIMIT = settings?.maxAutomaticLimit || 20000;
-  const LIMIT_INC = settings?.limitIncreaseAmount || 1000;
-  const CHARGE_PCT = settings?.financingCharge ?? 2;
-  const repaymentPlans = getRepaymentPlans(settings).filter(plan => plan.active);
+  const { navigate, state } = useApp()
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
+  const { startTour } = useTour()
+
+  const settings = state.settings
+
+  const LIMIT = settings?.startingCreditLimit || 5000
+
+  const MAX_LIMIT = settings?.maxAutomaticLimit || 20000
+
+  const LIMIT_INC = settings?.limitIncreaseAmount || 1000
+
+  const repaymentPlans = getRepaymentPlans(settings).filter(isEligiblePlan)
+
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const [activeStep, setActiveStep] = useState(0)
 
   // Dynamic Scroll Progress Tracking
-  const [scrollProgress, setScrollProgress] = useState(0);
+
+  const [scrollProgress, setScrollProgress] = useState(0)
 
   useEffect(() => {
     const handleScroll = () => {
-      const doc = document.documentElement;
-      const body = document.body;
+      const doc = document.documentElement
+
+      const body = document.body
+
       const winScroll =
-        window.pageYOffset || doc.scrollTop || body.scrollTop || 0;
+        window.pageYOffset || doc.scrollTop || body.scrollTop || 0
+
       const scrollHeight =
         Math.max(
           doc.scrollHeight,
+
           body.scrollHeight,
+
           doc.offsetHeight,
+
           body.offsetHeight,
-        ) - window.innerHeight;
+        ) - window.innerHeight
 
       if (scrollHeight > 0) {
-        const scrolled = Math.min(1, Math.max(0, winScroll / scrollHeight));
-        setScrollProgress(scrolled);
-      }
-    };
+        const scrolled = Math.min(1, Math.max(0, winScroll / scrollHeight))
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll, { passive: true });
-    handleScroll();
+        setScrollProgress(scrolled)
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true })
+
+    window.addEventListener("resize", handleScroll, { passive: true })
+
+    handleScroll()
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-    };
-  }, []);
+      window.removeEventListener("scroll", handleScroll)
 
-  const { scrollY } = useScroll();
-  const heroParallaxY = useTransform(scrollY, [0, 600], [0, 120]);
+      window.removeEventListener("resize", handleScroll)
+    }
+  }, [])
+
+  const { scrollY } = useScroll()
+
+  const heroParallaxY = useTransform(scrollY, [0, 600], [0, 120])
 
   // Revolving credit demo
-  const [used, setUsed] = useState(Math.min(3500, Math.round(LIMIT * 0.7)));
-  const availPct = Math.max(0, Math.round(((LIMIT - used) / LIMIT) * 100));
+
+  const [used, setUsed] = useState(Math.min(3500, Math.round(LIMIT * 0.7)))
+
+  const availPct = Math.max(0, Math.round(((LIMIT - used) / LIMIT) * 100))
 
   // Financing calculator
-  const [principal, setPrincipal] = useState(Math.min(5000, LIMIT));
-  const [calculatorPlanId, setCalculatorPlanId] = useState(repaymentPlans[0]?.id ?? '');
-  const calculatorPlan = repaymentPlans.find(plan => plan.id === calculatorPlanId) ?? repaymentPlans[0];
-  const weeks = calculatorPlan?.installmentCount ?? 1;
-  const [paidWeeks, setPaidWeeks] = useState(2);
-  const paid = Math.min(paidWeeks, weeks);
-  const charge = Math.round(principal * (CHARGE_PCT / 100));
-  const total = principal + charge;
-  const perWeek = Math.round((total / weeks) * 100) / 100;
+
+  const [principal, setPrincipal] = useState(Math.min(5000, LIMIT))
+
+  const [calculatorPlanId, setCalculatorPlanId] = useState(
+    repaymentPlans[0]?.id ?? "",
+  )
+
+  const calculatorPlan =
+    repaymentPlans.find((plan) => plan.id === calculatorPlanId) ??
+    repaymentPlans[0]
+
+  const weeks = calculatorPlan?.installmentCount ?? 1
+
+  const [paidWeeks, setPaidWeeks] = useState(2)
+
+  const paid = Math.min(paidWeeks, weeks)
+
+  const CHARGE_PCT = calculatorPlan ? getPlanChargePercent(calculatorPlan) : 0
+
+  const quote = calculatorPlan
+    ? calculateFinancing(principal, calculatorPlan)
+    : null
+
+  const charge = quote?.chargeAmount ?? 0
+
+  const total = quote?.totalRepayable ?? 0
+
+  const perWeek = quote?.installmentAmount ?? 0
+
   const benefits = useMemo(
-    () => getBenefits(settings, state.products.length),
+    () =>
+      getBenefits(
+        settings,
+        state.products.filter((p) => p.status === "active").length,
+      ),
+
     [settings, state.products.length],
-  );
+  )
 
   return (
     <div className="min-h-full bg-[#F7F8F6] font-sans overflow-x-hidden selection:bg-[#1E7D3B] selection:text-white">
@@ -438,8 +570,11 @@ export function HomePage() {
               <div className="px-6 py-4 flex flex-col gap-2 text-sm font-600 text-[#0D2B45]">
                 {[
                   { href: "#how-it-works", label: "How It Works" },
+
                   { href: "#revolving", label: "Revolving Credit" },
+
                   { href: "#benefits", label: "Why Sari-Fi" },
+
                   { href: "#calculator", label: "Calculator" },
                 ].map((l) => (
                   <a
@@ -453,8 +588,9 @@ export function HomePage() {
                 ))}
                 <button
                   onClick={() => {
-                    setMenuOpen(false);
-                    startTour();
+                    setMenuOpen(false)
+
+                    startTour()
                   }}
                   className="py-2 text-left font-800 text-[#1E7D3B] flex items-center gap-2 hover:underline transition-colors cursor-pointer"
                 >
@@ -481,8 +617,9 @@ export function HomePage() {
                 </button>
                 <button
                   onClick={() => {
-                    setMenuOpen(false);
-                    navigate("supplier/login");
+                    setMenuOpen(false)
+
+                    navigate("supplier/login")
                   }}
                   className="py-2 text-left font-700 text-[#0D2B45] hover:text-[#1E7D3B] transition-colors cursor-pointer"
                 >
@@ -490,8 +627,9 @@ export function HomePage() {
                 </button>
                 <button
                   onClick={() => {
-                    setMenuOpen(false);
-                    navigate("login");
+                    setMenuOpen(false)
+
+                    navigate("login")
                   }}
                   className="py-2 text-left text-[#65727A] hover:text-[#0D2B45] transition-colors cursor-pointer"
                 >
@@ -499,8 +637,9 @@ export function HomePage() {
                 </button>
                 <button
                   onClick={() => {
-                    setMenuOpen(false);
-                    navigate("customer/login");
+                    setMenuOpen(false)
+
+                    navigate("customer/login")
                   }}
                   className="py-2 text-left font-700 text-[#1E7D3B] hover:underline transition-colors cursor-pointer"
                 >
@@ -592,11 +731,21 @@ export function HomePage() {
             >
               {[
                 { value: peso(LIMIT), label: "Starting Credit" },
+
                 {
-                  value: `${state.products.length || 30}+`,
+                  value: state.products.filter((p) => p.status === "active")
+                    .length
+                    ? `${state.products.filter((p) => p.status === "active").length}`
+                    : "Coming soon",
+
                   label: "Product Lines",
                 },
-                { value: `${CHARGE_PCT}%`, label: "Finance Charge" },
+
+                {
+                  value: `${CHARGE_PCT}%`,
+                  label: "Selected term total interest",
+                },
+
                 { value: peso(MAX_LIMIT), label: "Max Credit Limit" },
               ].map((stat) => (
                 <motion.div
@@ -644,7 +793,8 @@ export function HomePage() {
             className="grid grid-cols-1 md:grid-cols-3 gap-6"
           >
             {STEPS.map((step, i) => {
-              const active = activeStep === i;
+              const active = activeStep === i
+
               return (
                 <motion.div
                   key={step.number}
@@ -683,7 +833,7 @@ export function HomePage() {
                     </p>
                   </div>
                 </motion.div>
-              );
+              )
             })}
           </motion.div>
         </div>
@@ -780,14 +930,19 @@ export function HomePage() {
               {[
                 {
                   label: `Use ${peso(used)} of your ${peso(LIMIT)} limit`,
+
                   sub: `Available credit: ${peso(LIMIT - used)}`,
                 },
+
                 {
                   label: "Pay your first weekly installment",
+
                   sub: "Credit restores proportionally",
                 },
+
                 {
                   label: "Shop again before the cycle ends",
+
                   sub: "Revolving — always accessible",
                 },
               ].map((item, i) => (
@@ -948,7 +1103,7 @@ export function HomePage() {
             <div className="rounded-3xl overflow-hidden aspect-[3/4] shadow-2xl border border-[#E4E8E6] group">
               <img
                 src={OWNER_IMAGE}
-                alt="Store owner at counter"
+                alt="Sari-sari store owner at the counter"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               />
             </div>
@@ -996,7 +1151,7 @@ export function HomePage() {
           <div className="max-w-3xl space-y-6">
             {/* Controls */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-4">
-              <div className="flex flex-col sm:flex-row sm:items-end gap-6">
+              <div className="flex flex-col gap-6">
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-white/50 text-xs font-700 uppercase tracking-widest">
@@ -1022,9 +1177,10 @@ export function HomePage() {
                 </div>
 
                 {/* Plan Toggle */}
-                <div className="flex max-w-full overflow-x-auto rounded-xl bg-white/10 p-1 shrink-0">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 rounded-xl bg-white/10 p-1">
                   {repaymentPlans.map((plan) => {
-                    const selected = calculatorPlan?.id === plan.id;
+                    const selected = calculatorPlan?.id === plan.id
+
                     return (
                       <button
                         key={plan.id}
@@ -1041,16 +1197,23 @@ export function HomePage() {
                             className="absolute inset-0 bg-[#1E7D3B] rounded-lg shadow-sm"
                             transition={{
                               type: "spring",
+
                               stiffness: 350,
+
                               damping: 30,
                             }}
                           />
                         )}
-                        <span className="relative z-10">
-                          {plan.name} · {formatPlanDuration(plan)}
+                        <span className="relative z-10 block">
+                          {plan.name}
+                          <span className="block mt-1 text-[10px]">
+                            {formatPlanDuration(plan)} ·{" "}
+                            {getPlanChargePercent(plan)}% one-time total
+                            interest
+                          </span>
                         </span>
                       </button>
-                    );
+                    )
                   })}
                 </div>
               </div>
@@ -1061,18 +1224,28 @@ export function HomePage() {
               {[
                 {
                   label: "Principal",
+
                   value: peso(principal),
+
                   sub: "Amount borrowed",
                 },
+
                 {
-                  label: `Finance Charge (${CHARGE_PCT}%)`,
+                  label: `One-time total interest (${CHARGE_PCT}%)`,
+
                   value: peso(charge),
+
                   sub: "Applied to principal",
                 },
+
                 {
                   label: "Total Repayable",
+
                   value: peso(total),
-                  sub: `${weeks} ${formatFrequency(calculatorPlan?.paymentFrequency ?? 'weekly').toLowerCase()} payments × ${peso(perWeek)}`,
+
+                  sub: calculatorPlan
+                    ? `${weeks} ${formatFrequency(calculatorPlan.paymentFrequency).toLowerCase()} payments from ${peso(perWeek)}; final payment adjusts rounding`
+                    : "No active month-based plan. Contact the administrator.",
                 },
               ].map((card) => (
                 <motion.div
@@ -1106,8 +1279,9 @@ export function HomePage() {
               </div>
 
               <div className="grid grid-cols-4 gap-2 md:grid-cols-8 max-h-64 overflow-y-auto pr-1">
-                {Array.from({ length: weeks }, (_, i) => {
-                  const isPaid = i < paid;
+                {(quote?.schedule ?? []).map((entry, i) => {
+                  const isPaid = i < paid
+
                   return (
                     <motion.button
                       key={i}
@@ -1124,17 +1298,21 @@ export function HomePage() {
                         #{i + 1}
                       </div>
                       <div
-                        className={`text-xs font-700 tnum ${isPaid ? "text-white" : "text-white/70"}`}
+                        className={`text-xs font-700 tnum ${
+                          isPaid ? "text-white" : "text-white/70"
+                        }`}
                       >
-                        {peso(perWeek)}
+                        {peso(entry.baseAmount)}
                       </div>
                       <div
-                        className={`text-[9px] mt-0.5 ${isPaid ? "text-white/70" : "text-transparent"}`}
+                        className={`text-[9px] mt-0.5 ${
+                          isPaid ? "text-white/70" : "text-white/50"
+                        }`}
                       >
-                        Paid
+                        {isPaid ? "Paid" : "Upcoming"}
                       </div>
                     </motion.button>
-                  );
+                  )
                 })}
               </div>
 
@@ -1152,7 +1330,14 @@ export function HomePage() {
                   {paid} of {weeks} installments paid
                 </span>
                 <span className="text-[#7DBE4C] font-600">
-                  {peso(total - paid * perWeek)} remaining
+                  {peso(
+                    sumMoney(
+                      (quote?.schedule ?? [])
+                        .slice(paid)
+                        .map((entry) => entry.baseAmount),
+                    ),
+                  )}{" "}
+                  remaining
                 </span>
               </div>
             </div>
@@ -1233,5 +1418,5 @@ export function HomePage() {
         </div>
       </footer>
     </div>
-  );
+  )
 }

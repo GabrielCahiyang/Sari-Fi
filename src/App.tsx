@@ -90,7 +90,10 @@ function AppRouter() {
   if (page === 'admin/payments') return <PaymentsManagementPage />;
   if (page === 'admin/financing') return <FinancingManagementPage />;
   if (page === 'admin/customers') return <CustomersManagementPage />;
-  if (page === 'admin/suppliers' || page === 'admin/products' || page === 'admin/inventory' || page === 'admin/restock') return <SuppliersPage />;
+  if (page === 'admin/suppliers') return <SuppliersPage />;
+  if (page === 'admin/products') return <ProductsPage />;
+  if (page === 'admin/inventory') return <InventoryManagementPage />;
+  if (page === 'admin/restock') return <RestockPage />;
   if (page === 'admin/employees') return <EmployeesPage />;
   if (page === 'admin/reports') return <ReportsPage />;
   if (page === 'admin/audit') return <AuditTrailPage />;

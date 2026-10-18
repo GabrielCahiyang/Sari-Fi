@@ -18,3 +18,8 @@ logs/
 # beside it.
 /.plugins/
 /.opencode-skills/
+
+!.env.example
+/backups/
+/private-migration/
+/functions/lib/

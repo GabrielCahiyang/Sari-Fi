@@ -67,7 +67,11 @@ function buildNav(role: string): { sections: { label?: string; items: NavItem[] 
   }
   return { sections: [
     { items: [{ label: 'Dashboard', page: 'admin/dashboard', icon: iconMap.dashboard }] },
-    { label: 'Operations', items: ops },
+    { label: 'Operations', items: [...ops,
+      { label: 'Products', page: 'admin/products', icon: iconMap.products },
+      { label: 'Inventory', page: 'admin/inventory', icon: iconMap.inventory },
+      { label: 'Restock', page: 'admin/restock', icon: iconMap.restock },
+    ] },
     { label: 'Management', items: mgmt },
   ]};
 }

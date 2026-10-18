@@ -628,6 +628,10 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   }, [tourDispatch]);
 
   const startTour = useCallback(async () => {
+    if (import.meta.env.VITE_ENABLE_DEMO_TOUR !== 'true') {
+      showToast('info', 'The guided demo is available only in a configured sandbox.');
+      return;
+    }
     if (startLockedRef.current) return;
     startLockedRef.current = true;
 
