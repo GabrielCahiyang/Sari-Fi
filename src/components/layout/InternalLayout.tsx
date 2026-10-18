@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import logo from '../../assets/sarifi-logo.png';
+import logo from '../../assets/sarifi-mark.svg';
 import { useApp } from '../../context/AppContext';
 
 interface NavItem {
@@ -108,26 +108,22 @@ export function InternalLayout({ children, title }: InternalLayoutProps) {
           ${sidebarOpen ? 'w-64' : 'w-64 md:w-16'} shrink-0 print:hidden`}
       >
         {/* Logo & Mobile Close */}
-        <div className="px-4 py-4 border-b border-white/10 flex items-center justify-between">
+        <div className="relative px-2 py-4 border-b border-white/10 flex items-center justify-center">
           {(sidebarOpen || mobileDrawerOpen) ? (
-            <div>
-              <div className="bg-white rounded-xl px-3 py-2 inline-block">
-                <img src={logo} alt="Sari-Fi" className="h-7 object-contain" />
-              </div>
-              <div className="text-[10px] text-white/40 uppercase tracking-wider mt-2 px-1">
+            <div className="flex flex-col items-center text-center">
+              <img src={logo} alt="Sari-Fi" className="h-24 w-24 object-contain drop-shadow-[0_2px_8px_rgba(255,255,255,0.18)]" />
+              <div className="text-[10px] text-white/60 font-700 uppercase tracking-wider mt-2">
                 {role === 'admin' ? 'Admin Portal' : role === 'supervisor' ? 'Supervisor' : 'Employee'}
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-xl p-1.5 flex items-center justify-center">
-              <img src={logo} alt="Sari-Fi" className="w-8 h-8 object-contain" />
-            </div>
+            <img src={logo} alt="Sari-Fi" className="w-11 h-11 object-contain" />
           )}
 
           {/* Close button inside mobile drawer */}
           <button
             onClick={() => setMobileDrawerOpen(false)}
-            className="md:hidden text-white/60 hover:text-white p-2 rounded-lg"
+            className="absolute right-2 top-2 md:hidden text-white/60 hover:text-white p-2 rounded-lg"
             aria-label="Close menu"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -15,7 +15,7 @@ import {
   type Variants,
 } from "motion/react"
 
-import logo from "../assets/sarifi-logo.png"
+import logo from "../assets/sarifi-mark.svg"
 
 import { useApp } from "../context/AppContext"
 
@@ -448,7 +448,7 @@ export function HomePage() {
             whileTap={{ scale: 0.97 }}
             className="cursor-pointer"
           >
-            <img src={logo} alt="Sari-Fi" className="h-9 object-contain" />
+            <img src={logo} alt="Sari-Fi" className="h-12 w-12 object-contain" />
           </motion.div>
 
           <div className="hidden md:flex items-center gap-8 text-sm font-600 text-[#65727A]">

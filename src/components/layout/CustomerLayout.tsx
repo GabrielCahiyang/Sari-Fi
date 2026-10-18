@@ -1,4 +1,4 @@
-import logo from '../../assets/sarifi-logo.png';
+import logo from '../../assets/sarifi-mark.svg';
 import { useApp } from '../../context/AppContext';
 
 interface CustomerLayoutProps {
@@ -24,7 +24,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
       {/* Top bar */}
       <header className="bg-white/90 backdrop-blur-md border-b border-[#E4E8E6] px-3.5 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shrink-0 sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="Sari-Fi" className="h-7 sm:h-8 object-contain cursor-pointer" onClick={() => navigate('customer/dashboard')} />
+          <img src={logo} alt="Sari-Fi" className="h-10 w-10 sm:h-12 sm:w-12 object-contain cursor-pointer" onClick={() => navigate('customer/dashboard')} />
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1 ml-4">
             {NAV_ITEMS.map(item => {

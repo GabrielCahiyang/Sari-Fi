@@ -2,7 +2,7 @@ import { DEFAULT_REPAYMENT_PLANS } from '../utils/repaymentPlans';
 import type { Customer, Employee, Supplier, Product, Order, Financing, Payment, RestockOrder, SystemSettings, AuditEntry, AuthUser } from '../types';
 
 export const USERS: (AuthUser & { password: string })[] = [
-  { id: 'u1', name: 'Admin Rosa', email: 'admin@sarifi.ph', password: 'admin123', role: 'admin', employeeId: 'e1' },
+  { id: 'u1', name: 'Admin', email: 'admin@sarifi.ph', password: 'admin123', role: 'admin', employeeId: 'e1' },
   { id: 'u2', name: 'Supervisor Ben', email: 'ben@sarifi.ph', password: 'super123', role: 'supervisor', employeeId: 'e2' },
   { id: 'u3', name: 'Supervisor Clara', email: 'clara@sarifi.ph', password: 'super123', role: 'supervisor', employeeId: 'e3' },
   { id: 'u4', name: 'Employee Jay', email: 'jay@sarifi.ph', password: 'emp123', role: 'employee', employeeId: 'e4' },
@@ -85,7 +85,7 @@ export const CUSTOMERS: Customer[] = [
 ];
 
 export const EMPLOYEES: Employee[] = [
-  { id: 'e1', name: 'Admin Rosa', email: 'admin@sarifi.ph', role: 'admin', phone: '09121111111', status: 'active', createdAt: '2022-01-01' },
+  { id: 'e1', name: 'Admin', email: 'admin@sarifi.ph', role: 'admin', phone: '09121111111', status: 'active', createdAt: '2022-01-01' },
   { id: 'e2', name: 'Supervisor Ben', email: 'ben@sarifi.ph', role: 'supervisor', phone: '09122222222', status: 'active', createdAt: '2022-03-15' },
   { id: 'e3', name: 'Supervisor Clara', email: 'clara@sarifi.ph', role: 'supervisor', phone: '09123333333', status: 'active', createdAt: '2022-06-10' },
   { id: 'e4', name: 'Employee Jay', email: 'jay@sarifi.ph', role: 'employee', phone: '09124444444', status: 'active', createdAt: '2023-01-08' },
@@ -379,11 +379,11 @@ export const AUDIT_LOG: AuditEntry[] = [
   { id: 'aud4', timestamp: '2025-08-27T10:01:00', actorId: 'u1', actorName: 'Maria Santos', actorRole: 'customer', category: 'payment', action: 'payment.installment', summary: 'Maria Santos paid installment #1 on FIN-0001 via GCASH (auto-confirmed)', targetType: 'financing', targetId: 'fin1', targetLabel: 'FIN-0001', amount: 495 },
   { id: 'aud5', timestamp: '2025-08-01T10:30:00', actorId: 'e4', actorName: 'Supervisor Clara', actorRole: 'supervisor', category: 'financing', action: 'financing.approve', summary: 'Approved FIN-0002 for Jose Reyes (₱2,000 principal)', targetType: 'financing', targetId: 'fin2', targetLabel: 'FIN-0002', amount: 2000 },
   { id: 'aud6', timestamp: '2025-08-05T09:30:00', actorId: 'e5', actorName: 'Employee Mia', actorRole: 'employee', category: 'payment', action: 'payment.confirm_cash', summary: 'Confirmed ₱600 cash installment PAY-0006 for Jose Reyes', targetType: 'payment', targetId: 'pay6', targetLabel: 'PAY-0006', amount: 600 },
-  { id: 'aud7', timestamp: '2025-08-01T08:00:00', actorId: 'e1', actorName: 'Admin Rosa', actorRole: 'admin', category: 'settings', action: 'settings.update', summary: 'Updated system settings — financing charge (25% → 20%)' },
+  { id: 'aud7', timestamp: '2025-08-01T08:00:00', actorId: 'e1', actorName: 'Admin', actorRole: 'admin', category: 'settings', action: 'settings.update', summary: 'Updated system settings — financing charge (25% → 20%)' },
   { id: 'aud8', timestamp: '2025-07-29T12:00:00', actorId: null, actorName: 'System', actorRole: 'system', category: 'customer', action: 'customer.update', summary: 'Carmen Flores completed FIN-0006 — credit limit increased to ₱6,000', targetType: 'customer', targetId: 'cust5', targetLabel: 'Carmen Flores', amount: 6000 },
   { id: 'aud9', timestamp: '2025-08-13T14:00:00', actorId: 'e6', actorName: 'Employee Rex', actorRole: 'employee', category: 'order', action: 'order.status', summary: 'Order ORD-0002 marked delivered', targetType: 'order', targetId: 'ord2', targetLabel: 'ORD-0002' },
   { id: 'aud10', timestamp: '2025-08-19T00:00:00', actorId: null, actorName: 'System', actorRole: 'system', category: 'financing', action: 'financing.overdue', summary: 'FIN-0007 (Roberto Tan) flagged overdue — 2 missed installments', targetType: 'financing', targetId: 'fin7', targetLabel: 'FIN-0007' },
-  { id: 'aud11', timestamp: '2025-08-28T09:15:00', actorId: 'e1', actorName: 'Admin Rosa', actorRole: 'admin', category: 'employee', action: 'employee.create', summary: 'Created staff account for Employee Mia (employee)', targetType: 'employee', targetId: 'e5', targetLabel: 'Employee Mia' },
+  { id: 'aud11', timestamp: '2025-08-28T09:15:00', actorId: 'e1', actorName: 'Admin', actorRole: 'admin', category: 'employee', action: 'employee.create', summary: 'Created staff account for Employee Mia (employee)', targetType: 'employee', targetId: 'e5', targetLabel: 'Employee Mia' },
   { id: 'aud12', timestamp: '2025-08-30T15:40:00', actorId: 'e3', actorName: 'Supervisor Ben', actorRole: 'supervisor', category: 'inventory', action: 'product.update', summary: 'Adjusted stock for Lucky Me Pancit Canton (120 → 96)', targetType: 'product', targetId: 'p1', targetLabel: 'p1' },
 ];
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import logo from '../../assets/sarifi-logo.png';
+import logo from '../../assets/sarifi-mark.svg';
 import { useApp } from '../../context/AppContext';
 
 interface NavItem {
@@ -111,7 +111,7 @@ export function SupplierLayout({ children }: { children: React.ReactNode }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <img src={logo} alt="Sari-Fi" className="h-7 object-contain" />
+          <img src={logo} alt="Sari-Fi" className="h-10 w-10 object-contain" />
           <span className="text-[10px] font-700 uppercase tracking-widest bg-[#0D2B45] text-[#FFC107] px-2 py-0.5 rounded-md">
             Supplier
           </span>
@@ -143,7 +143,7 @@ export function SupplierLayout({ children }: { children: React.ReactNode }) {
       >
         <div className="p-4 border-b border-[#E4E8E6] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="Sari-Fi" className="h-7 object-contain" />
+            <img src={logo} alt="Sari-Fi" className="h-12 w-12 object-contain" />
             <span className="text-[10px] font-700 uppercase tracking-widest bg-[#0D2B45] text-[#FFC107] px-2 py-0.5 rounded-md">
               Supplier
             </span>
@@ -209,8 +209,8 @@ export function SupplierLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex flex-col w-64 bg-[#0D2B45] text-white shrink-0 border-r border-[#1B3B5A]">
         {/* Brand */}
         <div className="p-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="Sari-Fi" className="h-8 object-contain" />
+          <div className="flex flex-col items-center gap-2 text-center">
+            <img src={logo} alt="Sari-Fi" className="h-24 w-24 object-contain drop-shadow-[0_2px_8px_rgba(255,255,255,0.18)]" />
             <div>
               <div className="text-sm font-800 text-white tracking-tight leading-tight">Sari-Fi</div>
               <div className="text-[10px] font-700 text-[#FFC107] uppercase tracking-wider">

@@ -8,7 +8,6 @@ import { getUnitPrice } from "../src/utils/productPricing"
 import type { Product, AuditEntry } from "../src/types"
 
 dotenv.config({ path: ".env", quiet: true })
-dotenv.config({ path: ".env.local", override: true, quiet: true })
 const expectedURL = "https://sari-fi-4806b-default-rtdb.asia-southeast1.firebasedatabase.app"
 const databaseURL = process.env.VITE_FIREBASE_DATABASE_URL?.replace(/\/$/, "")
 if (databaseURL !== expectedURL || process.env.VITE_FIREBASE_PROJECT_ID !== "sari-fi-4806b")

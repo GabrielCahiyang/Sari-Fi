@@ -73,7 +73,7 @@ export async function loginWithEmail(email: string, password: string): Promise<A
   ) {
     const adminUser: AuthUser = {
       id: 'admin-rtdb',
-      name: 'Admin Rosa',
+      name: 'Admin',
       email: 'admin@sarifi.ph',
       role: 'admin',
       employeeId: 'e1',
@@ -97,7 +97,7 @@ export async function loginWithEmail(email: string, password: string): Promise<A
       if (cleanEmail === rtdbEmail && cleanPassword === rtdbPass) {
         const adminUser: AuthUser = {
           id: 'admin-rtdb',
-          name: adminData.name || 'Admin Rosa',
+          name: adminData.name || 'Admin',
           email: adminData.email || email,
           role: 'admin',
           employeeId: 'e1',

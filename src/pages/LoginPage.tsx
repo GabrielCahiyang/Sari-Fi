@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import logo from '../assets/sarifi-logo.png';
+import logo from '../assets/sarifi-mark.svg';
 import { useApp } from '../context/AppContext';
 import { isValidEmail } from '../utils/validation';
 

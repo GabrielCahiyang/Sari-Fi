@@ -12,7 +12,7 @@ import { isAbsolute, join, resolve, parse, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { execFileSync } from "node:child_process"
 
-dotenv.config({ path: ".env.local", quiet: true })
+dotenv.config({ path: ".env", quiet: true })
 export function arg(name: string): string | undefined {
   const eq = process.argv.find((a) => a.startsWith(`--${name}=`))
   if (eq) return eq.slice(name.length + 3)
