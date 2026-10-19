@@ -11,7 +11,7 @@ export function SupplierAccountPage() {
   const supplier = useMemo(() => {
     return state.suppliers.find(s => s.id === state.currentUser?.supplierId) || {
       id: state.currentUser?.supplierId || 'sup1',
-      name: state.currentUser?.name || 'Wholesale Supplier',
+      name: state.currentUser?.name || 'Supplier',
       contact: 'Warehouse Representative',
       phone: '028881234',
       email: state.currentUser?.email || 'supplier@sarifi.ph',
@@ -112,16 +112,16 @@ export function SupplierAccountPage() {
                 Sari-Fi Middleman Network
               </div>
               <h2 className="text-lg font-800 text-white mt-0.5">
-                Guaranteed Wholesale Payout Model
+                Guaranteed Payout Model
               </h2>
               <p className="text-xs text-white/75 mt-1 max-w-xl leading-relaxed">
-                As our wholesale partner, Sari-Fi guarantees 100% of your payout value for verified orders. Sari-Fi underwrites the micro-financing and credit risk with sari-sari stores, while you enjoy reliable, upfront wholesale revenue.
+                As our partner, Sari-Fi guarantees 100% of your payout value for verified orders. Sari-Fi underwrites the micro-financing and credit risk with sari-sari stores, while you enjoy reliable, upfront revenue.
               </p>
             </div>
 
             <div className="bg-white/10 p-3.5 rounded-xl border border-white/15 text-center shrink-0">
               <div className="text-[10px] text-white/70">Partner Tier</div>
-              <div className="text-sm font-900 text-[#FFC107] uppercase mt-0.5">Tier 1 Wholesaler</div>
+              <div className="text-sm font-900 text-[#FFC107] uppercase mt-0.5">Verified Supplier</div>
               <div className="text-[10px] text-white/60 mt-1">0% supplier fee</div>
             </div>
           </div>
@@ -201,7 +201,7 @@ export function SupplierAccountPage() {
           {/* Payout Channels */}
           <div className="bg-white p-5 rounded-2xl border border-[#E4E8E6] shadow-xs space-y-4">
             <h3 className="font-800 text-sm text-[#0D2B45] border-b border-[#E4E8E6] pb-3">
-              Wholesale Payout Accounts
+              Payout Accounts
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

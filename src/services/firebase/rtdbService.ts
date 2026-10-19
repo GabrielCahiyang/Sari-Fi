@@ -1,3 +1,4 @@
+import { getRemainingBalance } from "../../utils/financingCalculator";
 import { planReservationPaths } from "../../domain/checkoutReservation"
 
 import { getFunctions, httpsCallable } from "firebase/functions"
@@ -619,12 +620,7 @@ export async function settleOrderPayment(
       })
     } else {
       const expectedAmount =
-        Math.round(
-          (financing.totalRepayable -
-            (financing.paidPrincipal / financing.principal) *
-              financing.totalRepayable) *
-            100,
-        ) / 100
+        getRemainingBalance(financing)
 
       if (Math.abs(payment.amount - expectedAmount) > 0.01)
         throw new Error(

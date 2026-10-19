@@ -387,7 +387,7 @@ export function SuppliersPage() {
             </div>
             <div>
               <div className="text-[#0D2B45] font-800 text-2xl mt-1">{totalSuppliers}</div>
-              <div className="text-[#65727A] text-[11px] mt-0.5">Wholesale partner accounts</div>
+              <div className="text-[#65727A] text-[11px] mt-0.5">partner accounts</div>
             </div>
           </div>
 
@@ -641,7 +641,7 @@ export function SuppliersPage() {
                 required
                 value={name}
                 onChange={e => { setName(e.target.value); clearFormError('name'); }}
-                placeholder="e.g. ABC Wholesale Distributor"
+                placeholder="e.g. ABC Distributor"
                 aria-invalid={!!formErrors.name}
                 className={fieldClass('name')}
               />

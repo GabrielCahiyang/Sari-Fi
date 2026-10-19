@@ -12,7 +12,7 @@ export interface CatalogRow extends Record<string, string> {
   unitDescription: string
   category: string
   supplierId: string
-  retailPrice: string
+  basePrice: string
   sellingPrice: string
   costPrice: string
   stock: string
@@ -69,7 +69,7 @@ export function reviewCatalog(
     )
       errors.push(`${label}: active supplier/category assignment missing`)
     if (
-      !isCurrencyInput(row.retailPrice) ||
+      !isCurrencyInput(row.basePrice) ||
       (row.sellingPrice && !isCurrencyInput(row.sellingPrice)) ||
       !isCurrencyInput(row.costPrice, true)
     )
@@ -84,12 +84,12 @@ export function reviewCatalog(
       )
     if (!["active", "inactive"].includes(row.status))
       errors.push(`${label}: invalid publication status`)
-    const retail = Number(row.retailPrice)
-    if (!Number.isFinite(retail) || retail <= 0) continue
-    const derived = deriveRegularPrice(retail, multiplier)
+    const basePrice = Number(row.basePrice)
+    if (!Number.isFinite(basePrice) || basePrice <= 0) continue
+    const derived = deriveRegularPrice(basePrice, multiplier)
     const regular = row.sellingPrice ? Number(row.sellingPrice) : derived
-    if (regular < retail)
-      errors.push(`${label}: retail cannot exceed regular price`)
+    if (regular < basePrice)
+      errors.push(`${label}: base price cannot exceed selling price`)
     if (row.sellingPrice && regular !== derived)
       discrepancies.push({ sku, explicit: regular, derived })
     if (
@@ -119,7 +119,6 @@ export function reviewCatalog(
       category: row.category,
       supplierId: row.supplierId,
       sellingPrice: regular,
-      retailPrice: retail,
       costPrice: Number(row.costPrice),
       stock: Number(row.stock),
       reorderLevel: Number(row.reorderLevel),

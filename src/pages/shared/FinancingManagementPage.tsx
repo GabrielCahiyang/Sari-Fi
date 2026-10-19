@@ -1,3 +1,4 @@
+import { getRemainingBalance } from "../../utils/financingCalculator";
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
@@ -56,7 +57,7 @@ export function FinancingManagementPage() {
   const pendingCount = state.financing.filter(f => f.status === 'pending').length;
   const activeCount = state.financing.filter(f => f.status === 'active').length;
   const overdueCount = state.financing.filter(f => f.status === 'overdue').length;
-  const totalActive = state.financing.filter(f => f.status === 'active' || f.status === 'overdue').reduce((s, f) => s + (f.totalRepayable - (f.paidPrincipal / f.principal * f.totalRepayable)), 0);
+  const totalActive = state.financing.filter(f => f.status === 'active' || f.status === 'overdue').reduce((s, f) => s + (getRemainingBalance(f)), 0);
 
   return (
     <InternalLayout title="Financing">
@@ -134,7 +135,7 @@ export function FinancingManagementPage() {
               </span>
             </div>
             <div>
-              <div className="text-[#0D2B45] font-800 text-2xl mt-1">{formatPHP(Math.round(totalActive))}</div>
+              <div className="text-[#0D2B45] font-800 text-2xl mt-1">{formatPHP(totalActive)}</div>
               <div className="text-[#65727A] text-[11px] mt-0.5">Principal + finance charges</div>
             </div>
           </div>

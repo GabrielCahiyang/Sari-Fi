@@ -1,3 +1,4 @@
+import { getRemainingBalance } from "../../utils/financingCalculator";
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
 import { OrderStatusBadge, FinancingStatusBadge } from '../../components/ui/Badge';
@@ -10,11 +11,12 @@ export function SupervisorDashboard() {
   const pendingFinancing = state.financing.filter(f => f.status === 'pending');
   const activeFinancing = state.financing.filter(f => f.status === 'active');
   const overdueAccounts = state.financing.filter(f => f.status === 'overdue');
-  const todayOrders = state.orders.slice(0, 5);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+  const todayOrders = state.orders.filter(order => new Date(order.createdAt).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }) === today);
   const lowStock = state.products.filter(p => p.stock <= p.reorderLevel);
 
-  const totalOutstanding = activeFinancing.reduce((s, f) => s + (f.totalRepayable - (f.paidPrincipal / f.principal * f.totalRepayable)), 0);
-  const totalOverdue = overdueAccounts.reduce((s, f) => s + (f.totalRepayable - (f.paidPrincipal / f.principal * f.totalRepayable)), 0);
+  const totalOutstanding = activeFinancing.reduce((s, f) => s + (getRemainingBalance(f)), 0);
+  const totalOverdue = overdueAccounts.reduce((s, f) => s + (getRemainingBalance(f)), 0);
 
   const approveFinancing = async (finId: string) => {
     const approvedBy = state.currentUser?.name || 'Supervisor';
@@ -53,12 +55,12 @@ export function SupervisorDashboard() {
           </div>
           <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-5">
             <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Outstanding</div>
-            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(Math.round(totalOutstanding))}</div>
+            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(totalOutstanding)}</div>
             <div className="text-xs text-[#65727A] mt-1">{activeFinancing.length} accounts</div>
           </div>
           <div className={`rounded-2xl p-3.5 sm:p-5 border ${overdueAccounts.length > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-[#E4E8E6]'}`}>
             <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Overdue</div>
-            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(Math.round(totalOverdue))}</div>
+            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 sm:mt-2 truncate">{formatPHP(totalOverdue)}</div>
             <div className="text-xs text-red-500 mt-1">{overdueAccounts.length} overdue</div>
           </div>
           <div className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-5">

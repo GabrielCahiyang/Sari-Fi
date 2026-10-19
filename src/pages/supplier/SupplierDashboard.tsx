@@ -11,7 +11,7 @@ export function SupplierDashboard() {
   const supplier = useMemo(() => {
     return state.suppliers.find(s => s.id === state.currentUser?.supplierId) || {
       id: state.currentUser?.supplierId || 'sup1',
-      name: state.currentUser?.name || 'Wholesale Supplier',
+      name: state.currentUser?.name || 'Supplier',
       email: state.currentUser?.email || 'supplier@sarifi.ph',
       status: 'active' as const,
     };
@@ -77,7 +77,7 @@ export function SupplierDashboard() {
               {supplier.name}
             </h1>
             <p className="text-xs sm:text-sm text-[#65727A] mt-1">
-              Manage your wholesale catalog, monitor sari-sari store orders, and replenish inventory.
+              Manage your catalog, monitor sari-sari store orders, and replenish inventory.
             </p>
           </div>
 
@@ -117,7 +117,7 @@ export function SupplierDashboard() {
             <div className="mt-3 text-lg sm:text-2xl font-800 text-[#0D2B45] tnum">
               {formatPHP(totalStockValue)}
             </div>
-            <div className="text-[11px] text-[#65727A] mt-0.5">At wholesale cost value</div>
+            <div className="text-[11px] text-[#65727A] mt-0.5">At cost value</div>
           </div>
 
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E4E8E6] shadow-xs">

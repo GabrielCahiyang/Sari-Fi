@@ -5,7 +5,7 @@
     {
       "sku": "SF-AJINOMOTO-VETSIN",
       "name": "Ajinomoto Vetsin",
-      "retailPrice": 2.5,
+      "basePrice": 2.5,
       "sellingPrice": 2.63,
       "category": "Condiments & Sauces",
       "supplierId": "sup1788469553448",
@@ -23,7 +23,7 @@
     {
       "sku": "SF-CRISPY-FRY",
       "name": "Ajinomoto Crispy Fry",
-      "retailPrice": 19,
+      "basePrice": 19,
       "sellingPrice": 19.95,
       "category": "Condiments & Sauces",
       "supplierId": "sup1788469553448",
@@ -41,7 +41,7 @@
     {
       "sku": "SF-MAGIC-SARAP",
       "name": "Maggi Magic Sarap",
-      "retailPrice": 3.2,
+      "basePrice": 3.2,
       "sellingPrice": 3.36,
       "category": "Condiments & Sauces",
       "supplierId": "sup1788469553448",
@@ -59,7 +59,7 @@
     {
       "sku": "SF-SARSAYA",
       "name": "Sarsaya Oyster Sauce",
-      "retailPrice": 4.5,
+      "basePrice": 4.5,
       "sellingPrice": 4.73,
       "category": "Condiments & Sauces",
       "supplierId": "sup1788469553448",
@@ -77,7 +77,7 @@
     {
       "sku": "SF-KNORR-CUBES",
       "name": "Knorr Cubes",
-      "retailPrice": 5.5,
+      "basePrice": 5.5,
       "sellingPrice": 5.76,
       "category": "Condiments & Sauces",
       "supplierId": "sup1788469553448",
@@ -95,7 +95,7 @@
     {
       "sku": "SF-PANCIT-CANTON",
       "name": "Lucky Me Pancit Canton",
-      "retailPrice": 11.8,
+      "basePrice": 11.8,
       "sellingPrice": 12.39,
       "category": "Instant Noodles",
       "supplierId": "sup1788469588257",
@@ -113,7 +113,7 @@
     {
       "sku": "SF-LUCKY-ME-NOODLES",
       "name": "Lucky Me Noodles",
-      "retailPrice": 9.25,
+      "basePrice": 9.25,
       "sellingPrice": 9.71,
       "category": "Instant Noodles",
       "supplierId": "sup1788469588257",
@@ -131,7 +131,7 @@
     {
       "sku": "SF-KOPIKO-BLACK-SOLO",
       "name": "Kopiko Black (Solo)",
-      "retailPrice": 7,
+      "basePrice": 7,
       "sellingPrice": 7.35,
       "category": "Beverages",
       "supplierId": "sup1788469553448",
@@ -149,7 +149,7 @@
     {
       "sku": "SF-KOPIKO-BLACK-TWIN",
       "name": "Kopiko Black (Twin)",
-      "retailPrice": 16,
+      "basePrice": 16,
       "sellingPrice": 16.8,
       "category": "Beverages",
       "supplierId": "sup1788469553448",
@@ -167,7 +167,7 @@
     {
       "sku": "SF-KOPIKO-BLANCA-SOLO",
       "name": "Kopiko Blanca (Solo)",
-      "retailPrice": 7,
+      "basePrice": 7,
       "sellingPrice": 7.35,
       "category": "Beverages",
       "supplierId": "sup1788469553448",
@@ -185,7 +185,7 @@
     {
       "sku": "SF-KOPIKO-BLANCA-TWIN",
       "name": "Kopiko Blanca (Twin)",
-      "retailPrice": 16,
+      "basePrice": 16,
       "sellingPrice": 16.8,
       "category": "Beverages",
       "supplierId": "sup1788469553448",
@@ -203,7 +203,7 @@
     {
       "sku": "SF-NESCAFE-STICK",
       "name": "Nescafe Stick",
-      "retailPrice": 3.5,
+      "basePrice": 3.5,
       "sellingPrice": 3.68,
       "category": "Beverages",
       "supplierId": "sup1788469553448",
@@ -221,7 +221,7 @@
     {
       "sku": "SF-COFFEE-MATE",
       "name": "Coffee Mate",
-      "retailPrice": 3.8,
+      "basePrice": 3.8,
       "sellingPrice": 4,
       "category": "Beverages",
       "supplierId": "sup1788469553448",
@@ -239,7 +239,7 @@
     {
       "sku": "SF-ENERGEN-SOLO",
       "name": "Energen (Solo)",
-      "retailPrice": 9.5,
+      "basePrice": 9.5,
       "sellingPrice": 9.98,
       "category": "Beverages",
       "supplierId": "sup1788469553448",
@@ -257,7 +257,7 @@
     {
       "sku": "SF-ENERGEN-TWIN",
       "name": "Energen (Twin)",
-      "retailPrice": 17.5,
+      "basePrice": 17.5,
       "sellingPrice": 18.38,
       "category": "Beverages",
       "supplierId": "sup1788469553448",
@@ -275,7 +275,7 @@
     {
       "sku": "SF-MILO",
       "name": "Milo",
-      "retailPrice": 9,
+      "basePrice": 9,
       "sellingPrice": 9.45,
       "category": "Beverages",
       "supplierId": "sup1788469553448",
@@ -293,7 +293,7 @@
     {
       "sku": "SF-SUNSILK",
       "name": "Sunsilk",
-      "retailPrice": 7.5,
+      "basePrice": 7.5,
       "sellingPrice": 7.88,
       "category": "Personal Care",
       "supplierId": "sup1788469588257",
@@ -311,7 +311,7 @@
     {
       "sku": "SF-HEAD-SHOULDERS",
       "name": "Head & Shoulders",
-      "retailPrice": 7,
+      "basePrice": 7,
       "sellingPrice": 7.35,
       "category": "Personal Care",
       "supplierId": "sup1788469588257",
@@ -329,7 +329,7 @@
     {
       "sku": "SF-PANTENE",
       "name": "Pantene",
-      "retailPrice": 6.5,
+      "basePrice": 6.5,
       "sellingPrice": 6.83,
       "category": "Personal Care",
       "supplierId": "sup1788469588257",
@@ -347,7 +347,7 @@
     {
       "sku": "SF-REJOICE",
       "name": "Rejoice",
-      "retailPrice": 7.8,
+      "basePrice": 7.8,
       "sellingPrice": 8.19,
       "category": "Personal Care",
       "supplierId": "sup1788469588257",
@@ -365,7 +365,7 @@
     {
       "sku": "SF-KERATIN",
       "name": "Keratin Conditioner",
-      "retailPrice": 8.8,
+      "basePrice": 8.8,
       "sellingPrice": 9.24,
       "category": "Personal Care",
       "supplierId": "sup1788469588257",
@@ -383,7 +383,7 @@
     {
       "sku": "SF-CREAM-SILK",
       "name": "Cream Silk Conditioner",
-      "retailPrice": 8,
+      "basePrice": 8,
       "sellingPrice": 8.4,
       "category": "Personal Care",
       "supplierId": "sup1788469588257",

@@ -1,3 +1,4 @@
+import { getRemainingBalance } from "../../utils/financingCalculator";
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
@@ -24,7 +25,7 @@ export function FinancingPage() {
 
   const available = customer.creditLimit - customer.usedCredit;
   const activeFinancing = financing.filter(f => f.status === 'active' || f.status === 'overdue');
-  const totalOutstanding = activeFinancing.reduce((s, f) => s + (f.totalRepayable - (f.paidPrincipal / f.principal * f.totalRepayable)), 0);
+  const totalOutstanding = activeFinancing.reduce((s, f) => s + (getRemainingBalance(f)), 0);
 
   const doPayInstallment = async () => {
     if (!selectedFin || payWeekNo === null) return;
@@ -115,7 +116,7 @@ export function FinancingPage() {
       return;
     }
 
-    const remaining = targetFin.totalRepayable - (targetFin.paidPrincipal / targetFin.principal * targetFin.totalRepayable);
+    const remaining = getRemainingBalance(targetFin);
 
     const gcashReference = payMethod === 'gcash' ? generateMockGcashReference() : undefined;
     const newPayment: Payment = {
@@ -195,7 +196,7 @@ export function FinancingPage() {
           </div>
           <div className="col-span-6 md:col-span-3 bg-[#FFF8E1] rounded-2xl p-3.5 sm:p-4 border border-[#FFC107]/30">
             <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Outstanding</div>
-            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 truncate">{formatPHP(Math.round(totalOutstanding))}</div>
+            <div className="text-[#10212B] font-800 text-xl sm:text-2xl mt-1 truncate">{formatPHP(totalOutstanding)}</div>
           </div>
         </div>
 
@@ -211,7 +212,7 @@ export function FinancingPage() {
             financing.map(fin => {
               const paidInstallments = fin.schedule.filter(s => s.status === 'paid').length;
               const progress = paidInstallments / fin.installmentCount;
-              const remaining = Math.round(fin.totalRepayable - (fin.paidPrincipal / fin.principal * fin.totalRepayable));
+              const remaining = getRemainingBalance(fin);
               const nextDue = fin.schedule.find(s => s.status === 'due' || s.status === 'overdue');
               const pendingCashRepayments = state.payments.filter(payment =>
                 payment.financingId === fin.id
@@ -227,15 +228,14 @@ export function FinancingPage() {
               return (
                 <div
                   key={fin.id}
-                  data-tour-target={fin.id === 'fin_tour_001' ? '5' : undefined}
                   className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden"
                 >
-                  <div className="p-4 sm:p-5">
+                  <div data-tour-target={fin.id === 'fin_tour_001' ? '5' : undefined} className="p-4 sm:p-5">
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <div className="font-800 text-base text-[#10212B]">{fin.financingNo}</div>
                         <div className="text-xs text-[#65727A] mt-0.5">
-                          {getFinancingPlanName(fin)} · {fin.installmentCount} {getFinancingFrequency(fin)} installments of {formatPHP(getFinancingInstallmentAmount(fin))}
+                          {getFinancingPlanName(fin)} · {fin.installmentCount} {getFinancingFrequency(fin)} installments from {formatPHP(getFinancingInstallmentAmount(fin))}
                         </div>
                       </div>
                       <FinancingStatusBadge status={fin.status} />
@@ -417,7 +417,7 @@ export function FinancingPage() {
       {/* Pay Full Balance Modal */}
       <Modal open={payFull && selectedFin !== null} onClose={() => { if (!gcashProcessing) { setPayFull(false); setSelectedFin(null); } }} title={gcashProcessing ? 'GCash Payment Verification' : 'Pay Full Balance'} size="sm" dismissible={!gcashProcessing}>
         {fin && (() => {
-          const remaining = Math.round(fin.totalRepayable - (fin.paidPrincipal / fin.principal * fin.totalRepayable));
+          const remaining = getRemainingBalance(fin);
           if (gcashProcessing && pendingGcashPayment?.type === 'full_settlement') {
             return (
               <GcashWebhookSimulator

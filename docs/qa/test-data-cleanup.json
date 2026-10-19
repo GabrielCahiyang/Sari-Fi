@@ -1,0 +1,61 @@
+{
+  "removed": {
+    "customers": [
+      "qa-cycle-20261019"
+    ],
+    "orders": [
+      "ord1792384830195_1",
+      "ord1792384830195_2",
+      "ord1792385216711_1",
+      "ord1792385322592_1",
+      "ord1792385352912_1",
+      "ord1792385352912_2"
+    ],
+    "financing": [
+      "fin1792384830195_1",
+      "fin1792384830195_2",
+      "fin1792385352912_1",
+      "fin1792385352912_2"
+    ],
+    "payments": [
+      "pay1792385216711_1",
+      "pay1792385322592_1",
+      "pay1792385352912_1",
+      "pay_1792385098253_5zc3mk",
+      "pay_1792385108112_izwi0i",
+      "pay_1792385246457_rldqij"
+    ],
+    "users": [],
+    "restockOrders": [
+      "sup_restock_1792384972129"
+    ],
+    "auditLog": [
+      "audit_1792384994658_ttw9s",
+      "audit_1792384998257_uf6bp",
+      "audmvermix65",
+      "audmverneet7",
+      "audmverneew9",
+      "audmvernmtkb",
+      "audmverplqoj",
+      "audmverpo9gl",
+      "audmverprjjn",
+      "audmverq5lnt",
+      "audmverqpeb11",
+      "audmverqx5x13",
+      "audmverqzxv15",
+      "audmvertk0k1",
+      "audmvervovb5",
+      "audmverw5xx9",
+      "audmverxybrb",
+      "audmverylq3d",
+      "audmverylq5f",
+      "audmverz37fh"
+    ]
+  },
+  "stockRestored": {
+    "sheet_sf_kopiko_black_solo": 60,
+    "sheet_sf_pancit_canton": 60,
+    "sheet_sf_coffee_mate": 60
+  },
+  "existingRecordsUnchanged": true
+}

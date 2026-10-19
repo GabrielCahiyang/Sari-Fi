@@ -1,6 +1,5 @@
 import type { Product, SystemSettings } from "../types"
 
-export const DEFAULT_RETAIL_MIN_QTY = 12
 export const DEFAULT_REGULAR_MULTIPLIER = 1.05
 
 /** Currency amounts are rounded once, then added and multiplied as integer centavos. */
@@ -22,35 +21,17 @@ export function sumMoney(amounts: number[]): number {
   return total / 100
 }
 
-export function retailThreshold(settings?: Partial<SystemSettings>): number {
-  const threshold = settings?.retailMinimumQuantity ?? DEFAULT_RETAIL_MIN_QTY
-  if (!Number.isSafeInteger(threshold) || threshold < 1)
-    throw new Error("Invalid retail threshold")
-  return threshold
-}
-
 export function getUnitPrice(
   product: Product,
   quantity: number,
-  settings?: Partial<SystemSettings>,
+  _settings?: Partial<SystemSettings>,
 ): number {
   if (!Number.isSafeInteger(quantity) || quantity < 1)
     throw new Error("Invalid quantity")
-  const threshold = retailThreshold(settings)
   const regular = toCentavos(product.sellingPrice)
-  const retail =
-    product.retailPrice === undefined
-      ? undefined
-      : toCentavos(product.retailPrice)
-  if (
-    regular < 1 ||
-    (retail !== undefined && (retail < 1 || retail > regular))
-  ) {
-    throw new Error("Invalid product price")
-  }
-  return (
-    (retail !== undefined && quantity >= threshold ? retail : regular) / 100
-  )
+  if (regular < 1) throw new Error("Invalid product price")
+  // One selling price for every quantity. Legacy discount fields are ignored.
+  return regular / 100
 }
 
 export function getLineTotal(
@@ -64,12 +45,12 @@ export function getLineTotal(
 }
 
 export function deriveRegularPrice(
-  retail: number,
+  basePrice: number,
   multiplier = DEFAULT_REGULAR_MULTIPLIER,
 ): number {
-  if (retail <= 0 || !Number.isFinite(multiplier) || multiplier < 1)
+  if (basePrice <= 0 || !Number.isFinite(multiplier) || multiplier < 1)
     throw new Error("Invalid regular price inputs")
-  return toCentavos(retail * multiplier) / 100
+  return toCentavos(basePrice * multiplier) / 100
 }
 
 export function isCurrencyInput(value: string, allowZero = false): boolean {

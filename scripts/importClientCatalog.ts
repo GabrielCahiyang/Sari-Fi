@@ -28,7 +28,7 @@ main(async () => {
     rows,
     root.suppliers || {},
     categoryNames,
-    root.settings?.retailMarkupMultiplier ?? 1.05,
+    root.settings?.sellingPriceMultiplier ?? 1.05,
   )
   const existing = Object.values(root.products || {}) as any[]
   const conflicts = review.products
@@ -98,10 +98,8 @@ main(async () => {
   if (!plans.some((p) => p.durationUnit === "month" && p.durationValue === 3))
     plans.push(DEFAULT_REPAYMENT_PLANS[2])
   paths["settings/repaymentPlans"] = plans
-  paths["settings/retailMinimumQuantity"] =
-    root.settings?.retailMinimumQuantity ?? 12
-  paths["settings/retailMarkupMultiplier"] =
-    root.settings?.retailMarkupMultiplier ?? 1.05
+  paths["settings/sellingPriceMultiplier"] =
+    root.settings?.sellingPriceMultiplier ?? 1.05
   writePrivate(dir, `catalog-${Date.now()}.before.json`, {
     projectId: target.projectId,
     root,

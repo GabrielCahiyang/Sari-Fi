@@ -76,7 +76,7 @@ const STEPS = [
     title: "Shop & Finance",
 
     description:
-      "Log in, browse grocery essentials and unlock retail rates by quantity, and choose how to pay — full, financed, or split.",
+      "Log in, browse grocery essentials at clear selling prices, and choose how to pay — full, financed, or split.",
   },
 ]
 
@@ -142,7 +142,7 @@ function getBenefits(settings: any, productsCount: number): BenefitItem[] {
         productsCount
           ? `${productsCount} grocery products`
           : "grocery essentials"
-      }. Buy ${settings?.retailMinimumQuantity ?? 12} or more of the same item to unlock our lower retail unit price.`,
+      } at clear, consistent prices. The same unit price applies to every quantity.`,
 
       color: "bg-white border border-[#E4E8E6]",
 

@@ -114,7 +114,7 @@ export function InventoryManagementPage() {
               <thead>
                 <tr className="text-[11px] font-700 text-[#65727A] uppercase tracking-wider border-b border-[#F7F8F6] bg-[#F7F8F6]">
                   <th className="text-left px-5 py-3">Product</th>
-                  <th className="text-left px-5 py-3">Supplier / Wholesaler</th>
+                  <th className="text-left px-5 py-3">Supplier</th>
                   <th className="text-left px-5 py-3">SKU</th>
                   <th className="text-left px-5 py-3">Category</th>
                   <th className="text-left px-5 py-3">Price</th>

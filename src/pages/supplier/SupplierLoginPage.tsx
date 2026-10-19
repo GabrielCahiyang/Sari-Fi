@@ -77,7 +77,7 @@ export function SupplierLoginPage() {
 
           <div className="flex justify-center mb-2">
             <span className="px-3 py-1 rounded-full text-[10px] font-700 uppercase tracking-widest bg-amber-50 text-[#B8860B] border border-amber-200">
-              Wholesale Supplier Portal
+              Supplier Portal
             </span>
           </div>
 
@@ -85,7 +85,7 @@ export function SupplierLoginPage() {
             Supplier Partner Sign In
           </h1>
           <p className="text-xs sm:text-sm text-[#65727A] mt-1.5 max-w-xs mx-auto">
-            Manage your wholesale inventory catalog and fulfill sari-sari store restock orders.
+            Manage your inventory catalog and fulfill sari-sari store restock orders.
           </p>
         </div>
 

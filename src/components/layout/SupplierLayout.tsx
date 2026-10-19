@@ -15,7 +15,7 @@ export function SupplierLayout({ children }: { children: React.ReactNode }) {
 
   const supplier = state.suppliers.find(s => s.id === state.currentUser?.supplierId) || {
     id: state.currentUser?.supplierId || 'sup1',
-    name: state.currentUser?.name || 'Wholesale Supplier',
+    name: state.currentUser?.name || 'Supplier',
     email: state.currentUser?.email || 'supplier@sarifi.ph',
     status: 'active' as const,
   };
@@ -98,9 +98,9 @@ export function SupplierLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F8F6] flex flex-col md:flex-row font-sans">
+    <div className="h-full min-h-0 overflow-hidden bg-[#F7F8F6] flex flex-col md:flex-row font-sans">
       {/* ── Mobile Top Header ── */}
-      <div className="md:hidden bg-white border-b border-[#E4E8E6] px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+      <div className="md:hidden shrink-0 bg-white border-b border-[#E4E8E6] px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-xs">
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setMobileOpen(true)}
@@ -278,7 +278,7 @@ export function SupplierLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ── Main Content Area ── */}
-      <main className="flex-1 min-w-0 overflow-y-auto">
+      <main className="flex-1 min-h-0 min-w-0 overflow-y-auto">
         {children}
       </main>
     </div>

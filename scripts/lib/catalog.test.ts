@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { catalogRows, reviewCatalog } from "./catalog"
 const header =
-  "sku,name,variant,unitDescription,category,supplierId,retailPrice,sellingPrice,costPrice,stock,reorderLevel,status,imageUrl,imageSourceUrl,imageLicenseStatus,approvalStatus,reviewer\n"
+  "sku,name,variant,unitDescription,category,supplierId,basePrice,sellingPrice,costPrice,stock,reorderLevel,status,imageUrl,imageSourceUrl,imageLicenseStatus,approvalStatus,reviewer\n"
 const row =
   "KNORR,Knorr Cubes,Chicken,10g cube,Seasoning,supplier,5.50,5.76,4.00,24,12,inactive,,,client-owned,approved,owner"
 describe("catalog import review", () => {
@@ -13,6 +13,8 @@ describe("catalog import review", () => {
     )
     expect(result.errors).toEqual([])
     expect(result.products[0].sellingPrice).toBe(5.76)
+    expect(result.products[0]).not.toHaveProperty("retailPrice")
+    expect(result.products[0]).not.toHaveProperty("basePrice")
     expect(result.discrepancies).toEqual([
       { sku: "KNORR", explicit: 5.76, derived: 5.78 },
     ])

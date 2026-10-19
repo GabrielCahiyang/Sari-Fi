@@ -1,1 +1,1 @@
-sku,name,variant,unitDescription,category,supplierId,retailPrice,sellingPrice,costPrice,stock,reorderLevel,status,imageUrl,imageSourceUrl,imageLicenseStatus,approvalStatus,reviewer
+sku,name,variant,unitDescription,category,supplierId,basePrice,sellingPrice,costPrice,stock,reorderLevel,status,imageUrl,imageSourceUrl,imageLicenseStatus,approvalStatus,reviewer

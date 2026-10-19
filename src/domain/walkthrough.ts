@@ -1,3 +1,4 @@
+import { getRemainingBalance } from "../utils/financingCalculator";
 import type {
   AppState,
   AuthUser,
@@ -79,8 +80,8 @@ function step(
   const focusNames: Record<string, string> = {
     customers: "Customers · store owner account",
     "0": "Products · supplier catalog controls",
-    "1": "Shop · product and quantity pricing",
-    cart: "Cart · quantity discounts and supplier totals",
+    "1": "Shop · products and selling prices",
+    cart: "Cart · quantities and supplier totals",
     plans: "Checkout · financing terms",
     methods: "Checkout · payment methods",
     "2": "Financing · approval queue",
@@ -134,7 +135,7 @@ export const TOUR_STEPS: TourStep[] = [
     "supplier/products",
     supplier,
     "0",
-    "The supplier Products tab manages product photos, regular selling prices, lower retail prices, supplier costs, stock, and reorder levels. Photos are delivered through Cloudinary.",
+    "The supplier Products tab manages product photos, selling prices, supplier costs, stock, and reorder levels. The same selling price applies at every quantity. Photos are delivered through Cloudinary.",
   ),
   step(
     2,
@@ -142,15 +143,15 @@ export const TOUR_STEPS: TourStep[] = [
     "customer/shop",
     owner,
     "1",
-    "Shop shows current products and their suppliers. Regular pricing applies below the same-product quantity threshold.",
+    "Shop shows current products, their selling prices, and their suppliers. Choose the quantities your store needs; each product keeps the same unit price.",
   ),
   step(
     3,
-    "Unlock quantity pricing in Cart",
+    "Review quantities and totals in Cart",
     "customer/cart",
     owner,
     "cart",
-    "Cart combines quantities of the same product. Reaching the retail threshold applies that product’s lower price; different products do not combine toward the threshold.",
+    "Cart combines quantities of the same product and multiplies each quantity by its selling price. Review the totals and supplier deliveries before checkout.",
   ),
   step(
     4,
@@ -270,7 +271,7 @@ export const TOUR_STEPS: TourStep[] = [
     "employee/pos",
     employee,
     "pos",
-    "Point of Sale is the staff-assisted ordering flow. It has its own ticket and uses the same quantity prices, financing calculator, and supplier order allocation as online checkout.",
+    "Point of Sale is the staff-assisted ordering flow. It has its own ticket and uses the same selling prices, financing calculator, and supplier order allocation as online checkout.",
   ),
 ]
 
@@ -304,14 +305,13 @@ export function createWalkthroughSession(
         (s) => s.id === p.supplierId && s.status === "active",
       ),
   )
-  const first =
-    available.find((p) => p.retailPrice !== undefined) || available[0]
+  const first = available[0]
   const second = available.find((p) => p.supplierId !== first?.supplierId)
   if (!first || !second)
     throw new Error(
       "The walkthrough needs active products from two suppliers. Add those products in Products first.",
     )
-  const threshold = settings.retailMinimumQuantity ?? 12
+  const exampleQuantity = 12
   const supplierIds = [
     ...new Set([
       first.supplierId,
@@ -332,9 +332,8 @@ export function createWalkthroughSession(
       category: p.category,
       supplierId: `walkthrough_supplier_${supplierIds.indexOf(p.supplierId) + 1}`,
       sellingPrice: p.sellingPrice,
-      retailPrice: p.retailPrice,
       costPrice: p.costPrice,
-      stock: Math.max(60, threshold + 24),
+      stock: Math.max(60, exampleQuantity + 24),
       reorderLevel: p.reorderLevel,
       status: "active",
       imageUrl: p.imageUrl,
@@ -342,9 +341,9 @@ export function createWalkthroughSession(
   )
   const cart = products
     .slice(0, 2)
-    .map((p) => ({ productId: p.id, quantity: threshold }))
+    .map((p) => ({ productId: p.id, quantity: exampleQuantity }))
   const total = sumMoney(
-    products.slice(0, 2).map((p) => getLineTotal(p, threshold, settings)),
+    products.slice(0, 2).map((p) => getLineTotal(p, exampleQuantity, settings)),
   )
   const creditLimit = Math.max(settings.startingCreditLimit, total + 100)
   const createdAt = now.toISOString()
@@ -423,7 +422,7 @@ export function createWalkthroughSession(
   const bundles = products.slice(0, 2).map((p, index) => {
     const id = index === 0 ? "ord_tour_001" : "walkthrough_order_2"
     const finId = index === 0 ? "fin_tour_001" : "walkthrough_financing_2"
-    const principal = getLineTotal(p, threshold, settings)
+    const principal = getLineTotal(p, exampleQuantity, settings)
     const quote = calculateFinancing(principal, plans[0], now)
     const financing: Financing = {
       id: finId,
@@ -453,8 +452,8 @@ export function createWalkthroughSession(
         {
           productId: p.id,
           productName: p.name,
-          quantity: threshold,
-          price: getUnitPrice(p, threshold, settings),
+          quantity: exampleQuantity,
+          price: getUnitPrice(p, exampleQuantity, settings),
           supplierId: p.supplierId,
         },
       ],
@@ -594,11 +593,7 @@ export function walkthroughFrame(
       }
       if (reached(15)) {
         const remaining =
-          Math.round(
-            (loan.totalRepayable -
-              (loan.paidPrincipal / loan.principal) * loan.totalRepayable) *
-              100,
-          ) / 100
+          getRemainingBalance(loan)
         state.payments.unshift({
           id: "walkthrough_settlement",
           paymentNo: "PAY-DEMO-2",
@@ -673,7 +668,6 @@ export function describeWalkthroughStep(
     targetUser: { ...TOUR_STEPS[index].targetUser },
   }
   const base = session.base
-  const threshold = base.settings.retailMinimumQuantity ?? 12
   const product = base.products[0]
   if (step.targetUser.role === "supplier")
     step.targetUser.name = base.suppliers[0].name
@@ -682,11 +676,7 @@ export function describeWalkthroughStep(
   if (index === 1)
     step.detailedInstruction += ` Here ${base.suppliers[0].name} supplies ${product.name}.`
   if (index === 2 || index === 3)
-    step.detailedInstruction += ` ${product.name}: ${money(product.sellingPrice)} regular${
-      product.retailPrice !== undefined
-        ? `, ${money(product.retailPrice)} at ${threshold}+ sale units`
-        : ""
-    }.`
+    step.detailedInstruction += ` ${product.name}: ${money(product.sellingPrice)} per unit at every quantity. In Cart, 12 units cost ${money(getLineTotal(product, 12))}.`
   if (index >= 4 && index <= 6) {
     const plan =
       base.settings.repaymentPlans[

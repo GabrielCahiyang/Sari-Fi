@@ -14,6 +14,7 @@ import {
 import {
   calculateCheckoutFinancing,
   calculateFinancing,
+  getRemainingBalance,
 } from "./financingCalculator"
 
 const canton: Product = {
@@ -23,35 +24,34 @@ const canton: Product = {
   category: "Noodles",
   supplierId: "supplier",
   sellingPrice: 12.39,
-  retailPrice: 11.8,
   costPrice: 10,
   stock: 100,
   reorderLevel: 12,
   status: "active",
 }
-describe("same-SKU quantity pricing", () => {
+describe("single selling price at every quantity", () => {
   it.each([
     [1, 12.39],
     [11, 136.29],
-    [12, 141.6],
-    [13, 153.4],
+    [12, 148.68],
+    [13, 161.07],
   ])("prices %i units at %f", (qty, total) =>
     expect(getLineTotal(canton, qty)).toBe(total),
   )
-  it("never combines different SKUs into a dozen", () => {
+  it("prices each product independently at its selling price", () => {
     const coffee = {
       ...canton,
       id: "coffee",
       sellingPrice: 7.35,
-      retailPrice: 7,
     }
     expect(sumMoney([getLineTotal(canton, 6), getLineTotal(coffee, 6)])).toBe(
       118.44,
     )
   })
-  it("leaves legacy prices unchanged and respects configured threshold", () => {
-    expect(getUnitPrice({ ...canton, retailPrice: undefined }, 13)).toBe(12.39)
-    expect(getUnitPrice(canton, 6, { retailMinimumQuantity: 6 })).toBe(11.8)
+  it("ignores retired discount fields even on unmodified legacy records", () => {
+    const legacy = { ...canton, retailPrice: 11.8 }
+    for (const quantity of [1, 6, 11, 12, 13, 24, 100])
+      expect(getUnitPrice(legacy, quantity)).toBe(12.39)
   })
   it.each([0, -1, 1.5, NaN, Infinity])("rejects quantity %s", (qty) =>
     expect(() => getUnitPrice(canton, qty)).toThrow(),
@@ -66,6 +66,18 @@ describe("same-SKU quantity pricing", () => {
   )
 })
 describe("term-based financing", () => {
+  it("settles the exact unpaid schedule after rounded installments", () => {
+    const quote = calculateFinancing(12.39, DEFAULT_REPAYMENT_PLANS[2]);
+    expect(getRemainingBalance(quote)).toBe(12.76);
+    quote.schedule[0].status = "paid";
+    expect(getRemainingBalance(quote)).toBe(11.70);
+    quote.schedule.slice(1, 11).forEach(entry => { entry.status = "paid"; });
+    expect(getRemainingBalance(quote)).toBe(1.10);
+    quote.schedule[11].penalty = 0.25;
+    expect(getRemainingBalance(quote)).toBe(1.35);
+    quote.schedule[11].status = "paid";
+    expect(getRemainingBalance(quote)).toBe(0);
+  });
   it("uses the Philippine calendar near UTC midnight", () => {
     const quote = calculateFinancing(1000, DEFAULT_REPAYMENT_PLANS[0], new Date("2026-10-18T17:00:00Z"))
     expect(quote.schedule[0].dueDate).toBe("2026-10-26")
@@ -89,11 +101,11 @@ describe("term-based financing", () => {
     expect(
       calculateFinancing(600, DEFAULT_REPAYMENT_PLANS[2]).totalRepayable,
     ).toBe(618))
-  it("applies the quantity discount before financing", () =>
+  it("finances the full selling-price total at every quantity", () =>
     expect(
       calculateFinancing(getLineTotal(canton, 12), DEFAULT_REPAYMENT_PLANS[1])
         .totalRepayable,
-    ).toBe(144.43))
+    ).toBe(151.65))
   it.each(["daily", "weekly", "monthly"] as const)(
     "schedules exactly the total with %s installments",
     (frequency) => {

@@ -1,3 +1,4 @@
+import { getRemainingBalance } from "../../utils/financingCalculator";
 import { motion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
 import { InternalLayout } from '../../components/layout/InternalLayout';
@@ -9,16 +10,24 @@ export function AdminDashboard() {
 
   const totalSales = state.payments.filter(p => p.status === 'paid' && p.type === 'purchase').reduce((s, p) => s + p.amount, 0);
   const activeFinancing = state.financing.filter(f => f.status === 'active');
-  const totalActive = activeFinancing.reduce((s, f) => s + (f.totalRepayable - (f.paidPrincipal / f.principal * f.totalRepayable)), 0);
+  const totalActive = activeFinancing.reduce((s, f) => s + (getRemainingBalance(f)), 0);
   const collected = state.payments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0);
-  const overdue = state.financing.filter(f => f.status === 'overdue').reduce((s, f) => s + (f.totalRepayable - (f.paidPrincipal / f.principal * f.totalRepayable)), 0);
+  const overdue = state.financing.filter(f => f.status === 'overdue').reduce((s, f) => s + (getRemainingBalance(f)), 0);
 
-  const recentOrders = state.orders.slice(0, 6);
+  const recentOrders = [...state.orders].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+  const todayOrderCount = state.orders.filter(order => new Date(order.createdAt).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }) === today).length;
   const pendingFinancing = state.financing.filter(f => f.status === 'pending').length;
   
-  // Top products by total value
+  // Rank actual completed order lines; replenishing stock must not rewrite sales.
+  const productRevenue = new Map<string, number>();
+  state.orders.filter(order => order.status === 'completed').forEach(order => {
+    order.items.forEach(item => productRevenue.set(item.productId,
+      (productRevenue.get(item.productId) || 0) + item.price * item.quantity));
+  });
   const topProducts = state.products
-    .map(p => ({ ...p, revenue: p.sellingPrice * (120 - p.stock) }))
+    .map(p => ({ ...p, revenue: productRevenue.get(p.id) || 0 }))
+    .filter(p => p.revenue > 0)
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
 
@@ -71,7 +80,7 @@ export function AdminDashboard() {
               </span>
             </div>
             <div>
-              <div className="font-800 text-xl sm:text-2xl mt-1 text-[#10212B] truncate">{formatPHP(Math.round(totalActive))}</div>
+              <div className="font-800 text-xl sm:text-2xl mt-1 text-[#10212B] truncate">{formatPHP(totalActive)}</div>
               <div className="text-[#65727A] text-[11px] mt-1">{activeFinancing.length} active credit accounts</div>
             </div>
           </motion.div>
@@ -112,7 +121,7 @@ export function AdminDashboard() {
             </div>
             <div>
               <div className={`font-800 text-xl sm:text-2xl mt-1 truncate ${overdue > 0 ? 'text-red-600' : 'text-[#10212B]'}`}>
-                {formatPHP(Math.round(overdue))}
+                {formatPHP(overdue)}
               </div>
               <div className={`text-[11px] mt-1 ${overdue > 0 ? 'text-red-600 font-600' : 'text-[#65727A]'}`}>
                 {overdue > 0 ? 'Past due installments' : 'No overdue accounts'}
@@ -129,7 +138,7 @@ export function AdminDashboard() {
             className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-4 shadow-xs"
           >
             <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Orders Today</div>
-            <div className="text-[#0D2B45] font-800 text-xl sm:text-2xl mt-1">{state.orders.length}</div>
+            <div className="text-[#0D2B45] font-800 text-xl sm:text-2xl mt-1">{todayOrderCount}</div>
             <button onClick={() => navigate('admin/orders')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline cursor-pointer">View →</button>
           </motion.div>
           <motion.div
@@ -146,7 +155,7 @@ export function AdminDashboard() {
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             className="bg-white rounded-2xl border border-[#E4E8E6] p-3.5 sm:p-4 shadow-xs"
           >
-            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Wholesale Suppliers</div>
+            <div className="text-[#65727A] text-[11px] sm:text-xs font-600 uppercase tracking-wider">Suppliers</div>
             <div className="text-[#0D2B45] font-800 text-xl sm:text-2xl mt-1">{state.suppliers.length}</div>
             <button onClick={() => navigate('admin/suppliers')} className="text-xs text-[#1E7D3B] font-600 mt-1 hover:underline cursor-pointer">View →</button>
           </motion.div>

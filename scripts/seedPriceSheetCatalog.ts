@@ -16,7 +16,7 @@ const execute = process.argv.includes("--execute")
 const upload = execute || process.argv.includes("--upload")
 const manifest = JSON.parse(readFileSync("data/price-sheet-seed.json", "utf8")) as {
   seed: string; assumptions: string; products: Array<Product & {
-    localImagePath: string; imageSha256: string; sourceProductTitle: string
+    localImagePath: string; imageSha256: string; sourceProductTitle: string; basePrice: number
   }>
 }
 const receiptPath = "data/price-sheet-photo-receipt.json"
@@ -42,7 +42,7 @@ async function main() {
     const supplier = suppliers.value?.[p.supplierId]
     if (!categoryNames.has(p.category) || supplier?.status !== "active" || !supplier.categories?.includes(p.category))
       throw new Error(`Invalid supplier/category mapping: ${p.sku}`)
-    if (p.stock !== 60 || p.reorderLevel !== 12 || p.costPrice < 0 || p.costPrice >= p.retailPrice!)
+    if (p.stock !== 60 || p.reorderLevel !== 12 || p.costPrice < 0 || p.costPrice >= p.basePrice!)
       throw new Error(`Invalid demo defaults: ${p.sku}`)
     const path = resolve(p.localImagePath)
     if (relative(resolve("data/product-images"), path).startsWith(`..${sep}`))
@@ -50,8 +50,8 @@ async function main() {
     const bytes = readFileSync(path)
     if (bytes.length > 5 * 1024 * 1024 || createHash("sha256").update(bytes).digest("hex") !== p.imageSha256)
       throw new Error(`Photo changed or too large: ${p.sku}`)
-    if (getUnitPrice(p, 11) !== p.sellingPrice || getUnitPrice(p, 12) !== p.retailPrice)
-      throw new Error(`Price threshold mismatch: ${p.sku}`)
+    if (getUnitPrice(p, 1) !== p.sellingPrice || getUnitPrice(p, 12) !== p.sellingPrice)
+      throw new Error(`Selling price mismatch: ${p.sku}`)
     const conflicts = Object.values(before.value || {}).filter((existing: any) =>
       existing.sku?.toUpperCase() === p.sku && existing.id !== productId(p.sku))
     if (conflicts.length) throw new Error(`Existing SKU conflict: ${p.sku}`)
@@ -88,7 +88,7 @@ async function main() {
   })
   const products: Product[] = manifest.products.map(p => ({
     id: productId(p.sku), name: p.name, sku: p.sku, category: p.category,
-    supplierId: p.supplierId, sellingPrice: p.sellingPrice, retailPrice: p.retailPrice,
+    supplierId: p.supplierId, sellingPrice: p.sellingPrice,
     costPrice: p.costPrice, stock: p.stock, reorderLevel: p.reorderLevel,
     status: "active", imageUrl: photos[p.sku].url,
   }))

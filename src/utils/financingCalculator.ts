@@ -1,9 +1,16 @@
-import type { RepaymentPlan } from "../types"
+import type { Financing, RepaymentPlan } from "../types"
 import {
   buildInstallmentSchedule,
   getPlanChargePercent,
 } from "./repaymentPlans"
 import { sumMoney, toCentavos } from "./productPricing"
+
+/** The unpaid schedule is authoritative, including final-payment rounding and penalties. */
+export function getRemainingBalance(financing: Pick<Financing, "schedule">): number {
+  return sumMoney(financing.schedule
+    .filter((entry) => entry.status !== "paid")
+    .map((entry) => sumMoney([entry.baseAmount, entry.penalty])))
+}
 
 export function calculateFinancing(
   principal: number,

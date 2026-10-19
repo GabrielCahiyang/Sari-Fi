@@ -14,7 +14,7 @@ export function SupplierRestockPage() {
   const supplier = useMemo(() => {
     return state.suppliers.find(s => s.id === state.currentUser?.supplierId) || {
       id: state.currentUser?.supplierId || 'sup1',
-      name: state.currentUser?.name || 'Wholesale Supplier',
+      name: state.currentUser?.name || 'Supplier',
       email: state.currentUser?.email || 'supplier@sarifi.ph',
       status: 'active' as const,
     };
@@ -148,10 +148,10 @@ export function SupplierRestockPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E4E8E6] shadow-xs">
           <div>
             <h1 className="text-xl sm:text-2xl font-800 text-[#0D2B45] tracking-tight">
-              Wholesale Restock Hub
+              Restock Hub
             </h1>
             <p className="text-xs sm:text-sm text-[#65727A] mt-1">
-              Log arriving wholesale factory batches and resupply your warehouse inventory for sari-sari store fulfillment.
+              Log arriving factory batches and resupply your warehouse inventory for sari-sari store fulfillment.
             </p>
           </div>
 

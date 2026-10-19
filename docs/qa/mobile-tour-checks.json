@@ -1,0 +1,154 @@
+[
+  {
+    "step": 1,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 474,
+    "targetBottom": 454,
+    "targetTop": 227
+  },
+  {
+    "step": 2,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 455,
+    "targetBottom": 435,
+    "targetTop": 244
+  },
+  {
+    "step": 3,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 455,
+    "targetBottom": 432,
+    "targetTop": 200
+  },
+  {
+    "step": 4,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 455,
+    "targetBottom": 433,
+    "targetTop": 95
+  },
+  {
+    "step": 5,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 437,
+    "targetBottom": 417,
+    "targetTop": 166
+  },
+  {
+    "step": 6,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 455,
+    "targetBottom": 415,
+    "targetTop": 164
+  },
+  {
+    "step": 7,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 437,
+    "targetBottom": 417,
+    "targetTop": 166
+  },
+  {
+    "step": 8,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 474,
+    "targetBottom": 415,
+    "targetTop": 302
+  },
+  {
+    "step": 9,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 455,
+    "targetBottom": 435,
+    "targetTop": 124
+  },
+  {
+    "step": 10,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 510,
+    "targetBottom": 458,
+    "targetTop": 418
+  },
+  {
+    "step": 11,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 510,
+    "targetBottom": 490,
+    "targetTop": 450
+  },
+  {
+    "step": 12,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 492,
+    "targetBottom": 472,
+    "targetTop": 432
+  },
+  {
+    "step": 13,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 492,
+    "targetBottom": 462,
+    "targetTop": 236
+  },
+  {
+    "step": 14,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 492,
+    "targetBottom": 470,
+    "targetTop": 181
+  },
+  {
+    "step": 15,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 492,
+    "targetBottom": 471,
+    "targetTop": 208
+  },
+  {
+    "step": 16,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 492,
+    "targetBottom": 462,
+    "targetTop": 173
+  },
+  {
+    "step": 17,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 492,
+    "targetBottom": 462,
+    "targetTop": 261
+  },
+  {
+    "step": 18,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 492,
+    "targetBottom": 472,
+    "targetTop": 220
+  },
+  {
+    "step": 19,
+    "overflow": false,
+    "panelBottom": 788,
+    "panelTop": 474,
+    "targetBottom": 221,
+    "targetTop": 123
+  }
+]

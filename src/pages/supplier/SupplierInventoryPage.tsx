@@ -13,7 +13,7 @@ export function SupplierInventoryPage() {
   const supplier = useMemo(() => {
     return state.suppliers.find(s => s.id === state.currentUser?.supplierId) || {
       id: state.currentUser?.supplierId || 'sup1',
-      name: state.currentUser?.name || 'Wholesale Supplier',
+      name: state.currentUser?.name || 'Supplier',
       email: state.currentUser?.email || 'supplier@sarifi.ph',
       status: 'active' as const,
     };
@@ -85,7 +85,7 @@ export function SupplierInventoryPage() {
               Warehouse Inventory
             </h1>
             <p className="text-xs sm:text-sm text-[#65727A] mt-1">
-              Stock levels of your wholesale products supplied to the Sari-Fi platform.
+              Stock levels of your products supplied to the Sari-Fi platform.
             </p>
           </div>
 
@@ -115,7 +115,7 @@ export function SupplierInventoryPage() {
             <div className="mt-2 text-xl sm:text-2xl font-800 text-[#1E7D3B] tnum">
               {formatPHP(totalInventoryValue)}
             </div>
-            <div className="text-[11px] text-[#65727A] mt-0.5">At wholesale cost value</div>
+            <div className="text-[11px] text-[#65727A] mt-0.5">At cost value</div>
           </div>
 
           <div className={`p-4 sm:p-5 rounded-2xl border shadow-xs ${lowStockCount > 0 ? 'bg-amber-50/70 border-amber-200' : 'bg-white border-[#E4E8E6]'}`}>
@@ -193,7 +193,7 @@ export function SupplierInventoryPage() {
                     <tr>
                       <th className="px-5 py-3.5">Product & SKU</th>
                       <th className="px-4 py-3.5">Category</th>
-                      <th className="px-4 py-3.5 text-right">Wholesale Price</th>
+                      <th className="px-4 py-3.5 text-right">Price</th>
                       <th className="px-4 py-3.5 text-right">Cost Price</th>
                       <th className="px-4 py-3.5 text-center">Stock Level</th>
                       <th className="px-4 py-3.5 text-center">Reorder Threshold</th>
@@ -302,7 +302,7 @@ export function SupplierInventoryPage() {
 
                       <div className="grid grid-cols-3 gap-2 bg-[#F7F8F6] p-2.5 rounded-xl text-center text-xs">
                         <div>
-                          <div className="text-[10px] text-[#65727A]">Wholesale</div>
+                          <div className="text-[10px] text-[#65727A]">Selling Price</div>
                           <div className="font-800 text-[#1E7D3B] tnum">{formatPHP(p.sellingPrice)}</div>
                         </div>
                         <div>

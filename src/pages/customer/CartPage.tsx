@@ -4,7 +4,6 @@ import {
   sumMoney,
 } from "../../utils/productPricing"
 
-import { RetailPriceHint } from "../../components/RetailPriceHint"
 
 import { ProductImage } from "../../components/ProductImage"
 
@@ -99,7 +98,7 @@ export function CartPage() {
 
   return (
     <CustomerLayout>
-      <div data-tour-target="cart" className="max-w-4xl mx-auto p-3.5 sm:p-6">
+      <div className="max-w-4xl mx-auto p-3.5 sm:p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-800 text-[#0D2B45]">Your Cart</h1>
           <button
@@ -141,11 +140,6 @@ export function CartPage() {
                       )}{" "}
                       / unit
                     </div>
-                    <RetailPriceHint
-                      product={item.product!}
-                      quantity={item.quantity}
-                      settings={state.settings}
-                    />
                   </div>
                   <button
                     onClick={() =>
@@ -217,7 +211,7 @@ export function CartPage() {
 
           {/* Summary */}
           <div className="col-span-12 md:col-span-4">
-            <div className="bg-white rounded-2xl border border-[#E4E8E6] p-5 sticky top-4">
+            <div data-tour-target="cart" className="bg-white rounded-2xl border border-[#E4E8E6] p-5 sticky top-4">
               <div className="text-sm font-700 text-[#10212B] mb-4">
                 Order Summary
               </div>

@@ -6,6 +6,13 @@ import { getUnitPrice, toCentavos } from '../utils/productPricing'
 
 const now=new Date('2026-10-19T03:00:00+08:00')
 describe('walkthrough contracts and navigation',()=>{
+  it('does not advertise the retired wholesale or quantity-discount offer',()=>{
+    const session=createWalkthroughSession(sourceFixture(),now)
+    for(const step of TOUR_STEPS){
+      const description=describeWalkthroughStep(session,step.id)
+      expect(description.title+' '+description.detailedInstruction).not.toMatch(/wholesale|discount|threshold|12\+|lower retail/i)
+    }
+  })
   it('uses current catalog prices/images without copying private identities or mutating live state',()=>{
     const source=sourceFixture();const before=structuredClone(source)
     const session=createWalkthroughSession(source,now)
@@ -24,7 +31,9 @@ describe('walkthrough contracts and navigation',()=>{
     expect(()=>planReservationPaths(bundles,{settings:base.settings,customers:Object.fromEntries(base.customers.map(c=>[c.id,c])),suppliers:Object.fromEntries(base.suppliers.map(s=>[s.id,s])),products:Object.fromEntries(base.products.map(p=>[p.id,p]))})).not.toThrow()
     bundles.forEach(({financing:f})=>expect(f.schedule.reduce((sum,row)=>sum+toCentavos(row.baseAmount),0)).toBe(toCentavos(f.totalRepayable)))
     expect(getUnitPrice(base.products[0],11,base.settings)).toBe(7.35)
-    expect(bundles[0].order.items[0].price).toBe(7)
+    expect(bundles[0].order.items[0].price).toBe(7.35)
+    expect(bundles[0].order.total).toBe(88.2)
+    expect(describeWalkthroughStep(session,3).detailedInstruction).not.toMatch(/discount|threshold|lower price/i)
   })
   it('shows all three current terms and an alternative split preview without affecting main approval',()=>{
     const session=createWalkthroughSession(sourceFixture(),now)

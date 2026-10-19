@@ -1,3 +1,4 @@
+import { getRemainingBalance } from "../../utils/financingCalculator";
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { useApp } from "../../context/AppContext";
@@ -73,7 +74,7 @@ export function ReportsPage() {
     const activeFinancing = state.financing.filter(
       (f) => f.status === "active" || f.status === "overdue",
     );
-    const financedPrincipal = currentFinancing.reduce(
+    const financedPrincipal = currentFinancing.filter(f => !["pending", "rejected"].includes(f.status)).reduce(
       (sum, f) => sum + f.principal,
       0,
     );
@@ -81,8 +82,7 @@ export function ReportsPage() {
     const outstandingBalance = activeFinancing.reduce(
       (sum, f) =>
         sum +
-        (f.totalRepayable -
-          (f.paidPrincipal / Math.max(f.principal, 1)) * f.totalRepayable),
+        getRemainingBalance(f),
       0,
     );
 
@@ -91,8 +91,7 @@ export function ReportsPage() {
       .reduce(
         (sum, f) =>
           sum +
-          (f.totalRepayable -
-            (f.paidPrincipal / Math.max(f.principal, 1)) * f.totalRepayable),
+          getRemainingBalance(f),
         0,
       );
 
@@ -267,15 +266,15 @@ export function ReportsPage() {
       .sort((a, b) => b.revenue - a.revenue);
 
     // Recent transaction feed
-    const recentActivity = state.payments.slice(0, 5).map((p) => {
+    const recentActivity = [...settledPayments].sort((a, b) => (b.paidAt || b.createdAt).localeCompare(a.paidAt || a.createdAt)).slice(0, 5).map((p) => {
       const isRepayment =
         p.type === "installment" || p.type === "full_settlement";
       const customer = state.customers.find((c) => c.id === p.customerId);
       return {
         id: p.id,
         title: isRepayment
-          ? `Installment Payment (${customer?.storeName || "Store"})`
-          : `Wholesale Order Settlement`,
+          ? `${p.type === "full_settlement" ? "Full Settlement" : "Installment Payment"} (${customer?.storeName || "Store"})`
+          : `Order Settlement`,
         subtitle: p.paidAt
           ? new Date(p.paidAt).toLocaleDateString("en-PH", {
               month: "short",
@@ -292,6 +291,7 @@ export function ReportsPage() {
     return {
       grossSales,
       recognizedOrdersCount: recognizedOrders.length,
+      currentOrdersCount: currentOrders.length,
       cashPurchases,
       gcashPurchases,
       financedPrincipal,
@@ -344,7 +344,7 @@ export function ReportsPage() {
       ],
       ["Collection Health Rate (%)", `${reportData.collectionRate}%`],
       [],
-      ["TOP SELLING WHOLESALE PRODUCTS"],
+      ["TOP SELLING PRODUCTS"],
       ["Product Name", "Category", "Units Sold", "Revenue (PHP)"],
       ...reportData.topProducts.map((p) => [
         p.name,
@@ -420,7 +420,7 @@ export function ReportsPage() {
                   SARI-FI FINANCIAL & OPERATIONS REPORT
                 </h1>
                 <p className="text-xs text-[#65727A]">
-                  Wholesale Marketplace & Revolving Micro-Credit Infrastructure
+                  Marketplace & Revolving Micro-Credit Infrastructure
                 </p>
               </div>
             </div>
@@ -527,7 +527,7 @@ export function ReportsPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <span className="font-700 text-sm sm:text-base tracking-tight text-white print:text-[#10212B]">
-                    Wholesale Treasury
+                    Treasury
                   </span>
                 </div>
                 <button
@@ -559,7 +559,7 @@ export function ReportsPage() {
                   <div className="flex items-center justify-between text-[11px] text-white/75 font-600 print:text-slate-600">
                     <span>Order Velocity</span>
                     <span className="text-emerald-300 font-bold print:text-emerald-700">
-                      100% Cleared
+                      {reportData.currentOrdersCount ? Math.round(reportData.recognizedOrdersCount / reportData.currentOrdersCount * 100) : 0}% Cleared
                     </span>
                   </div>
                   <div className="my-2">
@@ -569,10 +569,7 @@ export function ReportsPage() {
                     <div className="text-base font-800 text-white tnum print:text-[#10212B]">
                       {formatPHP(
                         reportData.recognizedOrdersCount > 0
-                          ? Math.round(
-                              reportData.grossSales /
-                                reportData.recognizedOrdersCount,
-                            )
+                          ? reportData.grossSales / reportData.recognizedOrdersCount
                           : 0,
                       )}
                     </div>
@@ -746,7 +743,7 @@ export function ReportsPage() {
                     {reportData.activeFinancingCount} active plans
                   </div>
                   <div className="text-xs text-[#65727A] mt-0.5">
-                    Total remaining principal
+                    Total remaining balance
                   </div>
                 </div>
                 <div className="text-xl sm:text-2xl font-800 text-[#0D2B45] tnum">
@@ -941,7 +938,7 @@ export function ReportsPage() {
                     Order Volume Movement
                   </h3>
                   <p className="text-xs text-[#65727A] mt-0.5">
-                    Seven-day cleared wholesale order velocity
+                    Seven-day cleared order velocity
                   </p>
                 </div>
                 <span className="text-[11px] font-700 text-[#1E7D3B] bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
@@ -1015,15 +1012,15 @@ export function ReportsPage() {
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            BENTO GRID ROW 4: TOP SELLING WHOLESALE GOODS & SUPPLIER SCORECARD
+            BENTO GRID ROW 4: TOP SELLING GOODS & SUPPLIER SCORECARD
            ══════════════════════════════════════════════════════════════════════ */}
         <div className="grid grid-cols-12 gap-4 sm:gap-5 print:grid-cols-12">
-          {/* Top Selling Wholesale Goods */}
+          {/* Top Selling Goods */}
           <div className="col-span-12 lg:col-span-6 bg-white rounded-3xl border border-[#E4E8E6] p-5 sm:p-6 shadow-xs print-break-inside-avoid print:border-slate-300">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-700 text-base text-[#10212B]">
-                  Top Selling Wholesale Goods
+                  Top Selling Goods
                 </h3>
                 <p className="text-xs text-[#65727A] mt-0.5">
                   Highest volume SKUs cleared by sales
@@ -1070,12 +1067,12 @@ export function ReportsPage() {
             )}
           </div>
 
-          {/* Wholesale Supplier Scorecard */}
+          {/* Supplier Scorecard */}
           <div className="col-span-12 lg:col-span-6 bg-white rounded-3xl border border-[#E4E8E6] p-5 sm:p-6 shadow-xs print-break-inside-avoid print:border-slate-300">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-700 text-base text-[#10212B]">
-                  Wholesale Supplier Scorecard
+                  Supplier Scorecard
                 </h3>
                 <p className="text-xs text-[#65727A] mt-0.5">
                   Distributor fulfillment load and revenue share

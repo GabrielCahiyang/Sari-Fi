@@ -40,6 +40,7 @@ describe('actual walkthrough page rendering',()=>{
         const html=renderToStaticMarkup(React.createElement(WalkthroughAppProvider,{state,children:React.createElement(pages[step.targetPage])}))
         expect(html).toContain(`data-tour-target="${step.focusTarget}"`)
         expect(html).not.toContain('undefined%')
+        expect(html).not.toMatch(/wholesale|retail price applied|retail price at|lower retail|12\+/i)
       }
       expect(persistence).not.toHaveBeenCalled()
     })

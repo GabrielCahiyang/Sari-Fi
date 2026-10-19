@@ -54,7 +54,7 @@ def download(row):
     path = OUT / f'{key.lower()}.{extension}'
     path.write_bytes(content)
     print(f'{key}: {product["title"]} ({len(content)} bytes)',flush=True)
-    return dict(sku='SF-'+key,name=name,retailPrice=retail,sellingPrice=regular,category=category,
+    return dict(sku='SF-'+key,name=name,basePrice=retail,sellingPrice=regular,category=category,
                 supplierId='sup1788469588257' if category in ('Instant Noodles','Personal Care') else 'sup1788469553448',
                 costPrice=round(retail*.85,2),stock=60,reorderLevel=12,status='active',
                 localImagePath=path.relative_to(ROOT).as_posix(),imageSourcePage=page,originalImageUrl=image,

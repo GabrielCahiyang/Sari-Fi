@@ -5,7 +5,6 @@ import {
   calculateCheckoutFinancing,
 } from "../../utils/financingCalculator"
 
-import { RetailPriceHint } from "../../components/RetailPriceHint"
 
 import { ProductImage } from "../../components/ProductImage"
 
@@ -393,8 +392,6 @@ export function POSPage() {
           const mockRef =
             paymentMethod === "gcash" ? generateMockGcashReference() : undefined
 
-          const cashPaid = paymentMethod === "cash"
-
           payment = {
             id: `pay${idSeed}_${paymentIndex}`,
 
@@ -410,9 +407,7 @@ export function POSPage() {
 
             amount: immediateAmount,
 
-            status: cashPaid ? "paid" : "pending",
-
-            confirmedBy: cashPaid ? staffName : undefined,
+            status: "pending",
 
             mockTransactionId: mockRef?.transactionId,
 
@@ -420,7 +415,6 @@ export function POSPage() {
 
             createdAt: now,
 
-            paidAt: cashPaid ? now : undefined,
           }
         }
 
@@ -486,9 +480,6 @@ export function POSPage() {
           }
         }
 
-        const cashCleared =
-          payment?.method === "cash" && payment.status === "paid"
-
         const order: Order = {
           id: orderId,
 
@@ -506,13 +497,9 @@ export function POSPage() {
 
           paymentType,
 
-          paymentStatus: cashCleared ? "paid" : "pending",
+          paymentStatus: "pending",
 
-          status: financing
-            ? "pending_financing"
-            : cashCleared
-              ? "processing"
-              : "pending_payment",
+          status: financing ? "pending_financing" : "pending_payment",
 
           stockReservationStatus: "reserved",
 
@@ -525,8 +512,6 @@ export function POSPage() {
             paymentType === "split" ? financedAmount : undefined,
 
           splitMethod: paymentType === "split" ? paymentMethod : undefined,
-
-          confirmedBy: cashCleared ? staffName : undefined,
 
           channel: "pos",
 
@@ -557,6 +542,19 @@ export function POSPage() {
 
     bundles.forEach((bundle) => dispatch({ type: "PLACE_ORDER", ...bundle }))
 
+    // Reserve first, then confirm collected cash through the same payment flow.
+    // If confirmation fails, retain the saved order for Payments to confirm.
+    let cashNeedsConfirmation = false
+    for (const { payment } of bundles) {
+      if (payment?.method !== "cash") continue
+      try {
+        await settleOrderPayment(payment.id, staffName, state.currentUser?.role)
+        dispatch({ type: "CONFIRM_CASH_PAYMENT", paymentId: payment.id, confirmedBy: staffName })
+      } catch {
+        cashNeedsConfirmation = true
+      }
+    }
+
     setProcessing(false)
 
     isPlacingRef.current = false
@@ -579,9 +577,11 @@ export function POSPage() {
       setPendingWebhookData(gcashPayments)
     } else {
       showToast(
-        mode === "cash" ? "success" : "info",
+        cashNeedsConfirmation ? "error" : mode === "cash" ? "success" : "info",
 
-        `${bundles.length} supplier ${
+        cashNeedsConfirmation
+          ? "Order saved. Cash confirmation did not finish; confirm it in Payments before dispatch."
+          : `${bundles.length} supplier ${
           bundles.length === 1 ? "order" : "orders"
         } created from this sale.`,
       )
@@ -783,14 +783,6 @@ export function POSPage() {
                           ),
                         )}
                       </div>
-                      <div className="text-[10px] text-[#65727A]">
-                        Regular {formatPHP(product.sellingPrice)}
-                      </div>
-                      <RetailPriceHint
-                        product={product}
-                        quantity={qty || 1}
-                        settings={state.settings}
-                      />
                       <div
                         className={`text-[11px] font-600 mt-0.5 ${
                           out
@@ -925,13 +917,6 @@ export function POSPage() {
                         {formatPHP(item.price)} ·{" "}
                         {formatPHP(item.price * item.quantity)}
                       </div>
-                      <RetailPriceHint
-                        product={
-                          state.products.find((p) => p.id === item.productId)!
-                        }
-                        quantity={item.quantity}
-                        settings={state.settings}
-                      />
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button

@@ -5,7 +5,6 @@ import {
   calculateCheckoutFinancing,
 } from "../../utils/financingCalculator"
 
-import { RetailPriceHint } from "../../components/RetailPriceHint"
 
 import { useState, useRef } from "react"
 
@@ -591,7 +590,7 @@ export function CheckoutPage() {
         <div className="grid grid-cols-12 gap-4 sm:gap-6">
           {/* Payment Mode Selection */}
           <div className="col-span-12 md:col-span-7 space-y-4">
-            <div data-tour-target="methods" className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5">
+            <div className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5">
               <div className="font-700 text-sm text-[#10212B] mb-4">
                 Payment Method
               </div>
@@ -720,7 +719,7 @@ export function CheckoutPage() {
                 )}
 
                 {mode === "split" && (
-                  <div className="bg-[#F7F8F6] rounded-xl p-3.5 sm:p-4 mb-4 space-y-2">
+                  <div data-tour-target="methods" className="bg-[#F7F8F6] rounded-xl p-3.5 sm:p-4 mb-4 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-[#65727A]">Financed (credit)</span>
                       <span className="font-700 text-[#10212B]">
@@ -866,11 +865,6 @@ export function CheckoutPage() {
                       <span>
                         {item.productName} ×{item.quantity}
                       </span>
-                      <RetailPriceHint
-                        product={getProduct(item.productId)!}
-                        quantity={item.quantity}
-                        settings={state.settings}
-                      />
                     </div>
                     <span className="font-600 shrink-0">
                       {formatPHP(item.price * item.quantity)}

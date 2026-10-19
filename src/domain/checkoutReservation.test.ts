@@ -26,7 +26,6 @@ function fixture() {
         category: "Noodles",
         supplierId: "supplier",
         sellingPrice: 12.39,
-        retailPrice: 11.8,
         costPrice: 10,
         stock: 13,
         reorderLevel: 12,
@@ -38,7 +37,7 @@ function fixture() {
   }
   const now = "2026-10-19T03:00:00.000Z"
   const plan = DEFAULT_REPAYMENT_PLANS[1]
-  const quote = calculateFinancing(141.6, plan, new Date(now))
+  const quote = calculateFinancing(148.68, plan, new Date(now))
   const bundle: ReservationBundle = {
     order: {
       id: "order",
@@ -52,10 +51,10 @@ function fixture() {
           productName: "Canton",
           supplierId: "supplier",
           quantity: 12,
-          price: 11.8,
+          price: 12.39,
         },
       ],
-      total: 141.6,
+      total: 148.68,
       status: "pending_financing",
       paymentType: "financing",
       paymentStatus: "pending",
@@ -86,11 +85,18 @@ function fixture() {
   return { data, bundle }
 }
 describe("fresh checkout integrity", () => {
-  it("reserves discounted stock and saves an exact financing snapshot", () => {
+  it("rejects the retired lower price on a new 12-unit checkout", () => {
+    const { data, bundle } = fixture()
+    Object.assign(data.products!.canton, { retailPrice: 11.8 })
+    bundle.order.items[0].price = 11.8
+    bundle.order.total = 141.6
+    expect(() => planReservationPaths([bundle], data)).toThrow("Order pricing changed")
+  })
+  it("reserves stock at the selling price and saves an exact financing snapshot", () => {
     const { data, bundle } = fixture()
     const paths = planReservationPaths([bundle], data)
     expect(paths["products/canton/stock"]).toBe(1)
-    expect((paths["financing/loan"] as any).totalRepayable).toBe(144.43)
+    expect((paths["financing/loan"] as any).totalRepayable).toBe(151.65)
   })
   it.each([
     "price",
@@ -105,8 +111,7 @@ describe("fresh checkout integrity", () => {
   ] as const)("rejects changed/tampered %s", (scenario) => {
     const { data, bundle } = fixture()
     if (scenario === "price")
-      (data.products!.canton.sellingPrice = 15),
-        (data.products!.canton.retailPrice = 12)
+      data.products!.canton.sellingPrice = 15
     if (scenario === "stock") data.products!.canton.stock = 11
     if (scenario === "supplier")
       bundle.order.items[0].supplierId = "someone_else"
@@ -145,7 +150,7 @@ describe("fresh checkout integrity", () => {
     bundle.order.paymentType = "cash"
     bundle.payment = {
       id: "cash", paymentNo: "PAY-1", customerId: "customer", orderId: "order",
-      type: "purchase", method: "cash", amount: 141.6, status: "pending", createdAt: bundle.order.createdAt,
+      type: "purchase", method: "cash", amount: 148.68, status: "pending", createdAt: bundle.order.createdAt,
     }
     expect(planReservationPaths([bundle], data)["payments/cash"]).toBe(bundle.payment)
   })
@@ -168,6 +173,6 @@ describe("fresh checkout integrity", () => {
     const paths = planReservationPaths([bundle, second], data)
     expect(paths["products/canton/stock"]).toBe(1)
     expect(paths["products/coffee/stock"]).toBe(1)
-    expect((paths["financing/loan2"] as any).chargeAmount).toBe(2.83)
+    expect((paths["financing/loan2"] as any).chargeAmount).toBe(2.97)
   })
 })

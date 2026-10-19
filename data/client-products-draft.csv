@@ -1,4 +1,4 @@
-sku,name,variant,unitDescription,category,supplierId,retailPrice,sellingPrice,costPrice,stock,reorderLevel,status,imageUrl,imageSourceUrl,imageLicenseStatus,approvalStatus,reviewer
+sku,name,variant,unitDescription,category,supplierId,basePrice,sellingPrice,costPrice,stock,reorderLevel,status,imageUrl,imageSourceUrl,imageLicenseStatus,approvalStatus,reviewer
 ,Ajinomoto Vetsin,,,Seasoning,,2.50,2.63,,,,inactive,,,,pending,
 ,Ajinomoto Crispy Fry,,,Seasoning,,19.00,19.95,,,,inactive,,,,pending,
 ,Maggi Magic Sarap,,,Seasoning,,3.20,3.36,,,,inactive,,,,pending,

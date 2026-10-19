@@ -1,3 +1,4 @@
+import { getRemainingBalance } from "../utils/financingCalculator";
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import type {
   AppState, AuthUser, Customer, Employee, Supplier, Product,
@@ -341,7 +342,7 @@ function coreReducer(state: AppState, action: Action): AppState {
       const remainingPrincipal = Math.max(0, fin.principal - fin.paidPrincipal);
       if (remainingPrincipal <= 0) return state;
 
-      const remaining = fin.totalRepayable - (fin.paidPrincipal / fin.principal * fin.totalRepayable);
+      const remaining = getRemainingBalance(fin);
       const updatedSchedule = fin.schedule.map(s =>
         s.status !== 'paid' ? { ...s, status: 'paid' as const, paidAt: new Date().toISOString(), paidMethod: action.method } : s
       );
@@ -557,7 +558,7 @@ function coreReducer(state: AppState, action: Action): AppState {
       });
       const changed = JSON.stringify(cart) !== JSON.stringify(state.cart) || state.cart.some(item => {
         const before = state.products.find(p => p.id === item.productId); const after = map.get(item.productId);
-        return before?.sellingPrice !== after?.sellingPrice || before?.retailPrice !== after?.retailPrice;
+        return before?.sellingPrice !== after?.sellingPrice;
       });
       return { ...state, products: Array.from(map.values()), cart, checkoutData: changed ? null : state.checkoutData,
         toast: changed ? { id: 'catalog-update', type: 'info', message: 'Catalog updated—review your cart.' } : state.toast };

@@ -2,7 +2,6 @@ import { getUnitPrice } from "../../utils/productPricing"
 
 import { ProductImage } from "../../components/ProductImage"
 
-import { RetailPriceHint } from "../../components/RetailPriceHint"
 
 import { useState, useMemo } from "react"
 
@@ -100,7 +99,7 @@ export function ShopPage() {
               Sari-Fi Market
             </h1>
             <p className="text-xs sm:text-sm text-[#65727A] mt-0.5">
-              Grocery essentials with lower retail prices at {state.settings.retailMinimumQuantity ?? 12}+ sale units of the same product
+              Grocery essentials at clear selling prices. The same unit price applies to every quantity.
             </p>
           </div>
           {cartCount > 0 && (
@@ -190,14 +189,11 @@ export function ShopPage() {
 
               const supplierName =
                 state.suppliers.find((s) => s.id === product.supplierId)
-                  ?.name || "Wholesale Partner"
+                  ?.name || "Supplier"
 
               return (
                 <div
                   key={product.id}
-                  data-tour-target={
-                    product.id === "walkthrough_product_1" ? "1" : undefined
-                  }
                   className="bg-white rounded-2xl border border-[#E4E8E6] p-3 sm:p-4 flex flex-col hover:border-[#1E7D3B]/30 hover:shadow-sm transition-all"
                 >
                   <ProductImage
@@ -205,6 +201,7 @@ export function ShopPage() {
                     name={product.name}
                     className="aspect-square w-full mb-3"
                   />
+                  <div data-tour-target={product.id === "walkthrough_product_1" ? "1" : undefined} className="flex flex-1 flex-col">
                   {/* Category & Supplier chips */}
                   <div className="flex items-center justify-between gap-1.5 mb-1.5">
                     <span className="text-[10px] font-700 text-[#65727A] uppercase tracking-wider truncate">
@@ -237,19 +234,8 @@ export function ShopPage() {
                     )}
                   </div>
                   <div className="text-[10px] text-[#65727A]">
-                    Regular {formatPHP(product.sellingPrice)} / unit
+                    per unit
                   </div>
-                  <RetailPriceHint
-                    product={product}
-                    quantity={combined}
-                    settings={state.settings}
-                  />
-                  {cartItem && remaining > 0 && (
-                    <div className="text-[10px] text-[#65727A] mt-1">
-                      Price for {combined} total in cart after adding
-                    </div>
-                  )}
-
                   {/* Stock */}
                   <div
                     className={`text-xs font-600 mb-3 ${
@@ -306,6 +292,7 @@ export function ShopPage() {
                         ? `Add ${qty} · In Cart (${cartItem.quantity})`
                         : "Add to Cart"}
                   </button>
+                  </div>
                 </div>
               )
             })}

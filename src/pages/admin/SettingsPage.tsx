@@ -22,7 +22,7 @@ import {
   isEligiblePlan,
 } from "../../utils/repaymentPlans"
 
-type NumericSettingKey = "retailMinimumQuantity" | "retailMarkupMultiplier" | "startingCreditLimit" | "limitIncreaseAmount" | "maxAutomaticLimit" | "weeklyPenalty"
+type NumericSettingKey = "sellingPriceMultiplier" | "startingCreditLimit" | "limitIncreaseAmount" | "maxAutomaticLimit" | "weeklyPenalty"
 
 const durationUnits: PlanDurationUnit[] = ["month"]
 
@@ -90,9 +90,8 @@ export function SettingsPage() {
     e.preventDefault()
 
     const checks: Array<[NumericSettingKey, string, number, number]> = [
-      ["retailMinimumQuantity", "Retail minimum quantity", 1, 10000],
 
-      ["retailMarkupMultiplier", "Regular price derivation multiplier", 1, 10],
+      ["sellingPriceMultiplier", "Selling price derivation multiplier", 1, 10],
 
       ["startingCreditLimit", "Starting credit limit", 1000, 50000],
 
@@ -135,13 +134,6 @@ export function SettingsPage() {
 
       setValidationError(message)
       showToast("error", message)
-      return
-    }
-
-    if (!Number.isSafeInteger(settings.retailMinimumQuantity)) {
-      setValidationError(
-        "Retail minimum quantity must be a positive whole number.",
-      )
       return
     }
 
@@ -290,16 +282,8 @@ export function SettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                 {[
                   {
-                    key: "retailMinimumQuantity" as const,
-                    label: "Retail minimum quantity",
-                    hint: "Sale units of the same product",
-                    min: 1,
-                    max: 10000,
-                  },
-
-                  {
-                    key: "retailMarkupMultiplier" as const,
-                    label: "Regular price multiplier",
+                    key: "sellingPriceMultiplier" as const,
+                    label: "Selling price multiplier",
                     hint: "Only derives missing import prices; never overwrites explicit prices",
                     min: 1,
                     max: 10,
@@ -335,7 +319,7 @@ export function SettingsPage() {
                     </label>
                     <input
                       type="number"
-                      step={key === "retailMarkupMultiplier" ? "0.01" : "1"}
+                      step={key === "sellingPriceMultiplier" ? "0.01" : "1"}
                       value={settings[key]}
                       onChange={(e) => update(key, parseFloat(e.target.value))}
                       min={min}

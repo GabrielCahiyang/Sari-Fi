@@ -42,7 +42,7 @@ export function SupplierProductsPage() {
       state.suppliers.find((s) => s.id === state.currentUser?.supplierId) || {
         id: state.currentUser?.supplierId || "sup1",
 
-        name: state.currentUser?.name || "Wholesale Supplier",
+        name: state.currentUser?.name || "Supplier",
 
         email: state.currentUser?.email || "supplier@sarifi.ph",
 
@@ -102,7 +102,6 @@ export function SupplierProductsPage() {
 
     sellingPrice: "",
 
-    retailPrice: "",
 
     costPrice: "",
 
@@ -213,7 +212,6 @@ export function SupplierProductsPage() {
 
       sellingPrice: "",
 
-      retailPrice: "",
 
       costPrice: "",
 
@@ -248,7 +246,6 @@ export function SupplierProductsPage() {
 
       sellingPrice: String(prod.sellingPrice),
 
-      retailPrice: String(prod.retailPrice ?? ""),
 
       costPrice: String(prod.costPrice),
 
@@ -315,14 +312,6 @@ export function SupplierProductsPage() {
     if (!isCurrencyInput(formData.sellingPrice))
       errors.sellingPrice = "Use a positive price with at most 2 decimals"
 
-    if (
-      formData.retailPrice.trim() &&
-      (!isCurrencyInput(formData.retailPrice) ||
-        Number(formData.retailPrice) > Number(formData.sellingPrice))
-    )
-      errors.retailPrice =
-        "Retail price must be positive and no higher than regular price (2 decimals maximum)"
-
     if (!isCurrencyInput(formData.costPrice, true))
       errors.costPrice = "Use at most 2 decimals"
 
@@ -372,10 +361,6 @@ export function SupplierProductsPage() {
       supplierId: supplier.id,
 
       sellingPrice,
-
-      retailPrice: formData.retailPrice.trim()
-        ? Number(formData.retailPrice)
-        : undefined,
 
       costPrice,
 
@@ -445,7 +430,7 @@ export function SupplierProductsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#E4E8E6] shadow-xs">
           <div>
             <h1 className="text-xl sm:text-2xl font-800 text-[#0D2B45] tracking-tight">
-              My Wholesale Products
+              My Products
             </h1>
             <p className="text-xs sm:text-sm text-[#65727A] mt-1">
               Products you supply to registered sari-sari stores across the
@@ -537,7 +522,6 @@ export function SupplierProductsPage() {
 
         {/* Products List / Table */}
         <div
-          data-tour-target="0"
           className="bg-white rounded-2xl border border-[#E4E8E6] overflow-hidden shadow-xs"
         >
           {filtered.length === 0 ? (
@@ -574,7 +558,7 @@ export function SupplierProductsPage() {
                       <th className="px-5 py-3.5">Product</th>
                       <th className="px-4 py-3.5">Category</th>
                       <th className="px-4 py-3.5 text-right">
-                        Wholesale Price
+                        Price
                       </th>
                       <th className="px-4 py-3.5 text-right">Cost Price</th>
                       <th className="px-4 py-3.5 text-right">
@@ -591,6 +575,7 @@ export function SupplierProductsPage() {
                       return (
                         <tr
                           key={p.id}
+                          data-tour-target={p.id === "walkthrough_product_1" ? "0" : undefined}
                           className="hover:bg-[#FAFAFA] transition-colors"
                         >
                           <td className="px-5 py-3.5">
@@ -678,7 +663,7 @@ export function SupplierProductsPage() {
                   const isLow = p.stock <= p.reorderLevel
 
                   return (
-                    <div key={p.id} className="p-4 space-y-3">
+                    <div key={p.id} data-tour-target={p.id === "walkthrough_product_1" ? "0" : undefined} className="p-4 space-y-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2.5">
                           {p.imageUrl ? (
@@ -715,9 +700,7 @@ export function SupplierProductsPage() {
 
                       <div className="grid grid-cols-3 gap-2 bg-[#F7F8F6] p-2.5 rounded-xl text-center text-xs">
                         <div>
-                          <div className="text-[10px] text-[#65727A]">
-                            Wholesale
-                          </div>
+                          <div className="text-[10px] text-[#65727A]">Selling Price</div>
                           <div className="font-800 text-[#1E7D3B] tnum">
                             {formatPHP(p.sellingPrice)}
                           </div>
@@ -771,8 +754,8 @@ export function SupplierProductsPage() {
               <div className="p-4 sm:p-5 border-b border-[#E4E8E6] flex items-center justify-between bg-[#F7F8F6]">
                 <h3 className="font-800 text-base text-[#0D2B45]">
                   {editingProduct
-                    ? "Edit Wholesale Product"
-                    : "Add New Wholesale Product"}
+                    ? "Edit Product"
+                    : "Add New Product"}
                 </h3>
                 <button
                   onClick={() => setModalOpen(false)}
@@ -871,39 +854,10 @@ export function SupplierProductsPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="supplier-retail"
-                    className="block text-xs font-700 text-[#0D2B45] mb-1"
-                  >
-                    Retail price at {state.settings.retailMinimumQuantity ?? 12}
-                    + (₱)
-                  </label>
-                  <input
-                    id="supplier-retail"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={formData.retailPrice}
-                    onChange={(e) =>
-                      setFormData({ ...formData, retailPrice: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-sm"
-                  />
-                  <p className="text-[11px] text-[#65727A] mt-1">
-                    Same product sale units; leave blank to disable retail
-                    pricing.
-                  </p>
-                  {formErrors.retailPrice && (
-                    <p role="alert" className="text-xs text-red-600">
-                      {formErrors.retailPrice}
-                    </p>
-                  )}
-                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-700 text-[#0D2B45] mb-1">
-                      Regular selling price (₱) *
+                      Selling price (₱) *
                     </label>
                     <input
                       type="number"
@@ -925,7 +879,7 @@ export function SupplierProductsPage() {
 
                   <div>
                     <label className="block text-xs font-700 text-[#0D2B45] mb-1">
-                      Supplier Supplier cost (₱)
+                      Supplier cost (₱)
                     </label>
                     <input
                       type="number"

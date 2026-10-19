@@ -1,3 +1,4 @@
+import { getRemainingBalance } from "../../utils/financingCalculator";
 import { useApp } from '../../context/AppContext';
 import { CustomerLayout } from '../../components/layout/CustomerLayout';
 import { OrderStatusBadge, FinancingStatusBadge } from '../../components/ui/Badge';
@@ -7,7 +8,7 @@ export function CustomerDashboard() {
   const { state, navigate, getCurrentCustomer, getCustomerFinancing, getCustomerOrders, formatPHP } = useApp();
   const customer = getCurrentCustomer();
   const financing = getCustomerFinancing(customer?.id || '');
-  const orders = getCustomerOrders(customer?.id || '');
+  const orders = getCustomerOrders(customer?.id || '').sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   if (!customer) return null;
 
@@ -15,14 +16,14 @@ export function CustomerDashboard() {
   const availablePercent = Math.round((available / customer.creditLimit) * 100);
   const activeFinancing = financing.filter(f => f.status === 'active' || f.status === 'overdue');
   const pendingFinancing = financing.filter(f => f.status === 'pending');
-  const totalOutstanding = activeFinancing.reduce((s, f) => s + (f.totalRepayable - (f.paidPrincipal / f.principal * f.totalRepayable)), 0);
+  const totalOutstanding = activeFinancing.reduce((s, f) => s + (getRemainingBalance(f)), 0);
   const activeOrders = orders.filter(o => !['completed', 'cancelled'].includes(o.status));
 
   // Next payment across all active financing
   const nextDue = activeFinancing.flatMap(f => f.schedule.filter(s => s.status === 'due' || s.status === 'upcoming'))
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
 
-  const recentPayments = state.payments.filter(p => p.customerId === customer.id).slice(0, 5);
+  const recentPayments = state.payments.filter(p => p.customerId === customer.id).sort((a, b) => (b.paidAt || b.createdAt).localeCompare(a.paidAt || a.createdAt)).slice(0, 5);
 
   return (
     <CustomerLayout>
@@ -114,7 +115,7 @@ export function CustomerDashboard() {
               {activeFinancing.slice(0, 2).map(fin => {
                 const paidInstallments = fin.schedule.filter(s => s.status === 'paid').length;
                 const progress = paidInstallments / fin.installmentCount;
-                const remaining = fin.totalRepayable - (fin.paidPrincipal / fin.principal * fin.totalRepayable);
+                const remaining = getRemainingBalance(fin);
                 return (
                   <div key={fin.id} className="mb-4 last:mb-0">
                     <div className="flex justify-between items-start mb-2">
@@ -126,7 +127,7 @@ export function CustomerDashboard() {
                     </div>
                     <div className="flex gap-4 text-xs mb-2">
                       <div><span className="text-[#65727A]">Principal:</span> <span className="font-600">{formatPHP(fin.principal)}</span></div>
-                      <div><span className="text-[#65727A]">Remaining:</span> <span className="font-600 text-[#10212B]">{formatPHP(Math.round(remaining))}</span></div>
+                      <div><span className="text-[#65727A]">Remaining:</span> <span className="font-600 text-[#10212B]">{formatPHP(remaining)}</span></div>
                     </div>
                     <div className="bg-[#F7F8F6] rounded-full h-2">
                       <div className="bg-[#7DBE4C] h-2 rounded-full" style={{ width: `${progress * 100}%` }} />

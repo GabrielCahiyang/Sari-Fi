@@ -64,7 +64,12 @@ export function GuidedTourBar() {
 
   const reduceMotion = useReducedMotion();
   const [isMinimized, setIsMinimized] = useState(false);
+  const [panel, setPanel] = useState<HTMLElement | null>(null);
   const [spotlight, setSpotlight] = useState<SpotlightRect | null>(null);
+
+  useEffect(() => {
+    if (!isTourActive) setIsMinimized(false);
+  }, [isTourActive]);
 
   useEffect(() => {
     if (!isTourActive || isMinimized) return;
@@ -115,24 +120,31 @@ export function GuidedTourBar() {
       });
     };
 
-    const settleTimer = window.setTimeout(() => {
+    const workspace = document.querySelector<HTMLElement>('[data-walkthrough-page]');
+    const keepTargetClear = () => {
+      const panelHeight = panel?.offsetHeight ?? 0;
+      workspace?.style.setProperty('--walkthrough-panel-height', `${panelHeight}px`);
+      workspace?.setAttribute('data-guide-spacing', '');
       const target = findVisibleTarget();
       if (target) {
         const rect = target.getBoundingClientRect();
-        const reservedBottom = window.innerWidth < 640 ? 330 : 255;
-        if (rect.top < 20 || rect.bottom > window.innerHeight - reservedBottom) {
+        const mainTop = document.querySelector('main')?.getBoundingClientRect().top ?? 0;
+        const availableBottom = window.innerHeight - panelHeight - 32;
+        if (rect.top < mainTop + 12 || rect.bottom > availableBottom) {
           target.scrollIntoView({
             behavior: reduceMotion ? 'auto' : 'smooth',
-            block: 'center',
+            block: rect.height > availableBottom - mainTop - 12 ? 'end' : 'nearest',
             inline: 'nearest',
           });
         }
       }
       measure();
-    }, 180);
+    };
+    const panelObserver = new ResizeObserver(keepTargetClear);
+    if (panel) panelObserver.observe(panel);
+    const settleTimer = window.setTimeout(keepTargetClear, 180);
 
     const mutationObserver = new MutationObserver(measure);
-    const workspace = document.querySelector('[data-walkthrough-page]');
     if (workspace) mutationObserver.observe(workspace, { childList: true, subtree: true });
     window.addEventListener('resize', measure);
     window.addEventListener('scroll', measure, true);
@@ -140,13 +152,16 @@ export function GuidedTourBar() {
 
     return () => {
       window.clearTimeout(settleTimer);
+      panelObserver.disconnect();
+      workspace?.style.removeProperty('--walkthrough-panel-height');
+      workspace?.removeAttribute('data-guide-spacing');
       cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
       mutationObserver.disconnect();
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
-  }, [currentStep.id, isMinimized, isTourActive, reduceMotion]);
+  }, [currentStep.id, isMinimized, isTourActive, reduceMotion, panel]);
 
   const phaseCopy = useMemo(() => {
     if (isEnding) return { label: 'Returning to your workspace', tone: 'text-sky-200', dot: 'bg-sky-300' };
@@ -318,16 +333,17 @@ export function GuidedTourBar() {
           ) : (
             <motion.section
               key="tour-expanded"
+              ref={setPanel}
               layoutId="tour-panel"
               initial={{ opacity: 0, y: 28, scale: 0.975 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 18, scale: 0.985 }}
               transition={reduceMotion ? { duration: 0.01 } : spring}
-              className="pointer-events-auto w-full max-w-3xl overflow-hidden rounded-[24px] border border-white/12 bg-[#0B263D]/97 text-white shadow-[0_28px_90px_rgba(4,20,32,0.46)] backdrop-blur-2xl"
+              className="pointer-events-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[24px] border border-white/12 bg-[#0B263D]/97 text-white shadow-[0_28px_90px_rgba(4,20,32,0.46)] backdrop-blur-2xl"
               aria-label="Interactive system tour"
               tabIndex={-1}
             >
-              <div className="h-1 bg-white/[0.08]">
+              <div className="h-1 shrink-0 bg-white/[0.08]">
                 <motion.div
                   className="h-full origin-left bg-linear-to-r from-amber-300 via-emerald-300 to-emerald-500"
                   animate={{ scaleX: stepProgress / 100 }}
@@ -335,17 +351,18 @@ export function GuidedTourBar() {
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.08] px-4 py-2.5 sm:px-5">
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <span className="rounded-md bg-emerald-400/12 px-2 py-1 text-[9px] font-800 uppercase tracking-[0.18em] text-emerald-200">
+              <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 border-b border-white/[0.08] px-3 py-2 sm:flex sm:gap-2 sm:px-5 sm:py-2.5">
+                <div className="flex min-w-0 items-center gap-2 sm:flex-1">
+                  <span className="shrink-0 whitespace-nowrap rounded-md bg-emerald-400/12 px-2 py-1 text-[9px] font-800 uppercase tracking-[0.18em] text-emerald-200">
                     Guided preview
                   </span>
-                  <span className="text-[10px] font-600 text-white/40">
+                  <span className="shrink-0 whitespace-nowrap text-[10px] font-600 text-white/55">
                     Step {currentStep.stageNumber} / {String(TOUR_STEPS.length).padStart(2, '0')}
                   </span>
                   <span className="hidden truncate text-[10px] text-white/50 sm:block">Demo data · {currentStep.targetPage}</span>
                 </div>
 
+                <div className="col-span-2 row-start-2 flex items-center justify-between gap-1 sm:contents">
                 <TourVoiceControls enabled={voiceEnabled} supported={voiceSupported} speaking={voiceStatus === 'speaking'} paused={isPaused} failed={voiceStatus === 'error'} onToggle={toggleVoice} onReplay={replayVoice} />
 
                 <button
@@ -363,13 +380,15 @@ export function GuidedTourBar() {
                 >
                   Minimize
                 </button>
+                </div>
                 <button
                   onClick={() => void endTour()}
                   disabled={isEnding}
-                  className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-700 text-rose-200/75 transition-colors hover:bg-rose-400/10 hover:text-rose-100 disabled:opacity-40"
+                  aria-label="Exit walkthrough"
+                  className="col-start-2 row-start-1 flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-700 text-rose-200/75 transition-colors hover:bg-rose-400/10 hover:text-rose-100 disabled:opacity-40"
                 >
                   {isEnding ? <Spinner /> : null}
-                  <span>{isEnding ? 'Returning' : 'Exit walkthrough'}</span>
+                  <span className="sm:hidden">{isEnding ? 'Returning' : 'Exit'}</span><span className="hidden sm:inline">{isEnding ? 'Returning' : 'Exit walkthrough'}</span>
                 </button>
               </div>
 
@@ -380,7 +399,7 @@ export function GuidedTourBar() {
                   animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
                   exit={{ opacity: 0, x: -16, filter: 'blur(4px)' }}
                   transition={{ duration: reduceMotion ? 0.01 : 0.42, ease: [0.22, 1, 0.36, 1] }}
-                  className="grid gap-4 px-4 py-4 sm:grid-cols-[1fr_auto] sm:px-5"
+                  className="grid min-h-0 gap-3 overflow-y-auto px-4 py-3 sm:grid-cols-[1fr_auto] sm:gap-4 sm:px-5 sm:py-4"
                 >
                   <div className="min-w-0">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -441,7 +460,7 @@ export function GuidedTourBar() {
                 </motion.div>
               </AnimatePresence>
 
-              <div className="flex items-center gap-1.5 border-t border-white/[0.08] px-4 py-2.5 sm:px-5">
+              <div className="flex shrink-0 items-center gap-1.5 border-t border-white/[0.08] px-4 py-2 sm:px-5 sm:py-2.5">
                 {TOUR_STEPS.map((step, index) => {
                   const active = index === currentStepIndex;
                   const completed = index < currentStepIndex;

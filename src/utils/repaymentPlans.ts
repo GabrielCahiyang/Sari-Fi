@@ -58,8 +58,7 @@ export function normalizeRepaymentSettings(
   settings: SystemSettings,
 ): SystemSettings {
   return {
-    retailMinimumQuantity: 12,
-    retailMarkupMultiplier: 1.05,
+    sellingPriceMultiplier: 1.05,
     ...settings,
     repaymentPlans: getRepaymentPlans(settings),
   }

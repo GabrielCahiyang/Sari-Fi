@@ -39,7 +39,6 @@ interface ProductFormData {
 
   sellingPrice: string
 
-  retailPrice: string
 
   costPrice: string
 
@@ -94,7 +93,6 @@ export function ProductsPage() {
 
     sellingPrice: "",
 
-    retailPrice: "",
 
     costPrice: "",
 
@@ -152,7 +150,6 @@ export function ProductsPage() {
 
         sellingPrice: String(editProduct.sellingPrice ?? ""),
 
-        retailPrice: String(editProduct.retailPrice ?? ""),
 
         costPrice: String(editProduct.costPrice ?? ""),
 
@@ -183,7 +180,6 @@ export function ProductsPage() {
 
       sellingPrice: "",
 
-      retailPrice: "",
 
       costPrice: "",
 
@@ -273,15 +269,6 @@ export function ProductsPage() {
 
     if (!isCurrencyInput(data.sellingPrice))
       newErrors.sellingPrice = "Enter a positive price with at most 2 decimals"
-
-    if (
-      data.retailPrice.trim() &&
-      (!isCurrencyInput(data.retailPrice) ||
-        Number(data.retailPrice) > Number(data.sellingPrice))
-    ) {
-      newErrors.retailPrice =
-        "Retail price must be positive, at most 2 decimals, and no higher than regular price"
-    }
 
     if (!isCurrencyInput(data.costPrice, true))
       newErrors.costPrice = "Enter supplier cost with at most 2 decimals"
@@ -381,10 +368,6 @@ export function ProductsPage() {
       supplierId: data.supplierId || "",
 
       sellingPrice: parseFloat(data.sellingPrice),
-
-      retailPrice: data.retailPrice.trim()
-        ? Number(data.retailPrice)
-        : undefined,
 
       costPrice: parseFloat(data.costPrice),
 
@@ -719,7 +702,7 @@ export function ProductsPage() {
 
         <div>
           <label className="text-xs font-600 text-[#65727A]">
-            Regular selling price (₱) <span className="text-red-500">*</span>
+            Selling price (₱) <span className="text-red-500">*</span>
           </label>
           <input
             type="number"
@@ -742,33 +725,6 @@ export function ProductsPage() {
             <span className="text-[11px] text-red-500 font-500 mt-1 block">
               {errors.sellingPrice}
             </span>
-          )}
-        </div>
-        <div>
-          <label
-            className="text-xs font-600 text-[#65727A]"
-            htmlFor="admin-retail"
-          >
-            Retail price at {state.settings.retailMinimumQuantity ?? 12}+ (₱)
-          </label>
-          <input
-            id="admin-retail"
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={formData.retailPrice}
-            onChange={(e) =>
-              setFormData({ ...formData, retailPrice: e.target.value })
-            }
-            className="mt-1 w-full px-3 py-2 border border-[#E4E8E6] rounded-xl text-sm"
-          />
-          <p className="text-[11px] text-[#65727A] mt-1">
-            Same product sale units; leave blank to disable retail pricing.
-          </p>
-          {errors.retailPrice && (
-            <p role="alert" className="text-xs text-red-600">
-              {errors.retailPrice}
-            </p>
           )}
         </div>
 
@@ -993,10 +949,7 @@ export function ProductsPage() {
                         {formatPHP(p.sellingPrice)}
                       </span>
                       <span className="text-[11px] text-[#1E7D3B]">
-                        {p.retailPrice !== undefined
-                          ? `Retail ${formatPHP(p.retailPrice)} at ${state.settings.retailMinimumQuantity ?? 12}+ · `
-                          : ""}
-                        Cost: {formatPHP(p.costPrice)}
+                                                Cost: {formatPHP(p.costPrice)}
                       </span>
                     </div>
                   </div>

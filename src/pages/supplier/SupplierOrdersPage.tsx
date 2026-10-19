@@ -13,7 +13,7 @@ export function SupplierOrdersPage() {
   const supplier = useMemo(() => {
     return state.suppliers.find(s => s.id === state.currentUser?.supplierId) || {
       id: state.currentUser?.supplierId || 'sup1',
-      name: state.currentUser?.name || 'Wholesale Supplier',
+      name: state.currentUser?.name || 'Supplier',
       email: state.currentUser?.email || 'supplier@sarifi.ph',
       status: 'active' as const,
     };
@@ -82,7 +82,7 @@ export function SupplierOrdersPage() {
               Orders to Fulfill
             </h1>
             <p className="text-xs sm:text-sm text-[#65727A] mt-1">
-              Fulfill and dispatch wholesale orders placed by registered sari-sari stores.
+              Fulfill and dispatch orders placed by registered sari-sari stores.
             </p>
           </div>
 
@@ -155,7 +155,6 @@ export function SupplierOrdersPage() {
               return (
                 <div
                   key={o.id}
-                  data-tour-target={o.id === 'ord_tour_001' ? '3' : undefined}
                   className="bg-white rounded-2xl border border-[#E4E8E6] p-4 sm:p-5 shadow-xs transition-all hover:border-[#1E7D3B]/40"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E4E8E6]">
@@ -246,7 +245,7 @@ export function SupplierOrdersPage() {
                   </div>
 
                   {/* Actions Bar */}
-                  <div className="flex items-center justify-end gap-2 pt-2">
+                  <div data-tour-target={o.id === 'ord_tour_001' ? '3' : undefined} className="flex items-center justify-end gap-2 pt-2">
                     {isPending && (
                       <button
                         onClick={() => handleUpdateStatus(o, 'ready')}
